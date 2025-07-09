@@ -36,6 +36,12 @@ class BlindTasteService {
     return items[index];
   }
 
+  /// 根据ID获取酒样
+  Future<BlindTasteItemModel?> getItemById(int id) async {
+    final dbItem = await _database.getBlindTasteItemById(id);
+    return dbItem != null ? _convertFromDbItem(dbItem) : null;
+  }
+
   /// 获取酒样总数
   Future<int> getItemCount() async {
     return await _database.getBlindTasteItemCount();
@@ -44,6 +50,7 @@ class BlindTasteService {
   /// 将数据库项转换为模型
   BlindTasteItemModel _convertFromDbItem(BlindTasteItem dbItem) {
     return BlindTasteItemModel(
+      id: dbItem.id,
       name: dbItem.name,
       aroma: dbItem.aroma,
       alcoholDegree: dbItem.alcoholDegree,

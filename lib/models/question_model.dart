@@ -42,9 +42,15 @@ class QuestionModel {
         type = QuestionType.single;
     }
 
+    // 安全地转换选项列表
+    List<String> optionsList = [];
+    if (json['options'] != null && json['options'] is List) {
+      optionsList = (json['options'] as List).map((e) => e.toString()).toList();
+    }
+
     return QuestionModel(
       question: json['question'] as String,
-      options: List<String>.from(json['options'] as List),
+      options: optionsList,
       type: type,
       answer: json['answer'],
       explanation: json['explanation'] as String?,

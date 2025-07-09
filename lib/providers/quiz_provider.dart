@@ -1,10 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/question_model.dart';
+import '../models/progress_model.dart';
 import '../services/database_service.dart';
+import '../services/progress_service.dart';
 
 // 数据库服务Provider
 final databaseServiceProvider = Provider<DatabaseService>((ref) {
   return DatabaseService();
+});
+
+// 进度保存服务Provider
+final progressServiceProvider = Provider<ProgressService>((ref) {
+  return ProgressService();
 });
 
 // 题目分类Provider
@@ -100,8 +107,10 @@ class QuizState {
 // 答题控制器
 class QuizController extends StateNotifier<QuizState> {
   final DatabaseService _databaseService;
+  final ProgressService _progressService;
 
-  QuizController(this._databaseService) : super(const QuizState());
+  QuizController(this._databaseService, this._progressService)
+    : super(const QuizState());
 
   // 开始答题
   Future<void> startQuiz({String? category, int questionCount = 10}) async {
@@ -239,6 +248,9 @@ class QuizController extends StateNotifier<QuizState> {
     newAnswers[state.currentQuestionIndex] = answer;
 
     state = state.copyWith(userAnswers: newAnswers);
+
+    // 自动保存进度（练习模式）
+    _autoSaveProgress();
   }
 
   // 检查当前答案是否正确（用于练习模式）
@@ -271,8 +283,11 @@ class QuizController extends StateNotifier<QuizState> {
     final nextIndex = state.currentQuestionIndex + 1;
 
     if (nextIndex >= state.questions.length) {
-      // 答题完成
+      // 答题完成，清除保存的进度
       state = state.copyWith(status: QuizStatus.completed);
+      if (state.mode == QuizMode.practice) {
+        clearSavedProgress();
+      }
     } else {
       // 进入下一题
       final newStartTimes = Map<int, DateTime>.from(state.questionStartTimes);
@@ -282,6 +297,9 @@ class QuizController extends StateNotifier<QuizState> {
         currentQuestionIndex: nextIndex,
         questionStartTimes: newStartTimes,
       );
+
+      // 自动保存进度（练习模式）
+      _autoSaveProgress();
     }
   }
 
@@ -355,12 +373,80 @@ class QuizController extends StateNotifier<QuizState> {
   void reset() {
     state = const QuizState();
   }
+
+  // 自动保存当前进度（仅练习模式）
+  Future<void> _autoSaveProgress() async {
+    if (state.mode == QuizMode.practice &&
+        state.status == QuizStatus.inProgress) {
+      try {
+        final progress = QuizProgress.fromQuizState(state);
+        await _progressService.saveQuizProgress(progress);
+      } catch (e) {
+        // 保存失败不影响正常答题
+        print('Failed to save progress: $e');
+      }
+    }
+  }
+
+  // 恢复进度
+  Future<bool> restoreProgress() async {
+    try {
+      final progress = await _progressService.loadQuizProgress();
+      if (progress != null && progress.isValid) {
+        state = QuizState(
+          status: QuizStatus.inProgress,
+          mode: progress.mode!,
+          questions: progress.questions,
+          currentQuestionIndex: progress.currentIndex,
+          userAnswers: progress.userAnswers,
+          questionStartTimes: progress.questionStartTimes,
+          quizStartTime: progress.startTime,
+          selectedCategory: progress.selectedCategory,
+        );
+        return true;
+      }
+    } catch (e) {
+      print('Failed to restore progress: $e');
+    }
+    return false;
+  }
+
+  // 清除保存的进度
+  Future<void> clearSavedProgress() async {
+    try {
+      await _progressService.clearQuizProgress();
+    } catch (e) {
+      print('Failed to clear progress: $e');
+    }
+  }
+
+  // 检查是否有保存的进度
+  Future<bool> hasSavedProgress() async {
+    try {
+      return await _progressService.hasQuizProgress();
+    } catch (e) {
+      print('Failed to check saved progress: $e');
+      return false;
+    }
+  }
+
+  // 获取保存的进度描述
+  Future<String?> getSavedProgressDescription() async {
+    try {
+      final progress = await _progressService.loadQuizProgress();
+      return progress?.description;
+    } catch (e) {
+      print('Failed to get progress description: $e');
+      return null;
+    }
+  }
 }
 
 // 答题控制器Provider
 final quizControllerProvider = StateNotifierProvider<QuizController, QuizState>(
   (ref) {
     final databaseService = ref.read(databaseServiceProvider);
-    return QuizController(databaseService);
+    final progressService = ref.read(progressServiceProvider);
+    return QuizController(databaseService, progressService);
   },
 );

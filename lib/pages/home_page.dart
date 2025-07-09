@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/settings_model.dart';
+import '../providers/blind_taste_provider.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
@@ -156,7 +157,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         subtitle: '',
         icon: Icons.wine_bar,
         color: Colors.deepOrange,
-        onTap: () => appRouter.goToBlindTaste(),
+        onTap: () => _startBlindTaste(context, ref),
       ),
       _FeatureCard(
         title: '模拟考试',
@@ -267,9 +268,33 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  void _startQuiz(BuildContext context, WidgetRef ref) {
+  void _startQuiz(BuildContext context, WidgetRef ref) async {
     final settings = ref.read(settingsProvider);
     final quizController = ref.read(quizControllerProvider.notifier);
+
+    // 检查是否有保存的进度
+    if (settings.enableProgressSave) {
+      final hasSavedProgress = await quizController.hasSavedProgress();
+      if (hasSavedProgress && context.mounted) {
+        final description = await quizController.getSavedProgressDescription();
+        final shouldRestore = await _showRestoreProgressDialog(
+          context,
+          description,
+        );
+
+        if (shouldRestore) {
+          final restored = await quizController.restoreProgress();
+          if (restored) {
+            // 导航到答题页面
+            appRouter.goToQuiz();
+            return;
+          }
+        } else {
+          // 用户选择不恢复，清除保存的进度
+          await quizController.clearSavedProgress();
+        }
+      }
+    }
 
     // 开始全题库答题，使用用户的选项乱序设置
     quizController.startAllQuestionsQuiz(
@@ -278,6 +303,48 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     // 导航到答题页面
     appRouter.goToQuiz();
+  }
+
+  Future<bool> _showRestoreProgressDialog(
+    BuildContext context,
+    String? description,
+  ) async {
+    if (!context.mounted) return false;
+
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('恢复进度'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('检测到未完成的答题进度：'),
+                const SizedBox(height: 8),
+                Text(
+                  description ?? '未知进度',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text('是否要继续之前的答题？'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('重新开始'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('继续答题'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   void _startMockExam(BuildContext context, WidgetRef ref) {
@@ -294,6 +361,81 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     // 导航到答题页面
     appRouter.goToQuiz();
+  }
+
+  void _startBlindTaste(BuildContext context, WidgetRef ref) async {
+    final settings = ref.read(settingsProvider);
+    final blindTasteController = ref.read(blindTasteProvider.notifier);
+
+    // 检查是否有保存的进度
+    if (settings.enableProgressSave) {
+      final hasSavedProgress = await blindTasteController.hasSavedProgress();
+      if (hasSavedProgress && context.mounted) {
+        final description = await blindTasteController
+            .getSavedProgressDescription();
+        final shouldRestore = await _showRestoreBlindTasteProgressDialog(
+          context,
+          description,
+        );
+
+        if (shouldRestore) {
+          final restored = await blindTasteController.restoreProgress();
+          if (restored) {
+            // 导航到品鉴页面
+            appRouter.goToBlindTaste();
+            return;
+          }
+        } else {
+          // 用户选择不恢复，清除保存的进度
+          await blindTasteController.clearSavedProgress();
+        }
+      }
+    }
+
+    // 导航到品鉴页面
+    appRouter.goToBlindTaste();
+  }
+
+  Future<bool> _showRestoreBlindTasteProgressDialog(
+    BuildContext context,
+    String? description,
+  ) async {
+    if (!context.mounted) return false;
+
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('恢复品鉴进度'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('检测到未完成的品鉴进度：'),
+                const SizedBox(height: 8),
+                Text(
+                  description ?? '未知进度',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text('是否要继续之前的品鉴？'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('重新开始'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('继续品鉴'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   void _showComingSoon(BuildContext context, String feature) {

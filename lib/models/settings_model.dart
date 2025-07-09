@@ -5,6 +5,7 @@ class QuizSettings {
   final int booleanCount;
   final bool shuffleOptions;
   final bool autoNextQuestion;
+  final bool enableProgressSave; // 是否启用进度保存
 
   const QuizSettings({
     this.singleChoiceCount = 30,
@@ -12,6 +13,7 @@ class QuizSettings {
     this.booleanCount = 30,
     this.shuffleOptions = true,
     this.autoNextQuestion = true,
+    this.enableProgressSave = true, // 默认启用进度保存
   });
 
   QuizSettings copyWith({
@@ -20,6 +22,7 @@ class QuizSettings {
     int? booleanCount,
     bool? shuffleOptions,
     bool? autoNextQuestion,
+    bool? enableProgressSave,
   }) {
     return QuizSettings(
       singleChoiceCount: singleChoiceCount ?? this.singleChoiceCount,
@@ -27,6 +30,7 @@ class QuizSettings {
       booleanCount: booleanCount ?? this.booleanCount,
       shuffleOptions: shuffleOptions ?? this.shuffleOptions,
       autoNextQuestion: autoNextQuestion ?? this.autoNextQuestion,
+      enableProgressSave: enableProgressSave ?? this.enableProgressSave,
     );
   }
 
@@ -42,6 +46,7 @@ class QuizSettings {
       'booleanCount': booleanCount,
       'shuffleOptions': shuffleOptions,
       'autoNextQuestion': autoNextQuestion,
+      'enableProgressSave': enableProgressSave,
     };
   }
 
@@ -53,6 +58,7 @@ class QuizSettings {
       booleanCount: json['booleanCount'] ?? 2,
       shuffleOptions: json['shuffleOptions'] ?? true,
       autoNextQuestion: json['autoNextQuestion'] ?? false,
+      enableProgressSave: json['enableProgressSave'] ?? true,
     );
   }
 
@@ -64,7 +70,8 @@ class QuizSettings {
         other.multipleChoiceCount == multipleChoiceCount &&
         other.booleanCount == booleanCount &&
         other.shuffleOptions == shuffleOptions &&
-        other.autoNextQuestion == autoNextQuestion;
+        other.autoNextQuestion == autoNextQuestion &&
+        other.enableProgressSave == enableProgressSave;
   }
 
   @override
@@ -73,6 +80,7 @@ class QuizSettings {
         multipleChoiceCount.hashCode ^
         booleanCount.hashCode ^
         shuffleOptions.hashCode ^
-        autoNextQuestion.hashCode;
+        autoNextQuestion.hashCode ^
+        enableProgressSave.hashCode;
   }
 }

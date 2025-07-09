@@ -1,5 +1,6 @@
 /// 酒样品鉴数据模型
 class BlindTasteItemModel {
+  final int? id; // 数据库ID
   final String name;
   final String aroma;
   final double alcoholDegree;
@@ -8,6 +9,7 @@ class BlindTasteItemModel {
   final List<String> fermentationAgent;
 
   const BlindTasteItemModel({
+    this.id,
     required this.name,
     required this.aroma,
     required this.alcoholDegree,
@@ -46,6 +48,7 @@ class BlindTasteItemModel {
     }
 
     return BlindTasteItemModel(
+      id: json['id'] as int?,
       name: json['酒样名称'] ?? '',
       aroma: json['香型'] ?? '',
       alcoholDegree: (json['酒度'] ?? 0.0).toDouble(),
@@ -57,6 +60,7 @@ class BlindTasteItemModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       '酒样名称': name,
       '香型': aroma,
       '酒度': alcoholDegree,
@@ -147,6 +151,46 @@ class BlindTasteAnswer {
     selectedTotalScore = 92.0;
     selectedEquipment = [];
     selectedFermentationAgent = [];
+  }
+
+  /// 转换为JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'selectedAroma': selectedAroma,
+      'selectedAlcoholDegree': selectedAlcoholDegree,
+      'selectedTotalScore': selectedTotalScore,
+      'selectedEquipment': selectedEquipment,
+      'selectedFermentationAgent': selectedFermentationAgent,
+    };
+  }
+
+  /// 从JSON创建
+  factory BlindTasteAnswer.fromJson(Map<String, dynamic> json) {
+    // 安全地转换设备列表
+    List<String> equipmentList = [];
+    if (json['selectedEquipment'] != null) {
+      final equipmentData = json['selectedEquipment'];
+      if (equipmentData is List) {
+        equipmentList = equipmentData.map((e) => e.toString()).toList();
+      }
+    }
+
+    // 安全地转换发酵剂列表
+    List<String> fermentationAgentList = [];
+    if (json['selectedFermentationAgent'] != null) {
+      final agentData = json['selectedFermentationAgent'];
+      if (agentData is List) {
+        fermentationAgentList = agentData.map((e) => e.toString()).toList();
+      }
+    }
+
+    return BlindTasteAnswer(
+      selectedAroma: json['selectedAroma'] as String?,
+      selectedAlcoholDegree: json['selectedAlcoholDegree'] as double?,
+      selectedTotalScore: json['selectedTotalScore'] as double? ?? 92.0,
+      selectedEquipment: equipmentList,
+      selectedFermentationAgent: fermentationAgentList,
+    );
   }
 }
 

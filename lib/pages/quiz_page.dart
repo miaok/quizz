@@ -18,6 +18,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   dynamic currentAnswer;
   Set<String> multipleAnswers = {};
   late PageController _pageController;
+  late ScrollController _questionCardScrollController;
   Timer? _autoNextTimer;
   Timer? _countdownTimer;
   Timer? _multipleChoiceCheckTimer;
@@ -54,6 +55,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _pageController = PageController(
       viewportFraction: 1.0, // 确保每页占满整个视口
     );
+    _questionCardScrollController = ScrollController();
     // 设置答题页面的系统UI - 完全沉浸式
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SystemUIManager.setQuizPageUI();
@@ -73,6 +75,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _countdownTimer?.cancel();
     _multipleChoiceCheckTimer?.cancel();
     _pageController.dispose();
+    _questionCardScrollController.dispose();
     // 页面销毁时恢复默认UI
     SystemUIManager.restoreDefaultUI();
     super.dispose();
@@ -164,7 +167,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             ],
           ),
           backgroundColor: Theme.of(context).colorScheme.error,
-          duration: const Duration(milliseconds: 1500),
+          duration: const Duration(milliseconds: 1000),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
@@ -191,7 +194,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _multipleChoiceCheckTimer?.cancel();
 
     // 设置1.5秒后检查答案
-    _multipleChoiceCheckTimer = Timer(const Duration(milliseconds: 1500), () {
+    _multipleChoiceCheckTimer = Timer(const Duration(milliseconds: 1200), () {
       if (mounted) {
         _handlePracticeModeAnswer(controller);
       }
@@ -207,7 +210,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       canPop: false, // 禁止直接返回
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          _showExitDialog(context);
+          _handleBackPressed(context);
         }
       },
       child: Scaffold(
@@ -216,7 +219,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
           // 使用新的MD3主题，移除自定义背景色
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => _showExitDialog(context),
+            onPressed: () => _handleBackPressed(context),
           ),
         ),
         body: SafeArea(
@@ -375,7 +378,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     if (state.userAnswers.containsKey(index)) {
       final savedAnswer = state.userAnswers[index];
       if (question.type == QuestionType.multiple) {
-        multipleAnswers = Set<String>.from(savedAnswer as List<String>? ?? []);
+        // 安全地处理多选题答案，支持List<dynamic>到List<String>的转换
+        if (savedAnswer is List) {
+          multipleAnswers = Set<String>.from(
+            savedAnswer.map((e) => e.toString()),
+          );
+        } else {
+          multipleAnswers.clear();
+        }
       } else {
         currentAnswer = savedAnswer;
       }
@@ -1170,6 +1180,55 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       backgroundColor: Colors.transparent,
       builder: (context) => _buildQuestionCard(state),
     );
+
+    // 答题卡展开时，延迟滚动到当前题目位置
+    // 使用更长的延迟确保答题卡完全展开后再滚动
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        _scrollToCurrentQuestion(state.currentQuestionIndex);
+      }
+    });
+  }
+
+  // 滚动到指定题目位置
+  void _scrollToCurrentQuestion(int currentIndex) {
+    if (!_questionCardScrollController.hasClients) return;
+
+    // 计算网格参数（与GridView.builder中的参数保持一致）
+    const int crossAxisCount = 5; // 每行5个题目
+    const double crossAxisSpacing = 12.0; // 横轴间距
+    const double mainAxisSpacing = 12.0; // 主轴间距
+    const double childAspectRatio = 1.0; // 宽高比
+    const double padding = 16.0; // 容器内边距
+
+    // 计算当前题目所在的行
+    final int row = currentIndex ~/ crossAxisCount;
+
+    // 获取GridView的可用宽度
+    final double availableWidth =
+        MediaQuery.of(context).size.width - (padding * 2);
+
+    // 计算每个item的实际尺寸
+    final double itemWidth =
+        (availableWidth - (crossAxisSpacing * (crossAxisCount - 1))) /
+        crossAxisCount;
+    final double itemHeight = itemWidth / childAspectRatio;
+
+    // 计算目标滚动位置，让当前题目所在行居中显示
+    final double targetOffset =
+        (row * (itemHeight + mainAxisSpacing)) - (itemHeight + mainAxisSpacing);
+
+    // 确保滚动位置在有效范围内
+    final double maxScrollExtent =
+        _questionCardScrollController.position.maxScrollExtent;
+    final double clampedOffset = targetOffset.clamp(0.0, maxScrollExtent);
+
+    // 执行滚动动画
+    _questionCardScrollController.animateTo(
+      clampedOffset,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   Widget _buildQuestionCard(QuizState state) {
@@ -1228,6 +1287,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: GridView.builder(
+                controller: _questionCardScrollController,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 5,
                   crossAxisSpacing: 12,
@@ -1355,6 +1415,22 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
       ],
     );
+  }
+
+  void _handleBackPressed(BuildContext context) {
+    final quizState = ref.read(quizControllerProvider);
+    final quizController = ref.read(quizControllerProvider.notifier);
+
+    // 练习模式：自动保存进度并退出
+    if (quizState.mode == QuizMode.practice) {
+      // 进度会在QuizController中自动保存
+      quizController.reset();
+      appRouter.goToHome();
+      return;
+    }
+
+    // 考试模式：显示确认对话框
+    _showExitDialog(context);
   }
 
   void _showExitDialog(BuildContext context) {

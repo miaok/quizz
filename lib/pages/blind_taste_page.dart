@@ -19,8 +19,11 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     // 设置系统UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SystemUIManager.setQuizPageUI();
-      // 开始新的品鉴
-      ref.read(blindTasteProvider.notifier).startNewTasting();
+      // 只有在没有当前品鉴项目时才开始新的品鉴
+      final currentState = ref.read(blindTasteProvider);
+      if (currentState.currentItem == null) {
+        ref.read(blindTasteProvider.notifier).startNewTasting();
+      }
     });
   }
 
@@ -34,7 +37,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
         centerTitle: true,
         // 使用新的MD3主题，移除自定义背景色
         leading: IconButton(
-          onPressed: () => _showExitDialog(context),
+          onPressed: () => _handleExit(context),
           icon: const Icon(Icons.close),
           tooltip: '退出',
         ),
@@ -884,26 +887,10 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     ref.read(blindTasteProvider.notifier).startNewTasting();
   }
 
-  void _showExitDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('退出品鉴'),
-        content: const Text('确定要退出当前品鉴吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              appRouter.goToHome();
-            },
-            child: const Text('确定'),
-          ),
-        ],
-      ),
-    );
+  void _handleExit(BuildContext context) {
+    // 品鉴模式：自动保存进度并退出
+    // 进度会在BlindTasteNotifier中自动保存
+    ref.read(blindTasteProvider.notifier).reset();
+    appRouter.goToHome();
   }
 }

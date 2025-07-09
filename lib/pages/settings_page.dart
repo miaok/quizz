@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_provider.dart';
+import '../services/progress_service.dart';
 import '../utils/system_ui_manager.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -117,6 +118,38 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
               ),
 
+              const SizedBox(height: 16),
+
+              // 进度保存设置
+              const Text(
+                '进度管理',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+
+              Card(
+                child: SwitchListTile(
+                  title: const Text('自动保存进度'),
+                  subtitle: const Text('练习和品鉴模式下自动保存答题进度'),
+                  value: settings.enableProgressSave,
+                  onChanged: (value) =>
+                      settingsController.updateEnableProgressSave(value),
+                  secondary: const Icon(Icons.save),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.delete_sweep, color: Colors.red),
+                  title: const Text('清除所有进度'),
+                  subtitle: const Text('删除所有已保存的答题和品鉴进度'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showClearProgressDialog(context),
+                ),
+              ),
+
               const SizedBox(height: 12),
 
               // 快速切题设置
@@ -207,6 +240,43 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ).showSnackBar(const SnackBar(content: Text('设置已重置')));
             },
             child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showClearProgressDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('清除进度'),
+        content: const Text('确定要清除所有已保存的答题和品鉴进度吗？此操作不可恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              try {
+                final progressService = ProgressService();
+                await progressService.clearAllProgress();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('所有进度已清除')));
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('清除进度失败: $e')));
+                }
+              }
+            },
+            child: const Text('确定', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

@@ -1,10 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/blind_taste_model.dart';
+import '../models/progress_model.dart';
 import '../services/blind_taste_service.dart';
+import '../services/progress_service.dart';
 
 /// 品鉴服务Provider
 final blindTasteServiceProvider = Provider<BlindTasteService>((ref) {
   return BlindTasteService();
+});
+
+/// 品鉴进度服务Provider
+final blindTasteProgressServiceProvider = Provider<ProgressService>((ref) {
+  return ProgressService();
 });
 
 /// 当前品鉴题目状态
@@ -51,8 +58,9 @@ class BlindTasteState {
 /// 品鉴状态管理器
 class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
   final BlindTasteService _service;
+  final ProgressService _progressService;
 
-  BlindTasteNotifier(this._service)
+  BlindTasteNotifier(this._service, this._progressService)
     : super(BlindTasteState(userAnswer: BlindTasteAnswer()));
 
   /// 开始新的品鉴
@@ -95,6 +103,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     );
 
     state = state.copyWith(userAnswer: newAnswer);
+
+    // 自动保存进度
+    _autoSaveProgress();
   }
 
   /// 选择酒度
@@ -110,6 +121,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     );
 
     state = state.copyWith(userAnswer: newAnswer);
+
+    // 自动保存进度
+    _autoSaveProgress();
   }
 
   /// 调整总分
@@ -130,6 +144,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     );
 
     state = state.copyWith(userAnswer: newAnswer);
+
+    // 自动保存进度
+    _autoSaveProgress();
   }
 
   /// 切换设备选择
@@ -155,6 +172,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     );
 
     state = state.copyWith(userAnswer: newAnswer);
+
+    // 自动保存进度
+    _autoSaveProgress();
   }
 
   /// 切换发酵剂选择
@@ -178,6 +198,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     );
 
     state = state.copyWith(userAnswer: newAnswer);
+
+    // 自动保存进度
+    _autoSaveProgress();
   }
 
   /// 提交答案并计算得分
@@ -187,11 +210,78 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     final score = state.userAnswer.calculateScore(state.currentItem!);
 
     state = state.copyWith(isCompleted: true, finalScore: score);
+
+    // 品鉴完成，清除保存的进度
+    clearSavedProgress();
   }
 
   /// 重置状态
   void reset() {
     state = BlindTasteState(userAnswer: BlindTasteAnswer());
+  }
+
+  /// 自动保存当前进度
+  Future<void> _autoSaveProgress() async {
+    if (state.currentItem != null && !state.isCompleted) {
+      try {
+        final progress = QuizProgress.fromBlindTasteState(state);
+        await _progressService.saveBlindTasteProgress(progress);
+      } catch (e) {}
+    }
+  }
+
+  /// 恢复进度
+  Future<bool> restoreProgress() async {
+    try {
+      final progress = await _progressService.loadBlindTasteProgress();
+      if (progress != null &&
+          progress.isValid &&
+          progress.blindTasteItemId != null) {
+        // 根据ID获取酒样
+        final item = await _service.getItemById(progress.blindTasteItemId!);
+        if (item != null) {
+          state = BlindTasteState(
+            currentItem: item,
+            userAnswer: progress.blindTasteAnswer ?? BlindTasteAnswer(),
+            currentIndex: progress.currentIndex,
+            isCompleted: false,
+            isLoading: false,
+          );
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  /// 清除保存的进度
+  Future<void> clearSavedProgress() async {
+    try {
+      await _progressService.clearBlindTasteProgress();
+    } catch (e) {
+      print('Failed to clear blind taste progress: $e');
+    }
+  }
+
+  /// 检查是否有保存的进度
+  Future<bool> hasSavedProgress() async {
+    try {
+      return await _progressService.hasBlindTasteProgress();
+    } catch (e) {
+      print('Failed to check saved blind taste progress: $e');
+      return false;
+    }
+  }
+
+  /// 获取保存的进度描述
+  Future<String?> getSavedProgressDescription() async {
+    try {
+      final progress = await _progressService.loadBlindTasteProgress();
+      return progress?.description;
+    } catch (e) {
+      print('Failed to get blind taste progress description: $e');
+      return null;
+    }
   }
 }
 
@@ -199,7 +289,8 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
 final blindTasteProvider =
     StateNotifierProvider<BlindTasteNotifier, BlindTasteState>((ref) {
       final service = ref.watch(blindTasteServiceProvider);
-      return BlindTasteNotifier(service);
+      final progressService = ref.watch(blindTasteProgressServiceProvider);
+      return BlindTasteNotifier(service, progressService);
     });
 
 /// 品鉴数据统计Provider

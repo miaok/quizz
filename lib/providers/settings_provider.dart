@@ -8,10 +8,11 @@ final settingsServiceProvider = Provider<SettingsService>((ref) {
 });
 
 // 设置状态Provider
-final settingsProvider = StateNotifierProvider<SettingsController, QuizSettings>((ref) {
-  final settingsService = ref.read(settingsServiceProvider);
-  return SettingsController(settingsService);
-});
+final settingsProvider =
+    StateNotifierProvider<SettingsController, QuizSettings>((ref) {
+      final settingsService = ref.read(settingsServiceProvider);
+      return SettingsController(settingsService);
+    });
 
 // 设置控制器
 class SettingsController extends StateNotifier<QuizSettings> {
@@ -59,6 +60,12 @@ class SettingsController extends StateNotifier<QuizSettings> {
   // 更新快速切题设置
   Future<void> updateAutoNextQuestion(bool autoNext) async {
     final newSettings = state.copyWith(autoNextQuestion: autoNext);
+    await _saveSettings(newSettings);
+  }
+
+  // 更新进度保存设置
+  Future<void> updateEnableProgressSave(bool enable) async {
+    final newSettings = state.copyWith(enableProgressSave: enable);
     await _saveSettings(newSettings);
   }
 
