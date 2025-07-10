@@ -69,6 +69,36 @@ class SettingsController extends StateNotifier<QuizSettings> {
     await _saveSettings(newSettings);
   }
 
+  // 更新品鉴模式香型设置
+  Future<void> updateEnableBlindTasteAroma(bool enable) async {
+    final newSettings = state.copyWith(enableBlindTasteAroma: enable);
+    await _saveSettings(newSettings);
+  }
+
+  // 更新品鉴模式酒度设置
+  Future<void> updateEnableBlindTasteAlcohol(bool enable) async {
+    final newSettings = state.copyWith(enableBlindTasteAlcohol: enable);
+    await _saveSettings(newSettings);
+  }
+
+  // 更新品鉴模式总分设置
+  Future<void> updateEnableBlindTasteScore(bool enable) async {
+    final newSettings = state.copyWith(enableBlindTasteScore: enable);
+    await _saveSettings(newSettings);
+  }
+
+  // 更新品鉴模式设备设置
+  Future<void> updateEnableBlindTasteEquipment(bool enable) async {
+    final newSettings = state.copyWith(enableBlindTasteEquipment: enable);
+    await _saveSettings(newSettings);
+  }
+
+  // 更新品鉴模式发酵剂设置
+  Future<void> updateEnableBlindTasteFermentation(bool enable) async {
+    final newSettings = state.copyWith(enableBlindTasteFermentation: enable);
+    await _saveSettings(newSettings);
+  }
+
   // 批量更新设置
   Future<void> updateSettings(QuizSettings settings) async {
     await _saveSettings(settings);

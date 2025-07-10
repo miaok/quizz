@@ -87,61 +87,92 @@ class BlindTasteAnswer {
     this.selectedFermentationAgent = const [],
   });
 
-  /// 计算得分（简单的评分逻辑）
-  double calculateScore(BlindTasteItemModel correctAnswer) {
+  /// 计算得分（根据启用的品鉴项目动态分配分数）
+  double calculateScore(
+    BlindTasteItemModel correctAnswer, {
+    bool enableAroma = true,
+    bool enableAlcohol = true,
+    bool enableScore = true,
+    bool enableEquipment = true,
+    bool enableFermentation = true,
+  }) {
     double score = 0.0;
 
-    // 香型匹配 (30分)
-    if (selectedAroma == correctAnswer.aroma) {
-      score += 30;
+    // 计算启用的项目数量，用于动态分配分数
+    int enabledItemsCount = 0;
+    if (enableAroma) enabledItemsCount++;
+    if (enableAlcohol) enabledItemsCount++;
+    if (enableScore) enabledItemsCount++;
+    if (enableEquipment) enabledItemsCount++;
+    if (enableFermentation) enabledItemsCount++;
+
+    if (enabledItemsCount == 0) return 0.0;
+
+    // 每个项目的基础分数（总分100分平均分配）
+    double baseScore = 100.0 / enabledItemsCount;
+
+    // 香型匹配
+    if (enableAroma && selectedAroma == correctAnswer.aroma) {
+      score += baseScore;
     }
 
-    // 酒度匹配 (20分) - 允许±1-2度误差
-    if (selectedAlcoholDegree != null) {
+    // 酒度匹配 - 允许±1-2度误差
+    if (enableAlcohol && selectedAlcoholDegree != null) {
       double diff = (selectedAlcoholDegree! - correctAnswer.alcoholDegree)
           .abs();
       if (diff <= 1) {
-        score += 20;
+        score += baseScore;
       } else if (diff <= 2) {
-        score += 5;
+        score += baseScore * 0.25; // 部分分数
       }
     }
 
-    // 总分匹配 (20分) - 允许±0.4分误差
-    double scoreDiff = (selectedTotalScore - correctAnswer.totalScore).abs();
-    if (scoreDiff <= 0.2) {
-      score += 20;
-    } else if (scoreDiff <= 0.4) {
-      score += 10;
+    // 总分匹配 - 允许±0.4分误差
+    if (enableScore) {
+      double scoreDiff = (selectedTotalScore - correctAnswer.totalScore).abs();
+      if (scoreDiff <= 0.2) {
+        score += baseScore;
+      } else if (scoreDiff <= 0.4) {
+        score += baseScore * 0.5; // 部分分数
+      }
     }
 
-    // 设备匹配 (15分) - 顺序不影响，只要包含的元素相同
-    Set<String> selectedEquipmentSet = selectedEquipment.toSet();
-    Set<String> correctEquipmentSet = correctAnswer.equipment.toSet();
-    if (selectedEquipmentSet.length == correctEquipmentSet.length &&
-        selectedEquipmentSet.containsAll(correctEquipmentSet)) {
-      score += 15;
-    } else {
-      int equipmentMatches = selectedEquipmentSet
-          .intersection(correctEquipmentSet)
-          .length;
-      score += (equipmentMatches / correctEquipmentSet.length) * 15;
+    // 设备匹配 - 顺序不影响，只要包含的元素相同
+    if (enableEquipment) {
+      Set<String> selectedEquipmentSet = selectedEquipment.toSet();
+      Set<String> correctEquipmentSet = correctAnswer.equipment.toSet();
+      if (selectedEquipmentSet.length == correctEquipmentSet.length &&
+          selectedEquipmentSet.containsAll(correctEquipmentSet)) {
+        score += baseScore;
+      } else if (correctEquipmentSet.isNotEmpty) {
+        int equipmentMatches = selectedEquipmentSet
+            .intersection(correctEquipmentSet)
+            .length;
+        score += (equipmentMatches / correctEquipmentSet.length) * baseScore;
+      }
     }
 
-    // 发酵剂匹配 (15分) - 顺序不影响，只要包含的元素相同
-    Set<String> selectedAgentSet = selectedFermentationAgent.toSet();
-    Set<String> correctAgentSet = correctAnswer.fermentationAgent.toSet();
-    if (selectedAgentSet.length == correctAgentSet.length &&
-        selectedAgentSet.containsAll(correctAgentSet)) {
-      score += 15;
-    } else {
-      int fermentationMatches = selectedAgentSet
-          .intersection(correctAgentSet)
-          .length;
-      score += (fermentationMatches / correctAgentSet.length) * 15;
+    // 发酵剂匹配 - 顺序不影响，只要包含的元素相同
+    if (enableFermentation) {
+      Set<String> selectedAgentSet = selectedFermentationAgent.toSet();
+      Set<String> correctAgentSet = correctAnswer.fermentationAgent.toSet();
+      if (selectedAgentSet.length == correctAgentSet.length &&
+          selectedAgentSet.containsAll(correctAgentSet)) {
+        score += baseScore;
+      } else if (correctAgentSet.isNotEmpty) {
+        int fermentationMatches = selectedAgentSet
+            .intersection(correctAgentSet)
+            .length;
+        score += (fermentationMatches / correctAgentSet.length) * baseScore;
+      }
     }
 
     return score.clamp(0, 100);
+  }
+
+  /// 兼容性方法：使用默认设置计算得分
+  double calculateScoreDefault(BlindTasteItemModel correctAnswer) {
+    return calculateScore(correctAnswer);
   }
 
   /// 重置答案
@@ -209,6 +240,7 @@ class BlindTasteOptions {
     '芝麻香型',
     '小曲清香型',
     '麸曲清香型',
+    '大麸清香型',
     '多粮浓香型',
     '董香型',
     '老白干型',

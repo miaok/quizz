@@ -163,6 +163,78 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   secondary: const Icon(Icons.fast_forward),
                 ),
               ),
+
+              const SizedBox(height: 16),
+
+              // 品鉴模式设置
+              const Text(
+                '品鉴模式设置',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+
+              Card(
+                child: SwitchListTile(
+                  title: const Text('香型品鉴'),
+                  subtitle: const Text('是否在品鉴模式中包含香型判断'),
+                  value: settings.enableBlindTasteAroma,
+                  onChanged: (value) =>
+                      settingsController.updateEnableBlindTasteAroma(value),
+                  secondary: const Icon(Icons.local_florist),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Card(
+                child: SwitchListTile(
+                  title: const Text('酒度品鉴'),
+                  subtitle: const Text('是否在品鉴模式中包含酒度判断'),
+                  value: settings.enableBlindTasteAlcohol,
+                  onChanged: (value) =>
+                      settingsController.updateEnableBlindTasteAlcohol(value),
+                  secondary: const Icon(Icons.thermostat),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Card(
+                child: SwitchListTile(
+                  title: const Text('总分品鉴'),
+                  subtitle: const Text('是否在品鉴模式中包含总分评估'),
+                  value: settings.enableBlindTasteScore,
+                  onChanged: (value) =>
+                      settingsController.updateEnableBlindTasteScore(value),
+                  secondary: const Icon(Icons.star),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Card(
+                child: SwitchListTile(
+                  title: const Text('设备品鉴'),
+                  subtitle: const Text('是否在品鉴模式中包含设备判断'),
+                  value: settings.enableBlindTasteEquipment,
+                  onChanged: (value) =>
+                      settingsController.updateEnableBlindTasteEquipment(value),
+                  secondary: const Icon(Icons.build),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Card(
+                child: SwitchListTile(
+                  title: const Text('发酵剂品鉴'),
+                  subtitle: const Text('是否在品鉴模式中包含发酵剂判断'),
+                  value: settings.enableBlindTasteFermentation,
+                  onChanged: (value) => settingsController
+                      .updateEnableBlindTasteFermentation(value),
+                  secondary: const Icon(Icons.science),
+                ),
+              ),
             ],
           ),
         ),

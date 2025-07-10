@@ -3,6 +3,7 @@ import '../models/blind_taste_model.dart';
 import '../models/progress_model.dart';
 import '../services/blind_taste_service.dart';
 import '../services/progress_service.dart';
+import 'settings_provider.dart';
 
 /// 品鉴服务Provider
 final blindTasteServiceProvider = Provider<BlindTasteService>((ref) {
@@ -113,8 +114,9 @@ class BlindTasteState {
 class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
   final BlindTasteService _service;
   final ProgressService _progressService;
+  final Ref _ref;
 
-  BlindTasteNotifier(this._service, this._progressService)
+  BlindTasteNotifier(this._service, this._progressService, this._ref)
     : super(BlindTasteState(userAnswer: BlindTasteAnswer()));
 
   /// 开始新的品鉴（或继续当前轮次）
@@ -312,7 +314,17 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
   void submitAnswer() {
     if (state.currentItem == null || state.currentItem!.id == null) return;
 
-    final score = state.userAnswer.calculateScore(state.currentItem!);
+    // 获取当前设置
+    final settings = _ref.read(settingsProvider);
+
+    final score = state.userAnswer.calculateScore(
+      state.currentItem!,
+      enableAroma: settings.enableBlindTasteAroma,
+      enableAlcohol: settings.enableBlindTasteAlcohol,
+      enableScore: settings.enableBlindTasteScore,
+      enableEquipment: settings.enableBlindTasteEquipment,
+      enableFermentation: settings.enableBlindTasteFermentation,
+    );
 
     // 将当前题目标记为已完成
     final newCompletedIds = Set<int>.from(state.completedItemIds);
@@ -427,7 +439,7 @@ final blindTasteProvider =
     StateNotifierProvider<BlindTasteNotifier, BlindTasteState>((ref) {
       final service = ref.watch(blindTasteServiceProvider);
       final progressService = ref.watch(blindTasteProgressServiceProvider);
-      return BlindTasteNotifier(service, progressService);
+      return BlindTasteNotifier(service, progressService, ref);
     });
 
 /// 品鉴数据统计Provider

@@ -7,6 +7,13 @@ class QuizSettings {
   final bool autoNextQuestion;
   final bool enableProgressSave; // 是否启用进度保存
 
+  // 品鉴模式项目设置
+  final bool enableBlindTasteAroma; // 是否启用香型品鉴
+  final bool enableBlindTasteAlcohol; // 是否启用酒度品鉴
+  final bool enableBlindTasteScore; // 是否启用总分品鉴
+  final bool enableBlindTasteEquipment; // 是否启用设备品鉴
+  final bool enableBlindTasteFermentation; // 是否启用发酵剂品鉴
+
   const QuizSettings({
     this.singleChoiceCount = 30,
     this.multipleChoiceCount = 40,
@@ -14,6 +21,11 @@ class QuizSettings {
     this.shuffleOptions = true,
     this.autoNextQuestion = true,
     this.enableProgressSave = true, // 默认启用进度保存
+    this.enableBlindTasteAroma = true, // 默认启用香型品鉴
+    this.enableBlindTasteAlcohol = true, // 默认启用酒度品鉴
+    this.enableBlindTasteScore = true, // 默认启用总分品鉴
+    this.enableBlindTasteEquipment = true, // 默认启用设备品鉴
+    this.enableBlindTasteFermentation = true, // 默认启用发酵剂品鉴
   });
 
   QuizSettings copyWith({
@@ -23,6 +35,11 @@ class QuizSettings {
     bool? shuffleOptions,
     bool? autoNextQuestion,
     bool? enableProgressSave,
+    bool? enableBlindTasteAroma,
+    bool? enableBlindTasteAlcohol,
+    bool? enableBlindTasteScore,
+    bool? enableBlindTasteEquipment,
+    bool? enableBlindTasteFermentation,
   }) {
     return QuizSettings(
       singleChoiceCount: singleChoiceCount ?? this.singleChoiceCount,
@@ -31,6 +48,16 @@ class QuizSettings {
       shuffleOptions: shuffleOptions ?? this.shuffleOptions,
       autoNextQuestion: autoNextQuestion ?? this.autoNextQuestion,
       enableProgressSave: enableProgressSave ?? this.enableProgressSave,
+      enableBlindTasteAroma:
+          enableBlindTasteAroma ?? this.enableBlindTasteAroma,
+      enableBlindTasteAlcohol:
+          enableBlindTasteAlcohol ?? this.enableBlindTasteAlcohol,
+      enableBlindTasteScore:
+          enableBlindTasteScore ?? this.enableBlindTasteScore,
+      enableBlindTasteEquipment:
+          enableBlindTasteEquipment ?? this.enableBlindTasteEquipment,
+      enableBlindTasteFermentation:
+          enableBlindTasteFermentation ?? this.enableBlindTasteFermentation,
     );
   }
 
@@ -47,6 +74,11 @@ class QuizSettings {
       'shuffleOptions': shuffleOptions,
       'autoNextQuestion': autoNextQuestion,
       'enableProgressSave': enableProgressSave,
+      'enableBlindTasteAroma': enableBlindTasteAroma,
+      'enableBlindTasteAlcohol': enableBlindTasteAlcohol,
+      'enableBlindTasteScore': enableBlindTasteScore,
+      'enableBlindTasteEquipment': enableBlindTasteEquipment,
+      'enableBlindTasteFermentation': enableBlindTasteFermentation,
     };
   }
 
@@ -59,6 +91,12 @@ class QuizSettings {
       shuffleOptions: json['shuffleOptions'] ?? true,
       autoNextQuestion: json['autoNextQuestion'] ?? false,
       enableProgressSave: json['enableProgressSave'] ?? true,
+      enableBlindTasteAroma: json['enableBlindTasteAroma'] ?? true,
+      enableBlindTasteAlcohol: json['enableBlindTasteAlcohol'] ?? true,
+      enableBlindTasteScore: json['enableBlindTasteScore'] ?? true,
+      enableBlindTasteEquipment: json['enableBlindTasteEquipment'] ?? true,
+      enableBlindTasteFermentation:
+          json['enableBlindTasteFermentation'] ?? true,
     );
   }
 
@@ -71,7 +109,12 @@ class QuizSettings {
         other.booleanCount == booleanCount &&
         other.shuffleOptions == shuffleOptions &&
         other.autoNextQuestion == autoNextQuestion &&
-        other.enableProgressSave == enableProgressSave;
+        other.enableProgressSave == enableProgressSave &&
+        other.enableBlindTasteAroma == enableBlindTasteAroma &&
+        other.enableBlindTasteAlcohol == enableBlindTasteAlcohol &&
+        other.enableBlindTasteScore == enableBlindTasteScore &&
+        other.enableBlindTasteEquipment == enableBlindTasteEquipment &&
+        other.enableBlindTasteFermentation == enableBlindTasteFermentation;
   }
 
   @override
@@ -81,6 +124,11 @@ class QuizSettings {
         booleanCount.hashCode ^
         shuffleOptions.hashCode ^
         autoNextQuestion.hashCode ^
-        enableProgressSave.hashCode;
+        enableProgressSave.hashCode ^
+        enableBlindTasteAroma.hashCode ^
+        enableBlindTasteAlcohol.hashCode ^
+        enableBlindTasteScore.hashCode ^
+        enableBlindTasteEquipment.hashCode ^
+        enableBlindTasteFermentation.hashCode;
   }
 }
