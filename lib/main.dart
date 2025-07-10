@@ -14,11 +14,9 @@ void main() async {
   await _configureSystemUI();
 
   // 初始化服务
-  try {
-    await DatabaseService().initialize();
-    await SettingsService().initialize();
-    await BlindTasteService().initialize();
-  } catch (e) {}
+  await DatabaseService().initialize();
+  await SettingsService().initialize();
+  await BlindTasteService().initialize();
 
   // 启动应用
   runApp(const ProviderScope(child: MyQuizApp()));

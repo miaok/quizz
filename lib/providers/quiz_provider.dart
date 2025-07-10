@@ -378,67 +378,44 @@ class QuizController extends StateNotifier<QuizState> {
   Future<void> _autoSaveProgress() async {
     if (state.mode == QuizMode.practice &&
         state.status == QuizStatus.inProgress) {
-      try {
-        final progress = QuizProgress.fromQuizState(state);
-        await _progressService.saveQuizProgress(progress);
-      } catch (e) {
-        // 保存失败不影响正常答题
-        print('Failed to save progress: $e');
-      }
+      final progress = QuizProgress.fromQuizState(state);
+      await _progressService.saveQuizProgress(progress);
     }
   }
 
   // 恢复进度
   Future<bool> restoreProgress() async {
-    try {
-      final progress = await _progressService.loadQuizProgress();
-      if (progress != null && progress.isValid) {
-        state = QuizState(
-          status: QuizStatus.inProgress,
-          mode: progress.mode!,
-          questions: progress.questions,
-          currentQuestionIndex: progress.currentIndex,
-          userAnswers: progress.userAnswers,
-          questionStartTimes: progress.questionStartTimes,
-          quizStartTime: progress.startTime,
-          selectedCategory: progress.selectedCategory,
-        );
-        return true;
-      }
-    } catch (e) {
-      print('Failed to restore progress: $e');
+    final progress = await _progressService.loadQuizProgress();
+    if (progress != null && progress.isValid) {
+      state = QuizState(
+        status: QuizStatus.inProgress,
+        mode: progress.mode!,
+        questions: progress.questions,
+        currentQuestionIndex: progress.currentIndex,
+        userAnswers: progress.userAnswers,
+        questionStartTimes: progress.questionStartTimes,
+        quizStartTime: progress.startTime,
+        selectedCategory: progress.selectedCategory,
+      );
+      return true;
     }
     return false;
   }
 
   // 清除保存的进度
   Future<void> clearSavedProgress() async {
-    try {
-      await _progressService.clearQuizProgress();
-    } catch (e) {
-      print('Failed to clear progress: $e');
-    }
+    await _progressService.clearQuizProgress();
   }
 
   // 检查是否有保存的进度
   Future<bool> hasSavedProgress() async {
-    try {
-      return await _progressService.hasQuizProgress();
-    } catch (e) {
-      print('Failed to check saved progress: $e');
-      return false;
-    }
+    return await _progressService.hasQuizProgress();
   }
 
   // 获取保存的进度描述
   Future<String?> getSavedProgressDescription() async {
-    try {
-      final progress = await _progressService.loadQuizProgress();
-      return progress?.description;
-    } catch (e) {
-      print('Failed to get progress description: $e');
-      return null;
-    }
+    final progress = await _progressService.loadQuizProgress();
+    return progress?.description;
   }
 }
 

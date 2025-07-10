@@ -277,6 +277,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       final hasSavedProgress = await quizController.hasSavedProgress();
       if (hasSavedProgress && context.mounted) {
         final description = await quizController.getSavedProgressDescription();
+        if (!context.mounted) return;
         final shouldRestore = await _showRestoreProgressDialog(
           context,
           description,
@@ -373,6 +374,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       if (hasSavedProgress && context.mounted) {
         final description = await blindTasteController
             .getSavedProgressDescription();
+        if (!context.mounted) return;
         final shouldRestore = await _showRestoreBlindTasteProgressDialog(
           context,
           description,

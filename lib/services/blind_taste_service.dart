@@ -14,7 +14,6 @@ class BlindTasteService {
   /// 初始化服务（实际上数据已经在DatabaseService中加载了）
   Future<void> initialize() async {
     // 数据已经在DatabaseService中加载，这里不需要做任何事情
-    print('BlindTasteService initialized');
   }
 
   /// 获取所有酒样数据

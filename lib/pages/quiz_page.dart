@@ -193,12 +193,35 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     // 取消之前的检查定时器
     _multipleChoiceCheckTimer?.cancel();
 
-    // 设置1.5秒后检查答案
+    // 设置1.2秒后检查答案
     _multipleChoiceCheckTimer = Timer(const Duration(milliseconds: 1200), () {
       if (mounted) {
         _handlePracticeModeAnswer(controller);
       }
     });
+  }
+
+  // 安排考试模式下多选题的延迟切题（给用户时间选择多个选项）
+  void _scheduleExamModeMultipleChoiceAutoNext(QuizController controller) {
+    // 取消之前的检查定时器
+    _multipleChoiceCheckTimer?.cancel();
+
+    final settings = ref.read(settingsProvider);
+    final quizState = ref.read(quizControllerProvider);
+
+    // 检查是否需要自动切题
+    if (settings.autoNextQuestion && !quizState.isLastQuestion) {
+      setState(() {
+        _isAutoSwitching = true;
+      });
+
+      // 设置1.2秒后自动切换到下一题
+      _multipleChoiceCheckTimer = Timer(const Duration(milliseconds: 1200), () {
+        if (mounted && !quizState.isLastQuestion) {
+          _autoSwitchToNext(controller);
+        }
+      });
+    }
   }
 
   @override
@@ -933,7 +956,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             ),
             value: isSelected,
             onChanged: (value) {
-              // 取消自动切题定时器（多选题不自动切换）
+              // 取消自动切题定时器
               _autoNextTimer?.cancel();
               setState(() {
                 _isAutoSwitching = false;
@@ -945,10 +968,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               });
               controller.submitAnswer(multipleAnswers.toList());
 
-              // 练习模式下，延迟判断答案（给用户时间选择多个选项）
+              // 根据模式处理延迟逻辑
               final quizState = ref.read(quizControllerProvider);
               if (quizState.mode == QuizMode.practice) {
+                // 练习模式下，延迟判断答案（给用户时间选择多个选项）
                 _scheduleMultipleChoiceCheck(controller);
+              } else if (quizState.mode == QuizMode.exam) {
+                // 考试模式下，延迟自动切题（给用户时间选择多个选项）
+                _scheduleExamModeMultipleChoiceAutoNext(controller);
               }
             },
             activeColor: isCorrectAnswer

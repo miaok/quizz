@@ -36,12 +36,13 @@ class DatabaseService {
       // 检查数据库是否已有数据
       final existingCount = await _database.getQuestionCount();
       if (existingCount > 0) {
-        print('Database already contains $existingCount questions');
         return;
       }
 
       // 读取JSON文件
-      final String jsonString = await rootBundle.loadString('assets/questions.json');
+      final String jsonString = await rootBundle.loadString(
+        'assets/questions.json',
+      );
       final List<dynamic> jsonData = json.decode(jsonString);
 
       // 解析JSON数据为QuestionModel
@@ -55,9 +56,7 @@ class DatabaseService {
           .toList();
 
       await _database.insertQuestions(dbQuestions);
-      print('Successfully loaded ${questions.length} questions into database');
     } catch (e) {
-      print('Error loading questions from assets: $e');
       rethrow;
     }
   }
@@ -68,12 +67,13 @@ class DatabaseService {
       // 检查数据库是否已有品鉴数据
       final existingCount = await _database.getBlindTasteItemCount();
       if (existingCount > 0) {
-        print('Database already contains $existingCount blind taste items');
         return;
       }
 
       // 读取JSON文件
-      final String jsonString = await rootBundle.loadString('assets/blindtaste.json');
+      final String jsonString = await rootBundle.loadString(
+        'assets/blindtaste.json',
+      );
       final List<dynamic> jsonData = json.decode(jsonString);
 
       // 解析JSON数据为BlindTasteItem模型
@@ -83,20 +83,20 @@ class DatabaseService {
 
       // 转换为数据库格式并插入
       final List<BlindTasteItemsCompanion> dbItems = items
-          .map((item) => BlindTasteItemsCompanion(
-                name: Value(item.name),
-                aroma: Value(item.aroma),
-                alcoholDegree: Value(item.alcoholDegree),
-                totalScore: Value(item.totalScore),
-                equipment: Value(json.encode(item.equipment)),
-                fermentationAgent: Value(json.encode(item.fermentationAgent)),
-              ))
+          .map(
+            (item) => BlindTasteItemsCompanion(
+              name: Value(item.name),
+              aroma: Value(item.aroma),
+              alcoholDegree: Value(item.alcoholDegree),
+              totalScore: Value(item.totalScore),
+              equipment: Value(json.encode(item.equipment)),
+              fermentationAgent: Value(json.encode(item.fermentationAgent)),
+            ),
+          )
           .toList();
 
       await _database.insertBlindTasteItems(dbItems);
-      print('Successfully loaded ${items.length} blind taste items into database');
     } catch (e) {
-      print('Error loading blind taste data from assets: $e');
       rethrow;
     }
   }
@@ -160,15 +160,22 @@ class DatabaseService {
 
   // 根据分类随机获取题目
   Future<List<QuestionModel>> getRandomQuestionsByCategory(
-      String category, int count) async {
-    final dbQuestions = await _database.getRandomQuestionsByCategory(category, count);
+    String category,
+    int count,
+  ) async {
+    final dbQuestions = await _database.getRandomQuestionsByCategory(
+      category,
+      count,
+    );
     return dbQuestions.map((q) => questionToModel(q)).toList();
   }
 
   // 根据题型获取题目
   Future<List<QuestionModel>> getQuestionsByType(String type, int count) async {
     final allQuestions = await getAllQuestions();
-    final filteredQuestions = allQuestions.where((q) => q.type.name == type).toList();
+    final filteredQuestions = allQuestions
+        .where((q) => q.type.name == type)
+        .toList();
     filteredQuestions.shuffle();
     return filteredQuestions.take(count).toList();
   }
@@ -184,7 +191,10 @@ class DatabaseService {
 
     // 按顺序获取各类型题目：判断题→单选题→多选题
     if (booleanCount > 0) {
-      final booleanQuestions = await getQuestionsByType('boolean', booleanCount);
+      final booleanQuestions = await getQuestionsByType(
+        'boolean',
+        booleanCount,
+      );
       result.addAll(booleanQuestions);
     }
 
@@ -194,7 +204,10 @@ class DatabaseService {
     }
 
     if (multipleCount > 0) {
-      final multipleQuestions = await getQuestionsByType('multiple', multipleCount);
+      final multipleQuestions = await getQuestionsByType(
+        'multiple',
+        multipleCount,
+      );
       result.addAll(multipleQuestions);
     }
 

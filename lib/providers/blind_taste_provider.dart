@@ -223,65 +223,47 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
   /// 自动保存当前进度
   Future<void> _autoSaveProgress() async {
     if (state.currentItem != null && !state.isCompleted) {
-      try {
-        final progress = QuizProgress.fromBlindTasteState(state);
-        await _progressService.saveBlindTasteProgress(progress);
-      } catch (e) {}
+      final progress = QuizProgress.fromBlindTasteState(state);
+      await _progressService.saveBlindTasteProgress(progress);
     }
   }
 
   /// 恢复进度
   Future<bool> restoreProgress() async {
-    try {
-      final progress = await _progressService.loadBlindTasteProgress();
-      if (progress != null &&
-          progress.isValid &&
-          progress.blindTasteItemId != null) {
-        // 根据ID获取酒样
-        final item = await _service.getItemById(progress.blindTasteItemId!);
-        if (item != null) {
-          state = BlindTasteState(
-            currentItem: item,
-            userAnswer: progress.blindTasteAnswer ?? BlindTasteAnswer(),
-            currentIndex: progress.currentIndex,
-            isCompleted: false,
-            isLoading: false,
-          );
-          return true;
-        }
+    final progress = await _progressService.loadBlindTasteProgress();
+    if (progress != null &&
+        progress.isValid &&
+        progress.blindTasteItemId != null) {
+      // 根据ID获取酒样
+      final item = await _service.getItemById(progress.blindTasteItemId!);
+      if (item != null) {
+        state = BlindTasteState(
+          currentItem: item,
+          userAnswer: progress.blindTasteAnswer ?? BlindTasteAnswer(),
+          currentIndex: progress.currentIndex,
+          isCompleted: false,
+          isLoading: false,
+        );
+        return true;
       }
-    } catch (e) {}
+    }
     return false;
   }
 
   /// 清除保存的进度
   Future<void> clearSavedProgress() async {
-    try {
-      await _progressService.clearBlindTasteProgress();
-    } catch (e) {
-      print('Failed to clear blind taste progress: $e');
-    }
+    await _progressService.clearBlindTasteProgress();
   }
 
   /// 检查是否有保存的进度
   Future<bool> hasSavedProgress() async {
-    try {
-      return await _progressService.hasBlindTasteProgress();
-    } catch (e) {
-      print('Failed to check saved blind taste progress: $e');
-      return false;
-    }
+    return await _progressService.hasBlindTasteProgress();
   }
 
   /// 获取保存的进度描述
   Future<String?> getSavedProgressDescription() async {
-    try {
-      final progress = await _progressService.loadBlindTasteProgress();
-      return progress?.description;
-    } catch (e) {
-      print('Failed to get blind taste progress description: $e');
-      return null;
-    }
+    final progress = await _progressService.loadBlindTasteProgress();
+    return progress?.description;
   }
 }
 
