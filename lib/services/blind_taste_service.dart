@@ -46,6 +46,66 @@ class BlindTasteService {
     return await _database.getBlindTasteItemCount();
   }
 
+  /// 根据用户进度设置获取题目池
+  Future<List<BlindTasteItemModel>> getQuestionPool({
+    int maxItems = 0, // 0表示全部
+    String? aromaFilter,
+    double? minAlcoholDegree,
+    double? maxAlcoholDegree,
+  }) async {
+    List<BlindTasteItemModel> items = await getAllItems();
+
+    // 应用筛选条件
+    if (aromaFilter != null && aromaFilter.isNotEmpty && aromaFilter != '全部') {
+      items = items.where((item) => item.aroma == aromaFilter).toList();
+    }
+
+    if (minAlcoholDegree != null) {
+      items = items
+          .where((item) => item.alcoholDegree >= minAlcoholDegree)
+          .toList();
+    }
+
+    if (maxAlcoholDegree != null) {
+      items = items
+          .where((item) => item.alcoholDegree <= maxAlcoholDegree)
+          .toList();
+    }
+
+    // 打乱顺序
+    items.shuffle();
+
+    // 限制数量
+    if (maxItems > 0 && items.length > maxItems) {
+      items = items.take(maxItems).toList();
+    }
+
+    return items;
+  }
+
+  /// 从题目池中获取下一个未完成的题目
+  BlindTasteItemModel? getNextUncompletedItem(
+    List<BlindTasteItemModel> questionPool,
+    Set<int> completedItemIds,
+  ) {
+    for (final item in questionPool) {
+      if (item.id != null && !completedItemIds.contains(item.id!)) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  /// 检查是否完成一轮
+  bool isRoundCompleted(
+    List<BlindTasteItemModel> questionPool,
+    Set<int> completedItemIds,
+  ) {
+    return questionPool.every(
+      (item) => item.id != null && completedItemIds.contains(item.id!),
+    );
+  }
+
   /// 将数据库项转换为模型
   BlindTasteItemModel _convertFromDbItem(BlindTasteItem dbItem) {
     return BlindTasteItemModel(

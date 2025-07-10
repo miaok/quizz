@@ -27,13 +27,13 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   bool _showingCorrectAnswer = false; // 用于跟踪是否正在显示正确答案
 
   // 倒计时相关
-  static const int _totalTimeInSeconds = 10 * 60; // 10分钟
+  static const int _totalTimeInSeconds = 15 * 60; // 10分钟
   int _remainingTimeInSeconds = _totalTimeInSeconds;
 
   // 动画参数常量
   static const Duration _buttonSwitchDuration = Duration(milliseconds: 250);
   static const Duration _autoSwitchDuration = Duration(milliseconds: 300);
-  static const Duration _cardJumpDuration = Duration(milliseconds: 350);
+  static const Duration _cardJumpDuration = Duration(milliseconds: 300);
   static const Curve _smoothCurve = Curves.easeInOutCubic;
   static const Curve _autoSwitchCurve = Curves.easeOutQuart;
 
@@ -238,7 +238,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('答题'),
+          title: const Text('刷题大师'),
           // 使用新的MD3主题，移除自定义背景色
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -884,8 +884,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         _isAutoSwitching = true;
       });
 
-      // 延迟0.8秒后自动切换到下一题
-      _autoNextTimer = Timer(const Duration(milliseconds: 800), () {
+      // 延迟0.6秒后自动切换到下一题
+      _autoNextTimer = Timer(const Duration(milliseconds: 600), () {
         if (mounted && !quizState.isLastQuestion) {
           _autoSwitchToNext(controller);
         }

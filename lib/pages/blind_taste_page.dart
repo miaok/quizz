@@ -33,13 +33,22 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('酒样品鉴'),
+        title: Column(
+          children: [
+            const Text('盲评大师'),
+            if (state.questionPool.isNotEmpty)
+              Text(
+                '进度: ${state.completedItemIds.length}/${state.totalItemsInPool}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+          ],
+        ),
         centerTitle: true,
         // 使用新的MD3主题，移除自定义背景色
         leading: IconButton(
           onPressed: () => _handleExit(context),
-          icon: const Icon(Icons.close),
-          tooltip: '退出',
+          icon: const Icon(Icons.arrow_back),
+          tooltip: '返回',
         ),
       ),
       body: SafeArea(bottom: false, child: _buildBody(state)),
@@ -85,6 +94,10 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
           ],
         ),
       );
+    }
+
+    if (state.isRoundCompleted) {
+      return _buildRoundCompletedView(state);
     }
 
     if (state.currentItem == null) {
@@ -656,7 +669,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
           Card(
             elevation: 1,
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(14.0),
               child: Column(
                 children: [
                   Icon(
@@ -672,8 +685,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(context).colorScheme.outline,
                   ),
-                  const SizedBox(height: 12),
-                  Text('品鉴得分', style: Theme.of(context).textTheme.titleMedium),
+
                   const SizedBox(height: 6),
                   Text(
                     '${score.toStringAsFixed(1)}分',
@@ -689,10 +701,10 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   const SizedBox(height: 6),
                   Text(
                     score >= 80
-                        ? '品鉴大师！'
+                        ? '盲评大师！'
                         : score >= 60
-                        ? '品鉴达人！'
-                        : '继续努力！',
+                        ? '盲评达人！'
+                        : '你太菜了！',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -736,15 +748,15 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                     state.userAnswer.selectedTotalScore.toStringAsFixed(1),
                     item.totalScore.toStringAsFixed(1),
                   ),
-                  _buildComparisonRow(
+                  _buildComparisonRowForList(
                     '设备',
-                    state.userAnswer.selectedEquipment.join(', '),
-                    item.equipment.join(', '),
+                    state.userAnswer.selectedEquipment,
+                    item.equipment,
                   ),
-                  _buildComparisonRow(
+                  _buildComparisonRowForList(
                     '发酵剂',
-                    state.userAnswer.selectedFermentationAgent.join(', '),
-                    item.fermentationAgent.join(', '),
+                    state.userAnswer.selectedFermentationAgent,
+                    item.fermentationAgent,
                   ),
                 ],
               ),
@@ -758,14 +770,14 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => _startNewTasting(),
+                  onPressed: () => _handleNextQuestion(),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('再来一题'),
+                  child: Text(state.isRoundCompleted ? '开始新一轮' : '下一题'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -874,6 +886,97 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     );
   }
 
+  Widget _buildComparisonRowForList(
+    String label,
+    List<String> userAnswer,
+    List<String> correctAnswer,
+  ) {
+    // 使用Set比较，忽略顺序
+    final userSet = userAnswer.toSet();
+    final correctSet = correctAnswer.toSet();
+    final isCorrect =
+        userSet.length == correctSet.length && userSet.containsAll(correctSet);
+
+    final userAnswerText = userAnswer.isEmpty ? '未选择' : userAnswer.join(', ');
+    final correctAnswerText = correctAnswer.join(', ');
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 60,
+            child: Text(
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      isCorrect ? Icons.check_circle : Icons.cancel,
+                      size: 16,
+                      color: isCorrect
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '你的答案: ',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    Expanded(
+                      child: Text(
+                        userAnswerText,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: isCorrect
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.error,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.lightbulb_outline,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '正确答案: ',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    Expanded(
+                      child: Text(
+                        correctAnswerText,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   bool _canSubmit(BlindTasteState state) {
     return state.userAnswer.selectedAroma != null &&
         state.userAnswer.selectedAlcoholDegree != null;
@@ -883,8 +986,15 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     ref.read(blindTasteProvider.notifier).submitAnswer();
   }
 
-  void _startNewTasting() {
-    ref.read(blindTasteProvider.notifier).startNewTasting();
+  void _handleNextQuestion() {
+    final state = ref.read(blindTasteProvider);
+    if (state.isRoundCompleted) {
+      // 开始新一轮
+      ref.read(blindTasteProvider.notifier).startNewRound();
+    } else {
+      // 下一题
+      ref.read(blindTasteProvider.notifier).nextQuestion();
+    }
   }
 
   void _handleExit(BuildContext context) {
@@ -892,5 +1002,67 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     // 进度会在BlindTasteNotifier中自动保存
     ref.read(blindTasteProvider.notifier).reset();
     appRouter.goToHome();
+  }
+
+  Widget _buildRoundCompletedView(BlindTasteState state) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.celebration,
+              size: 80,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              '恭喜完成一轮品鉴！',
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '您已完成 ${state.totalItemsInPool} 道品鉴题目',
+              style: Theme.of(context).textTheme.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => appRouter.goToHome(),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('返回首页'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _handleNextQuestion(),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('开始新一轮'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

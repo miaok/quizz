@@ -195,9 +195,9 @@ class QuizResult {
   });
 
   double get score =>
-      totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+      totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 100;
 
-  String get scoreText => '${score.toStringAsFixed(1)}%';
+  String get scoreText => '${score.toStringAsFixed(0)}分';
 
   // 格式化总用时显示
   String get totalTimeText {

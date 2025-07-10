@@ -200,8 +200,6 @@ class BlindTasteOptions {
   static const List<String> aromaTypes = [
     '浓香型',
     '清香型',
-    '小曲清香型',
-    '麸曲清香型',
     '酱香型',
     '米香型',
     '兼香型',
@@ -209,6 +207,9 @@ class BlindTasteOptions {
     '豉香型',
     '特香型',
     '芝麻香型',
+    '小曲清香型',
+    '麸曲清香型',
+    '多粮浓香型',
     '董香型',
     '老白干型',
     '馥郁香型',
@@ -239,5 +240,5 @@ class BlindTasteOptions {
   ];
 
   // 发酵剂选项
-  static const List<String> fermentationAgents = ['大曲', '小曲', '麸曲', '酵母'];
+  static const List<String> fermentationAgents = ['大曲', '小曲', '酵母', '麸曲'];
 }

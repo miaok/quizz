@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/question_model.dart';
 import '../providers/quiz_provider.dart';
+import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
 import '../utils/system_ui_manager.dart';
 
@@ -13,6 +14,9 @@ class ResultPage extends ConsumerStatefulWidget {
 }
 
 class _ResultPageState extends ConsumerState<ResultPage> {
+  bool _isRetrying = false; // 标志是否正在重新答题
+  bool _showOnlyWrongAnswers = false; // 是否只显示错题
+
   @override
   void initState() {
     super.initState();
@@ -27,8 +31,8 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     final quizState = ref.watch(quizControllerProvider);
     final quizController = ref.read(quizControllerProvider.notifier);
 
-    if (quizState.status != QuizStatus.completed) {
-      // 如果不是完成状态，返回首页
+    if (quizState.status != QuizStatus.completed && !_isRetrying) {
+      // 如果不是完成状态且不是在重新答题，返回首页
       WidgetsBinding.instance.addPostFrameCallback((_) {
         appRouter.goToHome();
       });
@@ -80,13 +84,13 @@ class _ResultPageState extends ConsumerState<ResultPage> {
       child: Card(
         elevation: 4,
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             children: [
               // 分数圆环
               Container(
-                width: 120,
-                height: 120,
+                width: 80,
+                height: 80,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: scoreColor, width: 8),
@@ -98,15 +102,15 @@ class _ResultPageState extends ConsumerState<ResultPage> {
                       Text(
                         result.scoreText,
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: scoreColor,
                         ),
                       ),
-                      Text(
-                        _getScoreLevel(result.score),
-                        style: TextStyle(fontSize: 14, color: scoreColor),
-                      ),
+                      // Text(
+                      //   _getScoreLevel(result.score),
+                      //   style: TextStyle(fontSize: 14, color: scoreColor),
+                      // ),
                     ],
                   ),
                 ),
@@ -137,7 +141,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -149,13 +153,6 @@ class _ResultPageState extends ConsumerState<ResultPage> {
                     ],
                   ),
                 ],
-              ),
-
-              const SizedBox(height: 16),
-
-              Text(
-                '完成时间: ${_formatDateTime(result.completedAt)}',
-                style: TextStyle(color: Colors.grey[600], fontSize: 14),
               ),
             ],
           ),
@@ -181,26 +178,97 @@ class _ResultPageState extends ConsumerState<ResultPage> {
   }
 
   Widget _buildQuestionDetails(QuizResult result) {
+    // 根据筛选条件过滤题目
+    final filteredResults = _showOnlyWrongAnswers
+        ? result.questionResults.where((q) => !q.isCorrect).toList()
+        : result.questionResults;
+
+    final wrongAnswersCount = result.questionResults
+        .where((q) => !q.isCorrect)
+        .length;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              '题目详情',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          // 标题和筛选按钮
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  '题目详情',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                // 筛选按钮
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outline,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildFilterButton(
+                        '全部 (${result.questionResults.length})',
+                        !_showOnlyWrongAnswers,
+                        () => setState(() => _showOnlyWrongAnswers = false),
+                      ),
+                      _buildFilterButton(
+                        '错题 ($wrongAnswersCount)',
+                        _showOnlyWrongAnswers,
+                        wrongAnswersCount > 0
+                            ? () => setState(() => _showOnlyWrongAnswers = true)
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
+          // 题目列表
           Expanded(
-            child: ListView.builder(
-              itemCount: result.questionResults.length,
-              itemBuilder: (context, index) {
-                final questionResult = result.questionResults[index];
-                return _buildQuestionResultCard(index + 1, questionResult);
-              },
-            ),
+            child: filteredResults.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 64,
+                          color: Colors.green[300],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '恭喜！没有错题',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: filteredResults.length,
+                    itemBuilder: (context, index) {
+                      final questionResult = filteredResults[index];
+                      // 找到原始题目编号
+                      final originalIndex =
+                          result.questionResults.indexOf(questionResult) + 1;
+                      return _buildQuestionResultCard(
+                        originalIndex,
+                        questionResult,
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -317,6 +385,35 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     );
   }
 
+  Widget _buildFilterButton(String text, bool isSelected, VoidCallback? onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isSelected
+                ? Theme.of(context).colorScheme.onPrimary
+                : onTap != null
+                ? Theme.of(context).colorScheme.onSurface
+                : Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.5),
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBottomButtons(BuildContext context, QuizController controller) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -334,10 +431,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
           const SizedBox(width: 16),
           Expanded(
             child: ElevatedButton(
-              onPressed: () {
-                controller.reset();
-                appRouter.goToHome();
-              },
+              onPressed: () => _retryQuiz(context, controller),
               child: const Text('再次答题'),
             ),
           ),
@@ -346,21 +440,70 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     );
   }
 
+  // 重新开始答题 - 设置标志避免状态检查干扰
+  void _retryQuiz(BuildContext context, QuizController controller) async {
+    final settings = ref.read(settingsProvider);
+    final quizState = ref.read(quizControllerProvider);
+    final currentMode = quizState.mode;
+
+    // 设置重新答题标志，避免状态检查干扰
+    setState(() {
+      _isRetrying = true;
+    });
+
+    try {
+      // 清除任何保存的进度（确保是全新开始）
+      await controller.clearSavedProgress();
+
+      // 重置当前控制器状态
+      controller.reset();
+
+      // 根据之前的模式重新开始答题
+      if (currentMode == QuizMode.practice) {
+        // 练习模式：开始全题库答题
+        await controller.startAllQuestionsQuiz(
+          shuffleOptions: settings.shuffleOptions,
+        );
+      } else {
+        // 考试模式：使用设置中的配置开始模拟考试
+        await controller.startQuizWithSettings(
+          singleCount: settings.singleChoiceCount,
+          multipleCount: settings.multipleChoiceCount,
+          booleanCount: settings.booleanCount,
+          shuffleOptions: settings.shuffleOptions,
+        );
+      }
+
+      // 导航到答题页面
+      if (context.mounted) {
+        appRouter.goToQuiz();
+      }
+    } catch (e) {
+      // 出错时回到首页
+      setState(() {
+        _isRetrying = false;
+      });
+      if (context.mounted) {
+        appRouter.goToHome();
+      }
+    }
+  }
+
   Color _getScoreColor(double score) {
     if (score >= 80) return Colors.green;
     if (score >= 60) return Colors.orange;
     return Colors.red;
   }
 
-  String _getScoreLevel(double score) {
-    if (score >= 90) return '优秀';
-    if (score >= 80) return '良好';
-    if (score >= 60) return '及格';
-    return '不及格';
-  }
+  // String _getScoreLevel(double score) {
+  //   if (score >= 90) return '优秀';
+  //   if (score >= 80) return '良好';
+  //   if (score >= 60) return '及格';
+  //   return '不及格';
+  // }
 
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
-        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-  }
+  // String _formatDateTime(DateTime dateTime) {
+  //   return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
+  //       '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  // }
 }

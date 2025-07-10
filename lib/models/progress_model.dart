@@ -24,6 +24,12 @@ class QuizProgress {
   // 品鉴相关字段
   final int? blindTasteItemId; // 当前品鉴项目的ID
   final BlindTasteAnswer? blindTasteAnswer; // 品鉴答案
+  final List<BlindTasteItemModel>? blindTasteQuestionPool; // 品鉴题目池
+  final Set<int>? blindTasteCompletedIds; // 已完成的品鉴题目ID
+  final int? blindTasteMaxItems; // 每轮最大题目数
+  final String? blindTasteAromaFilter; // 香型筛选
+  final double? blindTasteMinAlcohol; // 最小酒度
+  final double? blindTasteMaxAlcohol; // 最大酒度
 
   const QuizProgress({
     required this.type,
@@ -37,6 +43,12 @@ class QuizProgress {
     required this.savedAt,
     this.blindTasteItemId,
     this.blindTasteAnswer,
+    this.blindTasteQuestionPool,
+    this.blindTasteCompletedIds,
+    this.blindTasteMaxItems,
+    this.blindTasteAromaFilter,
+    this.blindTasteMinAlcohol,
+    this.blindTasteMaxAlcohol,
   });
 
   // 从答题状态创建进度
@@ -63,6 +75,12 @@ class QuizProgress {
       savedAt: DateTime.now(),
       blindTasteItemId: state.currentItem?.id,
       blindTasteAnswer: state.userAnswer,
+      blindTasteQuestionPool: state.questionPool,
+      blindTasteCompletedIds: state.completedItemIds,
+      blindTasteMaxItems: state.maxItemsPerRound,
+      blindTasteAromaFilter: state.selectedAromaFilter,
+      blindTasteMinAlcohol: state.minAlcoholDegree,
+      blindTasteMaxAlcohol: state.maxAlcoholDegree,
     );
   }
 
@@ -79,6 +97,12 @@ class QuizProgress {
     DateTime? savedAt,
     int? blindTasteItemId,
     BlindTasteAnswer? blindTasteAnswer,
+    List<BlindTasteItemModel>? blindTasteQuestionPool,
+    Set<int>? blindTasteCompletedIds,
+    int? blindTasteMaxItems,
+    String? blindTasteAromaFilter,
+    double? blindTasteMinAlcohol,
+    double? blindTasteMaxAlcohol,
   }) {
     return QuizProgress(
       type: type ?? this.type,
@@ -92,6 +116,15 @@ class QuizProgress {
       savedAt: savedAt ?? this.savedAt,
       blindTasteItemId: blindTasteItemId ?? this.blindTasteItemId,
       blindTasteAnswer: blindTasteAnswer ?? this.blindTasteAnswer,
+      blindTasteQuestionPool:
+          blindTasteQuestionPool ?? this.blindTasteQuestionPool,
+      blindTasteCompletedIds:
+          blindTasteCompletedIds ?? this.blindTasteCompletedIds,
+      blindTasteMaxItems: blindTasteMaxItems ?? this.blindTasteMaxItems,
+      blindTasteAromaFilter:
+          blindTasteAromaFilter ?? this.blindTasteAromaFilter,
+      blindTasteMinAlcohol: blindTasteMinAlcohol ?? this.blindTasteMinAlcohol,
+      blindTasteMaxAlcohol: blindTasteMaxAlcohol ?? this.blindTasteMaxAlcohol,
     );
   }
 
@@ -113,6 +146,14 @@ class QuizProgress {
       'savedAt': savedAt.millisecondsSinceEpoch,
       'blindTasteItemId': blindTasteItemId,
       'blindTasteAnswer': blindTasteAnswer?.toJson(),
+      'blindTasteQuestionPool': blindTasteQuestionPool
+          ?.map((item) => item.toJson())
+          .toList(),
+      'blindTasteCompletedIds': blindTasteCompletedIds?.toList(),
+      'blindTasteMaxItems': blindTasteMaxItems,
+      'blindTasteAromaFilter': blindTasteAromaFilter,
+      'blindTasteMinAlcohol': blindTasteMinAlcohol,
+      'blindTasteMaxAlcohol': blindTasteMaxAlcohol,
     };
   }
 
@@ -166,6 +207,25 @@ class QuizProgress {
       );
     }
 
+    // 处理品鉴题目池
+    List<BlindTasteItemModel>? blindTasteQuestionPool;
+    if (json['blindTasteQuestionPool'] != null) {
+      final poolJson = json['blindTasteQuestionPool'] as List<dynamic>;
+      blindTasteQuestionPool = poolJson
+          .map(
+            (item) =>
+                BlindTasteItemModel.fromJson(item as Map<String, dynamic>),
+          )
+          .toList();
+    }
+
+    // 处理已完成题目ID集合
+    Set<int>? blindTasteCompletedIds;
+    if (json['blindTasteCompletedIds'] != null) {
+      final completedJson = json['blindTasteCompletedIds'] as List<dynamic>;
+      blindTasteCompletedIds = completedJson.map((id) => id as int).toSet();
+    }
+
     return QuizProgress(
       type: type,
       mode: mode,
@@ -178,6 +238,12 @@ class QuizProgress {
       savedAt: savedAt,
       blindTasteItemId: json['blindTasteItemId'] as int?,
       blindTasteAnswer: blindTasteAnswer,
+      blindTasteQuestionPool: blindTasteQuestionPool,
+      blindTasteCompletedIds: blindTasteCompletedIds,
+      blindTasteMaxItems: json['blindTasteMaxItems'] as int?,
+      blindTasteAromaFilter: json['blindTasteAromaFilter'] as String?,
+      blindTasteMinAlcohol: json['blindTasteMinAlcohol'] as double?,
+      blindTasteMaxAlcohol: json['blindTasteMaxAlcohol'] as double?,
     );
   }
 

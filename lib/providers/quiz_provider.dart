@@ -44,6 +44,7 @@ class QuizState {
   final Map<int, dynamic> userAnswers; // 用户答案
   final Map<int, DateTime> questionStartTimes; // 每题开始时间
   final DateTime? quizStartTime; // 答题开始时间
+  final DateTime? quizCompletedTime; // 答题完成时间
   final String? selectedCategory;
   final String? errorMessage;
 
@@ -55,6 +56,7 @@ class QuizState {
     this.userAnswers = const {},
     this.questionStartTimes = const {},
     this.quizStartTime,
+    this.quizCompletedTime,
     this.selectedCategory,
     this.errorMessage,
   });
@@ -67,6 +69,7 @@ class QuizState {
     Map<int, dynamic>? userAnswers,
     Map<int, DateTime>? questionStartTimes,
     DateTime? quizStartTime,
+    DateTime? quizCompletedTime,
     String? selectedCategory,
     String? errorMessage,
   }) {
@@ -78,6 +81,7 @@ class QuizState {
       userAnswers: userAnswers ?? this.userAnswers,
       questionStartTimes: questionStartTimes ?? this.questionStartTimes,
       quizStartTime: quizStartTime ?? this.quizStartTime,
+      quizCompletedTime: quizCompletedTime ?? this.quizCompletedTime,
       selectedCategory: selectedCategory ?? this.selectedCategory,
       errorMessage: errorMessage ?? this.errorMessage,
     );
@@ -283,8 +287,11 @@ class QuizController extends StateNotifier<QuizState> {
     final nextIndex = state.currentQuestionIndex + 1;
 
     if (nextIndex >= state.questions.length) {
-      // 答题完成，清除保存的进度
-      state = state.copyWith(status: QuizStatus.completed);
+      // 答题完成，记录完成时间并清除保存的进度
+      state = state.copyWith(
+        status: QuizStatus.completed,
+        quizCompletedTime: DateTime.now(),
+      );
       if (state.mode == QuizMode.practice) {
         clearSavedProgress();
       }
@@ -332,16 +339,26 @@ class QuizController extends StateNotifier<QuizState> {
   // 获取答题结果
   QuizResult getResult() {
     final questionResults = <QuestionResult>[];
-    final now = DateTime.now();
+    // 使用完成时间，如果没有则使用当前时间（兼容性处理）
+    final completedTime = state.quizCompletedTime ?? DateTime.now();
 
     for (int i = 0; i < state.questions.length; i++) {
       final question = state.questions[i];
       final userAnswer = state.userAnswers[i];
       final isCorrect = question.isAnswerCorrect(userAnswer);
 
-      // 计算答题时间（简化处理）
-      final startTime = state.questionStartTimes[i] ?? now;
-      final timeSpent = now.difference(startTime);
+      // 计算答题时间 - 使用固定的完成时间
+      final startTime = state.questionStartTimes[i] ?? completedTime;
+      Duration timeSpent;
+
+      if (i < state.questions.length - 1) {
+        // 非最后一题：使用下一题的开始时间
+        final nextStartTime = state.questionStartTimes[i + 1] ?? completedTime;
+        timeSpent = nextStartTime.difference(startTime);
+      } else {
+        // 最后一题：使用完成时间
+        timeSpent = completedTime.difference(startTime);
+      }
 
       questionResults.add(
         QuestionResult(
@@ -355,16 +372,16 @@ class QuizController extends StateNotifier<QuizState> {
 
     final correctCount = questionResults.where((r) => r.isCorrect).length;
 
-    // 计算总答题用时
+    // 计算总答题用时 - 使用固定的完成时间
     final totalTimeSpent = state.quizStartTime != null
-        ? now.difference(state.quizStartTime!)
+        ? completedTime.difference(state.quizStartTime!)
         : Duration.zero;
 
     return QuizResult(
       totalQuestions: state.questions.length,
       correctAnswers: correctCount,
       questionResults: questionResults,
-      completedAt: now,
+      completedAt: completedTime,
       totalTimeSpent: totalTimeSpent,
     );
   }

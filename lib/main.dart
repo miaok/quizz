@@ -5,6 +5,7 @@ import 'router/app_router.dart';
 import 'services/database_service.dart';
 import 'services/settings_service.dart';
 import 'services/blind_taste_service.dart';
+import 'utils/system_ui_manager.dart';
 
 void main() async {
   // 确保Flutter绑定初始化
@@ -73,10 +74,10 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // 当应用恢复时，重新设置系统UI
+    // 当应用恢复时，强制刷新系统UI状态
     if (state == AppLifecycleState.resumed) {
       Future.delayed(const Duration(milliseconds: 100), () {
-        _configureSystemUI();
+        SystemUIManager.forceRefreshUI();
       });
     }
   }
