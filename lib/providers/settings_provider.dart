@@ -69,6 +69,12 @@ class SettingsController extends StateNotifier<QuizSettings> {
     await _saveSettings(newSettings);
   }
 
+  // 更新考试时间设置
+  Future<void> updateExamTimeMinutes(int minutes) async {
+    final newSettings = state.copyWith(examTimeMinutes: minutes);
+    await _saveSettings(newSettings);
+  }
+
   // 更新品鉴模式香型设置
   Future<void> updateEnableBlindTasteAroma(bool enable) async {
     final newSettings = state.copyWith(enableBlindTasteAroma: enable);

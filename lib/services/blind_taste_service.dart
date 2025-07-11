@@ -131,6 +131,54 @@ class BlindTasteService {
         .toList();
   }
 
+  /// 综合搜索酒样（搜索名称、香型、设备、发酵剂等所有字段）
+  Future<List<BlindTasteItemModel>> searchItems(String query) async {
+    if (query.trim().isEmpty) {
+      return getAllItems();
+    }
+
+    final items = await getAllItems();
+    final lowerQuery = query.toLowerCase();
+
+    return items.where((item) {
+      // 搜索酒样名称
+      if (item.name.toLowerCase().contains(lowerQuery)) {
+        return true;
+      }
+
+      // 搜索香型
+      if (item.aroma.toLowerCase().contains(lowerQuery)) {
+        return true;
+      }
+
+      // 搜索酒度（转换为字符串搜索）
+      if (item.alcoholDegree.toString().contains(lowerQuery)) {
+        return true;
+      }
+
+      // 搜索总分（转换为字符串搜索）
+      if (item.totalScore.toString().contains(lowerQuery)) {
+        return true;
+      }
+
+      // 搜索设备
+      for (final equipment in item.equipment) {
+        if (equipment.toLowerCase().contains(lowerQuery)) {
+          return true;
+        }
+      }
+
+      // 搜索发酵剂
+      for (final agent in item.fermentationAgent) {
+        if (agent.toLowerCase().contains(lowerQuery)) {
+          return true;
+        }
+      }
+
+      return false;
+    }).toList();
+  }
+
   /// 按香型筛选
   Future<List<BlindTasteItemModel>> filterByAroma(String aroma) async {
     final items = await getAllItems();

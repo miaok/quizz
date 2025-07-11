@@ -229,6 +229,56 @@ class DatabaseService {
     return await _database.getQuestionCount();
   }
 
+  // 搜索题目（支持题目文本、选项、解析内容搜索）
+  Future<List<QuestionModel>> searchQuestions(String query) async {
+    if (query.trim().isEmpty) {
+      return getAllQuestions();
+    }
+
+    final allQuestions = await getAllQuestions();
+    final lowerQuery = query.toLowerCase();
+
+    return allQuestions.where((question) {
+      // 搜索题目文本
+      if (question.question.toLowerCase().contains(lowerQuery)) {
+        return true;
+      }
+
+      // 搜索选项
+      for (final option in question.options) {
+        if (option.toLowerCase().contains(lowerQuery)) {
+          return true;
+        }
+      }
+
+      // 搜索解析内容
+      if (question.explanation != null &&
+          question.explanation!.toLowerCase().contains(lowerQuery)) {
+        return true;
+      }
+
+      // 搜索分类
+      if (question.category.toLowerCase().contains(lowerQuery)) {
+        return true;
+      }
+
+      // 搜索正确答案
+      if (question.answer is String) {
+        if (question.answer.toString().toLowerCase().contains(lowerQuery)) {
+          return true;
+        }
+      } else if (question.answer is List) {
+        for (final answer in question.answer) {
+          if (answer.toString().toLowerCase().contains(lowerQuery)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }).toList();
+  }
+
   // 关闭数据库
   Future<void> close() async {
     if (_isInitialized) {

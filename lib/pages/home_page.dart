@@ -167,25 +167,11 @@ class _HomePageState extends ConsumerState<HomePage> {
         onTap: () => _startMockExam(context, ref),
       ),
       _FeatureCard(
-        title: '错题回顾',
-        subtitle: '',
-        icon: Icons.error_outline,
-        color: Colors.orange,
-        onTap: () => _showComingSoon(context, '错题回顾'),
-      ),
-      _FeatureCard(
-        title: '统计记录',
-        subtitle: '',
-        icon: Icons.analytics,
-        color: Colors.purple,
-        onTap: () => _showComingSoon(context, '统计记录'),
-      ),
-      _FeatureCard(
         title: '题库搜索',
         subtitle: '',
         icon: Icons.search,
         color: Colors.teal,
-        onTap: () => _showComingSoon(context, '题库搜索'),
+        onTap: () => appRouter.goToSearch(),
       ),
     ];
 
@@ -438,16 +424,6 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ) ??
         false;
-  }
-
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature 功能即将上线，敬请期待！'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
   }
 }
 

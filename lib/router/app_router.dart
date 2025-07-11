@@ -5,6 +5,7 @@ import '../pages/quiz_page.dart';
 import '../pages/result_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/blind_taste_page.dart';
+import '../pages/search_page.dart';
 
 // 路由路径常量
 class AppRoutes {
@@ -13,6 +14,7 @@ class AppRoutes {
   static const String result = '/quiz/result';
   static const String settings = '/settings';
   static const String blindTaste = '/blind-taste';
+  static const String search = '/search';
 }
 
 // 应用路由配置
@@ -53,29 +55,27 @@ final appRouter = GoRouter(
           name: 'blind-taste',
           builder: (context, state) => const BlindTastePage(),
         ),
+
+        // 搜索页路由 - 首页的子路由
+        GoRoute(
+          path: 'search', // 相对路径，实际为 /search
+          name: 'search',
+          builder: (context, state) => const SearchPage(),
+        ),
       ],
     ),
   ],
-  
+
   // 错误页面处理
   errorBuilder: (context, state) => Scaffold(
-    appBar: AppBar(
-      title: const Text('页面未找到'),
-    ),
+    appBar: AppBar(title: const Text('页面未找到')),
     body: Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.red,
-          ),
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
           const SizedBox(height: 16),
-          Text(
-            '页面未找到: ${state.uri}',
-            style: const TextStyle(fontSize: 18),
-          ),
+          Text('页面未找到: ${state.uri}', style: const TextStyle(fontSize: 18)),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => context.go(AppRoutes.home),
@@ -112,5 +112,10 @@ extension AppRouterExtension on GoRouter {
   // 导航到品鉴页
   void goToBlindTaste() {
     push(AppRoutes.blindTaste); // 使用push而不是go，保持导航栈
+  }
+
+  // 导航到搜索页
+  void goToSearch() {
+    push(AppRoutes.search); // 使用push而不是go，保持导航栈
   }
 }
