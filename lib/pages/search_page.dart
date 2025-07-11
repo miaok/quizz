@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/search_provider.dart';
 import '../models/question_model.dart';
 import '../models/blind_taste_model.dart';
-import '../utils/system_ui_manager.dart';
 
 class SearchPage extends ConsumerStatefulWidget {
   const SearchPage({super.key});
@@ -21,11 +20,6 @@ class _SearchPageState extends ConsumerState<SearchPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-
-    // 设置系统UI
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemUIManager.restoreDefaultUI();
-    });
 
     // 初始化搜索数据
     WidgetsBinding.instance.addPostFrameCallback((_) {

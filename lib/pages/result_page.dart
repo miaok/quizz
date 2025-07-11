@@ -4,7 +4,6 @@ import '../models/question_model.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
-import '../utils/system_ui_manager.dart';
 
 class ResultPage extends ConsumerStatefulWidget {
   const ResultPage({super.key});
@@ -16,15 +15,6 @@ class ResultPage extends ConsumerStatefulWidget {
 class _ResultPageState extends ConsumerState<ResultPage> {
   bool _isRetrying = false; // 标志是否正在重新答题
   bool _showOnlyWrongAnswers = false; // 是否只显示错题
-
-  @override
-  void initState() {
-    super.initState();
-    // 设置结果页面的系统UI
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemUIManager.setResultPageUI();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {

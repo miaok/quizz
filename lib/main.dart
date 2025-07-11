@@ -11,8 +11,14 @@ void main() async {
   // 确保Flutter绑定初始化
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 配置系统UI样式 - 隐藏底部导航栏，实现全屏显示
-  await _configureSystemUI();
+  // 初始化系统UI管理器
+  await SystemUIManager.initialize();
+
+  // 设置屏幕方向为竖屏
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   // 初始化服务
   await DatabaseService().initialize();
@@ -21,32 +27,6 @@ void main() async {
 
   // 启动应用
   runApp(const ProviderScope(child: MyQuizApp()));
-}
-
-// 配置系统UI样式
-Future<void> _configureSystemUI() async {
-  // 设置系统UI覆盖模式 - 隐藏底部导航栏
-  SystemChrome.setEnabledSystemUIMode(
-    SystemUiMode.immersiveSticky,
-    overlays: [SystemUiOverlay.top], // 只保留顶部状态栏
-  );
-
-  // 设置状态栏样式
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent, // 透明状态栏
-      statusBarIconBrightness: Brightness.dark, // 深色图标
-      statusBarBrightness: Brightness.light, // iOS状态栏亮度
-      systemNavigationBarColor: Colors.transparent, // 透明导航栏
-      systemNavigationBarIconBrightness: Brightness.dark, // 深色导航栏图标
-    ),
-  );
-
-  // 设置屏幕方向为竖屏
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
 }
 
 class MyQuizApp extends StatefulWidget {
@@ -74,10 +54,10 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // 当应用恢复时，强制刷新系统UI状态
+    // 当应用恢复时，确保状态栏始终显示
     if (state == AppLifecycleState.resumed) {
       Future.delayed(const Duration(milliseconds: 100), () {
-        SystemUIManager.forceRefreshUI();
+        SystemUIManager.ensureStatusBarVisible();
       });
     }
   }

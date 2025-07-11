@@ -4,7 +4,6 @@ import '../models/blind_taste_model.dart';
 import '../providers/blind_taste_provider.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
-import '../utils/system_ui_manager.dart';
 
 class BlindTastePage extends ConsumerStatefulWidget {
   const BlindTastePage({super.key});
@@ -17,9 +16,8 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
   @override
   void initState() {
     super.initState();
-    // 设置系统UI
+    // 初始化品鉴
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemUIManager.setQuizPageUI();
       // 只有在没有当前品鉴项目时才开始新的品鉴
       final currentState = ref.read(blindTasteProvider);
       if (currentState.currentItem == null) {

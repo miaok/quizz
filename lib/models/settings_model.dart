@@ -96,7 +96,7 @@ class QuizSettings {
       shuffleOptions: json['shuffleOptions'] ?? true,
       autoNextQuestion: json['autoNextQuestion'] ?? false,
       enableProgressSave: json['enableProgressSave'] ?? true,
-      examTimeMinutes: json['examTimeMinutes'] ?? 120,
+      examTimeMinutes: json['examTimeMinutes'] ?? 15,
       enableBlindTasteAroma: json['enableBlindTasteAroma'] ?? true,
       enableBlindTasteAlcohol: json['enableBlindTasteAlcohol'] ?? true,
       enableBlindTasteScore: json['enableBlindTasteScore'] ?? true,

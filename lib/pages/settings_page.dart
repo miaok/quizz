@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_provider.dart';
 import '../models/settings_model.dart';
 import '../services/progress_service.dart';
-import '../utils/system_ui_manager.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -13,15 +12,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  @override
-  void initState() {
-    super.initState();
-    // 设置设置页面的系统UI
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemUIManager.setSettingsPageUI();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
@@ -274,9 +264,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ),
           IconButton(
-            onPressed: settings.examTimeMinutes > 30
+            onPressed: settings.examTimeMinutes > 1
                 ? () => controller.updateExamTimeMinutes(
-                    settings.examTimeMinutes - 15,
+                    settings.examTimeMinutes - 1,
                   )
                 : null,
             icon: const Icon(Icons.remove_circle_outline),
@@ -295,9 +285,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ),
           IconButton(
-            onPressed: settings.examTimeMinutes < 300
+            onPressed: settings.examTimeMinutes < 60
                 ? () => controller.updateExamTimeMinutes(
-                    settings.examTimeMinutes + 15,
+                    settings.examTimeMinutes + 1,
                   )
                 : null,
             icon: const Icon(Icons.add_circle_outline),

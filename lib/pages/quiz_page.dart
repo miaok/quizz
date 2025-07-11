@@ -5,7 +5,6 @@ import '../models/question_model.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
-import '../utils/system_ui_manager.dart';
 
 class QuizPage extends ConsumerStatefulWidget {
   const QuizPage({super.key});
@@ -27,8 +26,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   bool _showingCorrectAnswer = false; // 用于跟踪是否正在显示正确答案
 
   // 倒计时相关
-  static const int _totalTimeInSeconds = 15 * 60; // 10分钟
-  int _remainingTimeInSeconds = _totalTimeInSeconds;
+  int _totalTimeInSeconds = 15 * 60; // 默认15分钟，将从设置中读取
+  int _remainingTimeInSeconds = 15 * 60;
 
   // 动画参数常量
   static const Duration _buttonSwitchDuration = Duration(milliseconds: 250);
@@ -56,15 +55,11 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       viewportFraction: 1.0, // 确保每页占满整个视口
     );
     _questionCardScrollController = ScrollController();
-    // 设置答题页面的系统UI - 完全沉浸式
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemUIManager.setQuizPageUI();
-    });
     // 只在考试模式下启动倒计时器
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = ref.read(quizControllerProvider);
       if (state.mode == QuizMode.exam) {
-        _startCountdownTimer();
+        _initializeExamTimer();
       }
     });
   }
@@ -76,9 +71,15 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _multipleChoiceCheckTimer?.cancel();
     _pageController.dispose();
     _questionCardScrollController.dispose();
-    // 页面销毁时恢复默认UI
-    SystemUIManager.restoreDefaultUI();
     super.dispose();
+  }
+
+  // 初始化考试计时器
+  void _initializeExamTimer() async {
+    final settings = ref.read(settingsProvider);
+    _totalTimeInSeconds = settings.examTimeMinutes * 60;
+    _remainingTimeInSeconds = _totalTimeInSeconds;
+    _startCountdownTimer();
   }
 
   // 启动倒计时器

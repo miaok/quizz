@@ -5,7 +5,6 @@ import '../providers/blind_taste_provider.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
-import '../utils/system_ui_manager.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -15,15 +14,6 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  @override
-  void initState() {
-    super.initState();
-    // 设置首页的系统UI
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemUIManager.restoreDefaultUI();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final questionCountAsync = ref.watch(questionCountProvider);

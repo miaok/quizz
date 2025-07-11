@@ -65,6 +65,7 @@ dev_dependencies:
   # Code generation tools
   build_runner: ^2.5.4
   drift_dev: ^2.27.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -111,4 +112,11 @@ flutter:
   assets:
     - assets/questions.json
     - assets/blindtaste.json
-    - assets/blindtaste.json
+
+# 应用图标配置
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#63A002"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
