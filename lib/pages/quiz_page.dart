@@ -5,6 +5,7 @@ import '../models/question_model.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
+import '../utils/memory_manager.dart';
 
 class QuizPage extends ConsumerStatefulWidget {
   const QuizPage({super.key});
@@ -33,6 +34,11 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   int _totalTimeInSeconds = 15 * 60; // 默认15分钟，将从设置中读取
   int _remainingTimeInSeconds = 15 * 60;
 
+  // 防止频繁更新的标志
+  bool _isUpdatingUI = false;
+  DateTime? _lastUIUpdate;
+  static const Duration _uiUpdateThrottle = Duration(milliseconds: 100);
+
   // 动画参数常量
   static const Duration _buttonSwitchDuration = Duration(milliseconds: 250);
   static const Duration _autoSwitchDuration = Duration(milliseconds: 300);
@@ -59,6 +65,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       viewportFraction: 1.0, // 确保每页占满整个视口
     );
     _questionCardScrollController = ScrollController();
+
+    // 优化答题页面内存使用
+    MemoryManager.optimizeForQuizPage();
+
     // 只在考试模式下启动倒计时器
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = ref.read(quizControllerProvider);
@@ -75,6 +85,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _multipleChoiceCheckTimer?.cancel();
     _pageController.dispose();
     _questionCardScrollController.dispose();
+
+    // 页面销毁时进行内存清理
+    MemoryManager.lightCleanup();
+
     super.dispose();
   }
 
@@ -89,7 +103,17 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   // 启动倒计时器
   void _startCountdownTimer() {
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
+      if (mounted && !_isUpdatingUI) {
+        // 防抖动机制，避免频繁更新UI
+        final now = DateTime.now();
+        if (_lastUIUpdate != null &&
+            now.difference(_lastUIUpdate!) < _uiUpdateThrottle) {
+          return;
+        }
+
+        _isUpdatingUI = true;
+        _lastUIUpdate = now;
+
         setState(() {
           if (_remainingTimeInSeconds > 0) {
             _remainingTimeInSeconds--;
@@ -99,7 +123,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             _handleTimeUp();
           }
         });
-      } else {
+
+        _isUpdatingUI = false;
+      } else if (!mounted) {
         timer.cancel();
       }
     });
@@ -373,17 +399,20 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     // 更新题目状态记录
     _previousQuestions = List.from(state.questions);
 
-    // 确保PageController与当前题目索引同步
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_pageController.hasClients &&
-          _pageController.page?.round() != state.currentQuestionIndex) {
-        _pageController.animateToPage(
-          state.currentQuestionIndex,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      }
-    });
+    // 确保PageController与当前题目索引同步 - 添加防抖动
+    if (!_isUpdatingUI) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted &&
+            _pageController.hasClients &&
+            _pageController.page?.round() != state.currentQuestionIndex) {
+          _pageController.animateToPage(
+            state.currentQuestionIndex,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
 
     return Column(
       children: [
@@ -405,6 +434,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 _showingWrongAnswer = false;
                 _showingCorrectAnswer = false;
               });
+
+              // 页面切换时进行内存优化
+              MemoryManager.onPageTransition();
             },
             itemBuilder: (context, index) {
               final question = state.questions[index];

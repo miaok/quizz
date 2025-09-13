@@ -41,43 +41,19 @@ class ImmersiveScaffold extends StatefulWidget {
   State<ImmersiveScaffold> createState() => _ImmersiveScaffoldState();
 }
 
-class _ImmersiveScaffoldState extends State<ImmersiveScaffold>
-    with WidgetsBindingObserver {
+class _ImmersiveScaffoldState extends State<ImmersiveScaffold> {
+  // 移除WidgetsBindingObserver，避免与main.dart中的重复监听
+  // SystemUI管理现在由应用级别统一处理
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _updateSystemUI();
+    // 移除系统UI更新调用，避免频繁调用
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.resumed) {
-      _updateSystemUI();
-    }
-  }
-
-  @override
-  void didChangePlatformBrightness() {
-    super.didChangePlatformBrightness();
-    _updateSystemUI();
-  }
-
-  void _updateSystemUI() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        final brightness = Theme.of(context).brightness;
-        final isDark = brightness == Brightness.dark;
-        SystemUIManager.setImmersiveUI(isDark: isDark);
-      }
-    });
   }
 
   @override

@@ -6,6 +6,7 @@ import 'services/database_service.dart';
 import 'services/settings_service.dart';
 import 'services/blind_taste_service.dart';
 import 'utils/system_ui_manager.dart';
+import 'utils/memory_manager.dart';
 
 void main() async {
   // 确保Flutter绑定初始化
@@ -13,6 +14,9 @@ void main() async {
 
   // 初始化系统UI管理器
   await SystemUIManager.initialize();
+
+  // 初始化内存管理器
+  MemoryManager.initialize();
 
   // 设置屏幕方向为竖屏
   await SystemChrome.setPreferredOrientations([
@@ -37,17 +41,24 @@ class MyQuizApp extends StatefulWidget {
 }
 
 class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
+  bool _hasInitializedUI = false;
+  Brightness? _lastBrightness;
+
   @override
   void initState() {
     super.initState();
     // 添加应用生命周期监听器
     WidgetsBinding.instance.addObserver(this);
+    _lastBrightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
   }
 
   @override
   void dispose() {
     // 移除应用生命周期监听器
     WidgetsBinding.instance.removeObserver(this);
+    // 销毁内存管理器
+    MemoryManager.dispose();
     super.dispose();
   }
 
@@ -56,26 +67,41 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
     // 当应用恢复时，确保系统UI状态正确
     if (state == AppLifecycleState.resumed) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _updateSystemUI();
+      Future.delayed(const Duration(milliseconds: 200), () {
+        _updateSystemUI(force: true);
       });
+      // 应用恢复时进行内存优化
+      MemoryManager.lightCleanup();
+    } else if (state == AppLifecycleState.paused) {
+      // 应用暂停时强制清理内存
+      MemoryManager.forceCleanup();
     }
   }
 
   @override
   void didChangePlatformBrightness() {
     super.didChangePlatformBrightness();
-    // 当系统主题改变时，更新系统UI
-    _updateSystemUI();
+    final currentBrightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    // 只有当亮度真正改变时才更新
+    if (_lastBrightness != currentBrightness) {
+      _lastBrightness = currentBrightness;
+      _updateSystemUI();
+    }
   }
 
-  void _updateSystemUI() {
+  void _updateSystemUI({bool force = false}) {
+    // 避免重复调用
+    if (!force && _hasInitializedUI) {
+      return;
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        final brightness =
-            WidgetsBinding.instance.platformDispatcher.platformBrightness;
+        final brightness = _lastBrightness ?? Brightness.light;
         final isDark = brightness == Brightness.dark;
         SystemUIManager.setImmersiveUI(isDark: isDark);
+        _hasInitializedUI = true;
       }
     });
   }
@@ -259,10 +285,12 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    // 在构建时更新系统UI
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateSystemUI();
-    });
+    // 只在首次构建时更新系统UI
+    if (!_hasInitializedUI) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateSystemUI();
+      });
+    }
 
     return MaterialApp.router(
       title: 'QUIZ',

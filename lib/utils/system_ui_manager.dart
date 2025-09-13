@@ -5,11 +5,16 @@ import 'package:flutter/services.dart';
 /// 用于控制Android系统导航栏和状态栏的显示状态
 class SystemUIManager {
   static const Duration _animationDuration = Duration(milliseconds: 300);
+  static const Duration _debounceDelay = Duration(milliseconds: 100);
 
   // 记录当前的UI模式，用于应用恢复时重新应用
   static SystemUiMode? _currentMode;
   static List<SystemUiOverlay>? _currentOverlays;
   static SystemUiOverlayStyle? _currentStyle;
+
+  // 防抖动机制
+  static DateTime? _lastUpdateTime;
+  static bool _isUpdating = false;
 
   // 标准的系统UI样式 - 支持手势导航沉浸式
   static const SystemUiOverlayStyle _standardStyle = SystemUiOverlayStyle(
@@ -49,6 +54,19 @@ class SystemUIManager {
   }) async {
     final targetStyle = style ?? _getThemeStyle(isDark: isDark);
 
+    // 防抖动检查 - 避免频繁调用
+    final now = DateTime.now();
+    if (!force &&
+        _lastUpdateTime != null &&
+        now.difference(_lastUpdateTime!) < _debounceDelay) {
+      return;
+    }
+
+    // 如果正在更新中，避免重复调用
+    if (_isUpdating && !force) {
+      return;
+    }
+
     // 如果设置相同且不强制更新，则跳过
     if (!force &&
         _currentMode == mode &&
@@ -58,12 +76,19 @@ class SystemUIManager {
       return;
     }
 
-    _currentMode = mode;
-    _currentOverlays = overlays;
-    _currentStyle = targetStyle;
+    _isUpdating = true;
+    _lastUpdateTime = now;
 
-    await SystemChrome.setEnabledSystemUIMode(mode, overlays: overlays);
-    SystemChrome.setSystemUIOverlayStyle(targetStyle);
+    try {
+      _currentMode = mode;
+      _currentOverlays = overlays;
+      _currentStyle = targetStyle;
+
+      await SystemChrome.setEnabledSystemUIMode(mode, overlays: overlays);
+      SystemChrome.setSystemUIOverlayStyle(targetStyle);
+    } finally {
+      _isUpdating = false;
+    }
   }
 
   /// 比较两个列表是否相等
@@ -125,8 +150,11 @@ class SystemUIManager {
   /// 当用户从屏幕边缘滑动时，系统UI可能会重新出现
   static void handleSystemUIChange({bool isDark = false}) {
     // 延迟重新设置沉浸式UI，给用户一些操作时间
+    // 增加防抖动机制，避免频繁调用
     Future.delayed(_animationDuration, () {
-      setImmersiveUI(isDark: isDark);
+      if (!_isUpdating) {
+        setImmersiveUI(isDark: isDark);
+      }
     });
   }
 
