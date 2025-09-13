@@ -35,3 +35,23 @@
 # Flutter Play Store Split 相关
 -keep class io.flutter.embedding.android.FlutterPlayStoreSplitApplication { *; }
 -keep class io.flutter.embedding.engine.deferredcomponents.** { *; }
+
+# 更激进的代码压缩
+-optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
+-optimizationpasses 5
+-allowaccessmodification
+-dontpreverify
+
+# 移除未使用的代码
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int i(...);
+    public static int w(...);
+    public static int d(...);
+    public static int e(...);
+}
+
+# 压缩资源名称
+-adaptresourcefilenames **.properties,**.gif,**.jpg,**.png
+-adaptresourcefilecontents **.properties,META-INF/MANIFEST.MF

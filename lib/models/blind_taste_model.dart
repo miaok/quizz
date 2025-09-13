@@ -82,7 +82,7 @@ class BlindTasteAnswer {
   BlindTasteAnswer({
     this.selectedAroma,
     this.selectedAlcoholDegree,
-    this.selectedTotalScore = 92.0,
+    this.selectedTotalScore = 91.0,
     this.selectedEquipment = const [],
     this.selectedFermentationAgent = const [],
   });
@@ -179,7 +179,7 @@ class BlindTasteAnswer {
   void reset() {
     selectedAroma = null;
     selectedAlcoholDegree = null;
-    selectedTotalScore = 92.0;
+    selectedTotalScore = 91.0;
     selectedEquipment = [];
     selectedFermentationAgent = [];
   }
@@ -218,7 +218,7 @@ class BlindTasteAnswer {
     return BlindTasteAnswer(
       selectedAroma: json['selectedAroma'] as String?,
       selectedAlcoholDegree: json['selectedAlcoholDegree'] as double?,
-      selectedTotalScore: json['selectedTotalScore'] as double? ?? 92.0,
+      selectedTotalScore: json['selectedTotalScore'] as double? ?? 91.0,
       selectedEquipment: equipmentList,
       selectedFermentationAgent: fermentationAgentList,
     );

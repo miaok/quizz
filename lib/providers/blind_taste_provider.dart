@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/blind_taste_model.dart';
 import '../models/progress_model.dart';
@@ -137,12 +138,16 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
         return;
       }
 
+      // 获取随机顺序设置
+      final settings = _ref.read(settingsProvider);
+
       // 创建新的题目池
       final questionPool = await _service.getQuestionPool(
         maxItems: maxItemsPerRound,
         aromaFilter: aromaFilter,
         minAlcoholDegree: minAlcoholDegree,
         maxAlcoholDegree: maxAlcoholDegree,
+        randomOrder: settings.enableBlindTasteRandomOrder,
       );
 
       if (questionPool.isEmpty) {
@@ -170,6 +175,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
         minAlcoholDegree: minAlcoholDegree,
         maxAlcoholDegree: maxAlcoholDegree,
       );
+
+      // 自动保存进度
+      await _autoSaveProgress();
     } catch (e) {
       state = state.copyWith(isLoading: false, error: '加载品鉴数据失败: $e');
     }
@@ -191,6 +199,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
         isLoading: false,
         error: null,
       );
+
+      // 自动保存进度
+      await _autoSaveProgress();
     } else {
       // 一轮完成
       state = state.copyWith(isRoundCompleted: true, isLoading: false);
@@ -236,9 +247,29 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
   /// 调整总分
   void adjustTotalScore(double delta) {
     final newScore = (state.userAnswer.selectedTotalScore + delta).clamp(
-      0.0,
-      100.0,
+      84.0,
+      98.0,
     );
+
+    final newAnswer = BlindTasteAnswer(
+      selectedAroma: state.userAnswer.selectedAroma,
+      selectedAlcoholDegree: state.userAnswer.selectedAlcoholDegree,
+      selectedTotalScore: newScore,
+      selectedEquipment: List.from(state.userAnswer.selectedEquipment),
+      selectedFermentationAgent: List.from(
+        state.userAnswer.selectedFermentationAgent,
+      ),
+    );
+
+    state = state.copyWith(userAnswer: newAnswer);
+
+    // 自动保存进度
+    _autoSaveProgress();
+  }
+
+  /// 设置总分
+  void setTotalScore(double score) {
+    final newScore = score.clamp(84.0, 98.0);
 
     final newAnswer = BlindTasteAnswer(
       selectedAroma: state.userAnswer.selectedAroma,
@@ -340,6 +371,24 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     _autoSaveProgress();
   }
 
+  /// 跳过当前酒样（视为已答但不计算得分）
+  void skipCurrentItem() {
+    if (state.currentItem == null || state.currentItem!.id == null) return;
+
+    // 将当前题目标记为已完成
+    final newCompletedIds = Set<int>.from(state.completedItemIds);
+    newCompletedIds.add(state.currentItem!.id!);
+
+    state = state.copyWith(
+      isCompleted: true,
+      finalScore: 0.0, // 跳过的题目得分为0
+      completedItemIds: newCompletedIds,
+    );
+
+    // 自动保存进度（包含已完成的题目信息）
+    _autoSaveProgress();
+  }
+
   /// 进入下一题
   Future<void> nextQuestion() async {
     if (state.currentItem?.id != null) {
@@ -379,7 +428,11 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
   /// 自动保存当前进度
   Future<void> _autoSaveProgress() async {
     if (state.currentItem != null && state.questionPool.isNotEmpty) {
-      final progress = QuizProgress.fromBlindTasteState(state);
+      final settings = _ref.read(settingsProvider);
+      final progress = QuizProgress.fromBlindTasteState(
+        state,
+        randomOrder: settings.enableBlindTasteRandomOrder,
+      );
       await _progressService.saveBlindTasteProgress(progress);
     }
   }
@@ -388,6 +441,18 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
   Future<bool> restoreProgress() async {
     final progress = await _progressService.loadBlindTasteProgress();
     if (progress != null && progress.isValid) {
+      // 检查随机顺序设置是否匹配
+      final settings = _ref.read(settingsProvider);
+      if (progress.blindTasteRandomOrder != null &&
+          progress.blindTasteRandomOrder !=
+              settings.enableBlindTasteRandomOrder) {
+        debugPrint(
+          'Blind taste random order setting changed, clearing progress for consistency',
+        );
+        await clearSavedProgress();
+        return false; // 返回false，让调用方重新开始
+      }
+
       // 恢复题目池状态
       if (progress.blindTasteQuestionPool != null &&
           progress.blindTasteQuestionPool!.isNotEmpty) {

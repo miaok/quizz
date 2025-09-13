@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/question_model.dart';
 import '../models/progress_model.dart';
+import '../models/settings_model.dart';
 import '../services/database_service.dart';
 import '../services/progress_service.dart';
+import 'settings_provider.dart';
 
 // 数据库服务Provider
 final databaseServiceProvider = Provider<DatabaseService>((ref) {
@@ -40,6 +42,7 @@ class QuizState {
   final QuizStatus status;
   final QuizMode mode; // 答题模式
   final List<QuestionModel> questions;
+  final List<QuestionModel> originalQuestions; // 存储原始题目（未处理选项顺序）
   final int currentQuestionIndex;
   final Map<int, dynamic> userAnswers; // 用户答案
   final Map<int, DateTime> questionStartTimes; // 每题开始时间
@@ -52,6 +55,7 @@ class QuizState {
     this.status = QuizStatus.initial,
     this.mode = QuizMode.exam, // 默认考试模式
     this.questions = const [],
+    this.originalQuestions = const [], // 默认空列表
     this.currentQuestionIndex = 0,
     this.userAnswers = const {},
     this.questionStartTimes = const {},
@@ -65,6 +69,7 @@ class QuizState {
     QuizStatus? status,
     QuizMode? mode,
     List<QuestionModel>? questions,
+    List<QuestionModel>? originalQuestions,
     int? currentQuestionIndex,
     Map<int, dynamic>? userAnswers,
     Map<int, DateTime>? questionStartTimes,
@@ -77,6 +82,7 @@ class QuizState {
       status: status ?? this.status,
       mode: mode ?? this.mode,
       questions: questions ?? this.questions,
+      originalQuestions: originalQuestions ?? this.originalQuestions,
       currentQuestionIndex: currentQuestionIndex ?? this.currentQuestionIndex,
       userAnswers: userAnswers ?? this.userAnswers,
       questionStartTimes: questionStartTimes ?? this.questionStartTimes,
@@ -112,8 +118,9 @@ class QuizState {
 class QuizController extends StateNotifier<QuizState> {
   final DatabaseService _databaseService;
   final ProgressService _progressService;
+  final Ref _ref;
 
-  QuizController(this._databaseService, this._progressService)
+  QuizController(this._databaseService, this._progressService, this._ref)
     : super(const QuizState());
 
   // 开始答题
@@ -145,6 +152,7 @@ class QuizController extends StateNotifier<QuizState> {
       state = state.copyWith(
         status: QuizStatus.inProgress,
         questions: questions,
+        originalQuestions: questions, // 保存原始题目
         currentQuestionIndex: 0,
         userAnswers: {},
         questionStartTimes: {0: DateTime.now()},
@@ -168,14 +176,15 @@ class QuizController extends StateNotifier<QuizState> {
     state = state.copyWith(status: QuizStatus.loading);
 
     try {
-      final questions = await _databaseService.getQuestionsBySettings(
-        singleCount: singleCount,
-        multipleCount: multipleCount,
-        booleanCount: booleanCount,
-        shuffleOptions: shuffleOptions,
-      );
+      // 获取原始题目（不处理选项顺序）
+      final originalQuestions = await _databaseService
+          .getOriginalQuestionsBySettings(
+            singleCount: singleCount,
+            multipleCount: multipleCount,
+            booleanCount: booleanCount,
+          );
 
-      if (questions.isEmpty) {
+      if (originalQuestions.isEmpty) {
         state = state.copyWith(
           status: QuizStatus.error,
           errorMessage: '没有找到题目',
@@ -183,11 +192,17 @@ class QuizController extends StateNotifier<QuizState> {
         return;
       }
 
+      // 根据设置处理选项顺序
+      final questions = shuffleOptions
+          ? originalQuestions.map((q) => q.shuffleOptions()).toList()
+          : originalQuestions;
+
       final now = DateTime.now();
       state = state.copyWith(
         status: QuizStatus.inProgress,
         mode: QuizMode.exam, // 考试模式
         questions: questions,
+        originalQuestions: originalQuestions, // 保存原始题目
         currentQuestionIndex: 0,
         userAnswers: {},
         questionStartTimes: {0: now},
@@ -203,13 +218,21 @@ class QuizController extends StateNotifier<QuizState> {
   }
 
   // 开始全题库答题（使用用户设置）
-  Future<void> startAllQuestionsQuiz({required bool shuffleOptions}) async {
+  Future<void> startAllQuestionsQuiz({
+    required bool shuffleOptions,
+    required PracticeShuffleMode shuffleMode,
+  }) async {
     state = state.copyWith(status: QuizStatus.loading);
 
     try {
-      List<QuestionModel> questions = await _databaseService.getAllQuestions();
+      // 获取原始题目（不处理选项顺序）
+      List<QuestionModel> originalQuestions = await _databaseService
+          .getQuestionsForPractice(
+            shuffleMode: shuffleMode,
+            shuffleOptions: false, // 先不处理选项顺序
+          );
 
-      if (questions.isEmpty) {
+      if (originalQuestions.isEmpty) {
         state = state.copyWith(
           status: QuizStatus.error,
           errorMessage: '没有找到题目',
@@ -217,19 +240,17 @@ class QuizController extends StateNotifier<QuizState> {
         return;
       }
 
-      // 打乱题目顺序
-      questions.shuffle();
-
-      // 如果需要乱序选项
-      if (shuffleOptions) {
-        questions = questions.map((q) => q.shuffleOptions()).toList();
-      }
+      // 根据设置处理选项顺序
+      final questions = shuffleOptions
+          ? originalQuestions.map((q) => q.shuffleOptions()).toList()
+          : originalQuestions;
 
       final now = DateTime.now();
       state = state.copyWith(
         status: QuizStatus.inProgress,
         mode: QuizMode.practice, // 练习模式
         questions: questions,
+        originalQuestions: originalQuestions, // 保存原始题目
         currentQuestionIndex: 0,
         userAnswers: {},
         questionStartTimes: {0: now},
@@ -292,9 +313,8 @@ class QuizController extends StateNotifier<QuizState> {
         status: QuizStatus.completed,
         quizCompletedTime: DateTime.now(),
       );
-      if (state.mode == QuizMode.practice) {
-        clearSavedProgress();
-      }
+      // 答题完成时清除保存的进度
+      clearSavedProgress();
     } else {
       // 进入下一题
       final newStartTimes = Map<int, DateTime>.from(state.questionStartTimes);
@@ -305,7 +325,7 @@ class QuizController extends StateNotifier<QuizState> {
         questionStartTimes: newStartTimes,
       );
 
-      // 自动保存进度（练习模式）
+      // 自动保存进度（所有模式）
       _autoSaveProgress();
     }
   }
@@ -391,11 +411,34 @@ class QuizController extends StateNotifier<QuizState> {
     state = const QuizState();
   }
 
-  // 自动保存当前进度（仅练习模式）
+  // 自动保存当前进度（练习模式和考试模式）
   Future<void> _autoSaveProgress() async {
-    if (state.mode == QuizMode.practice &&
-        state.status == QuizStatus.inProgress) {
-      final progress = QuizProgress.fromQuizState(state);
+    if (state.status == QuizStatus.inProgress) {
+      PracticeShuffleMode? practiceShuffleMode;
+      if (state.mode == QuizMode.practice) {
+        final settings = _ref.read(settingsProvider);
+        practiceShuffleMode = settings.practiceShuffleMode;
+      }
+      final progress = QuizProgress.fromQuizState(
+        state,
+        practiceShuffleMode: practiceShuffleMode,
+      );
+      await _progressService.saveQuizProgress(progress);
+    }
+  }
+
+  // 手动保存当前进度（用于退出时保存）
+  Future<void> saveCurrentProgress() async {
+    if (state.status == QuizStatus.inProgress) {
+      PracticeShuffleMode? practiceShuffleMode;
+      if (state.mode == QuizMode.practice) {
+        final settings = _ref.read(settingsProvider);
+        practiceShuffleMode = settings.practiceShuffleMode;
+      }
+      final progress = QuizProgress.fromQuizState(
+        state,
+        practiceShuffleMode: practiceShuffleMode,
+      );
       await _progressService.saveQuizProgress(progress);
     }
   }
@@ -403,11 +446,23 @@ class QuizController extends StateNotifier<QuizState> {
   // 恢复进度
   Future<bool> restoreProgress() async {
     final progress = await _progressService.loadQuizProgress();
-    if (progress != null && progress.isValid) {
+    if (progress != null && progress.isValid && progress.mode != null) {
+      // 检查练习模式乱序设置是否匹配
+      if (progress.mode == QuizMode.practice &&
+          progress.practiceShuffleMode != null) {
+        final settings = _ref.read(settingsProvider);
+        if (progress.practiceShuffleMode != settings.practiceShuffleMode) {
+          // 设置不匹配，清除进度并返回false
+          await clearSavedProgress();
+          return false;
+        }
+      }
+
       state = QuizState(
         status: QuizStatus.inProgress,
         mode: progress.mode!,
         questions: progress.questions,
+        originalQuestions: progress.questions, // 恢复时保存原始题目
         currentQuestionIndex: progress.currentIndex,
         userAnswers: progress.userAnswers,
         questionStartTimes: progress.questionStartTimes,
@@ -429,10 +484,89 @@ class QuizController extends StateNotifier<QuizState> {
     return await _progressService.hasQuizProgress();
   }
 
+  // 检查是否有指定模式的保存进度
+  Future<bool> hasSavedProgressForMode(QuizMode mode) async {
+    final progress = await _progressService.loadQuizProgress();
+    if (progress != null && progress.isValid) {
+      if (progress.mode == mode) {
+        return true;
+      } else {
+        // 模式不匹配，清除进度
+        await clearSavedProgress();
+        return false;
+      }
+    }
+    return false;
+  }
+
   // 获取保存的进度描述
   Future<String?> getSavedProgressDescription() async {
     final progress = await _progressService.loadQuizProgress();
     return progress?.description;
+  }
+
+  // 更新选项乱序设置并重新处理题目选项
+  void updateShuffleOptions(bool shuffleOptions) {
+    if (state.status != QuizStatus.inProgress ||
+        state.originalQuestions.isEmpty) {
+      return; // 只在答题进行中且有原始题目时才处理
+    }
+
+    // 基于原始题目重新处理选项顺序
+    List<QuestionModel> updatedQuestions;
+    if (shuffleOptions) {
+      // 开启乱序：对每个题目的选项进行洗牌
+      updatedQuestions = state.originalQuestions
+          .map((question) => question.shuffleOptions())
+          .toList();
+    } else {
+      // 关闭乱序：使用原始选项顺序
+      updatedQuestions = List.from(state.originalQuestions);
+    }
+
+    // 重新映射用户答案：基于答案内容而非索引位置
+    final updatedUserAnswers = <int, dynamic>{};
+    for (final entry in state.userAnswers.entries) {
+      final questionIndex = entry.key;
+      final userAnswer = entry.value;
+
+      if (questionIndex < state.originalQuestions.length &&
+          questionIndex < updatedQuestions.length) {
+        final updatedQuestion = updatedQuestions[questionIndex];
+
+        // 基于原始题目的正确答案来映射用户答案
+        if (updatedQuestion.type == QuestionType.multiple) {
+          // 多选题：保持用户选择的答案内容
+          if (userAnswer is List) {
+            final userAnswerStrings = userAnswer
+                .map((e) => e.toString())
+                .toList();
+            // 检查用户答案是否仍在新的选项列表中
+            final validAnswers = userAnswerStrings
+                .where((answer) => updatedQuestion.options.contains(answer))
+                .toList();
+            if (validAnswers.isNotEmpty) {
+              updatedUserAnswers[questionIndex] = validAnswers;
+            }
+          }
+        } else {
+          // 单选题和判断题：保持用户选择的答案内容
+          if (userAnswer != null) {
+            final userAnswerString = userAnswer.toString();
+            // 检查用户答案是否仍在新的选项列表中
+            if (updatedQuestion.options.contains(userAnswerString)) {
+              updatedUserAnswers[questionIndex] = userAnswerString;
+            }
+          }
+        }
+      }
+    }
+
+    // 更新状态
+    state = state.copyWith(
+      questions: updatedQuestions,
+      userAnswers: updatedUserAnswers,
+    );
   }
 }
 
@@ -441,6 +575,6 @@ final quizControllerProvider = StateNotifierProvider<QuizController, QuizState>(
   (ref) {
     final databaseService = ref.read(databaseServiceProvider);
     final progressService = ref.read(progressServiceProvider);
-    return QuizController(databaseService, progressService);
+    return QuizController(databaseService, progressService, ref);
   },
 );

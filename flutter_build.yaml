@@ -1,0 +1,13 @@
+# Flutter构建优化配置
+targets:
+  $default:
+    builders:
+      # 启用树摇优化
+      flutter_tools|shader_compiler:
+        options:
+          tree_shake_icons: true
+      # 启用代码分割
+      flutter_tools|kernel_compiler:
+        options:
+          split_debug_info: true
+          obfuscate: true

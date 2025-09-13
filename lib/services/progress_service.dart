@@ -7,7 +7,8 @@ import '../models/progress_model.dart';
 class ProgressService {
   static const String _quizProgressKey = 'quiz_progress';
   static const String _blindTasteProgressKey = 'blind_taste_progress';
-  
+  static const String _flashcardProgressKey = 'flashcard_progress';
+
   static final ProgressService _instance = ProgressService._internal();
   factory ProgressService() => _instance;
   ProgressService._internal();
@@ -22,11 +23,11 @@ class ProgressService {
   /// 保存答题进度
   Future<void> saveQuizProgress(QuizProgress progress) async {
     await initialize();
-    
+
     if (progress.type != ProgressType.quiz) {
       throw ArgumentError('Progress type must be quiz');
     }
-    
+
     final jsonString = json.encode(progress.toJson());
     await _prefs!.setString(_quizProgressKey, jsonString);
     debugPrint('Quiz progress saved: ${progress.description}');
@@ -35,11 +36,11 @@ class ProgressService {
   /// 保存品鉴进度
   Future<void> saveBlindTasteProgress(QuizProgress progress) async {
     await initialize();
-    
+
     if (progress.type != ProgressType.blindTaste) {
       throw ArgumentError('Progress type must be blindTaste');
     }
-    
+
     final jsonString = json.encode(progress.toJson());
     await _prefs!.setString(_blindTasteProgressKey, jsonString);
     debugPrint('Blind taste progress saved: ${progress.description}');
@@ -48,13 +49,13 @@ class ProgressService {
   /// 加载答题进度
   Future<QuizProgress?> loadQuizProgress() async {
     await initialize();
-    
+
     final jsonString = _prefs!.getString(_quizProgressKey);
     if (jsonString != null) {
       try {
         final jsonMap = json.decode(jsonString) as Map<String, dynamic>;
         final progress = QuizProgress.fromJson(jsonMap);
-        
+
         if (progress.isValid) {
           debugPrint('Quiz progress loaded: ${progress.description}');
           return progress;
@@ -67,20 +68,20 @@ class ProgressService {
         await clearQuizProgress();
       }
     }
-    
+
     return null;
   }
 
   /// 加载品鉴进度
   Future<QuizProgress?> loadBlindTasteProgress() async {
     await initialize();
-    
+
     final jsonString = _prefs!.getString(_blindTasteProgressKey);
     if (jsonString != null) {
       try {
         final jsonMap = json.decode(jsonString) as Map<String, dynamic>;
         final progress = QuizProgress.fromJson(jsonMap);
-        
+
         if (progress.isValid) {
           debugPrint('Blind taste progress loaded: ${progress.description}');
           return progress;
@@ -93,7 +94,7 @@ class ProgressService {
         await clearBlindTasteProgress();
       }
     }
-    
+
     return null;
   }
 
@@ -111,10 +112,63 @@ class ProgressService {
     debugPrint('Blind taste progress cleared');
   }
 
+  /// 保存闪卡记忆进度
+  Future<void> saveFlashcardProgress(QuizProgress progress) async {
+    await initialize();
+
+    if (progress.type != ProgressType.flashcard) {
+      throw ArgumentError('Progress type must be flashcard');
+    }
+
+    final jsonString = json.encode(progress.toJson());
+    await _prefs!.setString(_flashcardProgressKey, jsonString);
+    debugPrint('Flashcard progress saved: ${progress.description}');
+  }
+
+  /// 加载闪卡记忆进度
+  Future<QuizProgress?> loadFlashcardProgress() async {
+    await initialize();
+
+    final jsonString = _prefs!.getString(_flashcardProgressKey);
+    if (jsonString != null) {
+      try {
+        final jsonMap = json.decode(jsonString) as Map<String, dynamic>;
+        final progress = QuizProgress.fromJson(jsonMap);
+
+        if (progress.isValid) {
+          debugPrint('Flashcard progress loaded: ${progress.description}');
+          return progress;
+        } else {
+          debugPrint('Invalid flashcard progress found, removing...');
+          await clearFlashcardProgress();
+        }
+      } catch (e) {
+        debugPrint('Error loading flashcard progress: $e');
+        await clearFlashcardProgress();
+      }
+    }
+
+    return null;
+  }
+
+  /// 检查是否有闪卡记忆进度
+  Future<bool> hasFlashcardProgress() async {
+    final progress = await loadFlashcardProgress();
+    return progress != null;
+  }
+
+  /// 清除闪卡记忆进度
+  Future<void> clearFlashcardProgress() async {
+    await initialize();
+    await _prefs!.remove(_flashcardProgressKey);
+    debugPrint('Flashcard progress cleared');
+  }
+
   /// 清除所有进度
   Future<void> clearAllProgress() async {
     await clearQuizProgress();
     await clearBlindTasteProgress();
+    await clearFlashcardProgress();
     debugPrint('All progress cleared');
   }
 
@@ -141,7 +195,7 @@ class ProgressService {
   Future<Map<String, String?>> getProgressSummary() async {
     final quizProgress = await loadQuizProgress();
     final blindTasteProgress = await loadBlindTasteProgress();
-    
+
     return {
       'quiz': quizProgress?.description,
       'blindTaste': blindTasteProgress?.description,
@@ -157,6 +211,9 @@ class ProgressService {
       case ProgressType.blindTaste:
         await saveBlindTasteProgress(progress);
         break;
+      case ProgressType.flashcard:
+        await saveFlashcardProgress(progress);
+        break;
     }
   }
 
@@ -167,6 +224,8 @@ class ProgressService {
         return await loadQuizProgress();
       case ProgressType.blindTaste:
         return await loadBlindTasteProgress();
+      case ProgressType.flashcard:
+        return await loadFlashcardProgress();
     }
   }
 
@@ -179,6 +238,9 @@ class ProgressService {
       case ProgressType.blindTaste:
         await clearBlindTasteProgress();
         break;
+      case ProgressType.flashcard:
+        await clearFlashcardProgress();
+        break;
     }
   }
 
@@ -189,6 +251,8 @@ class ProgressService {
         return await hasQuizProgress();
       case ProgressType.blindTaste:
         return await hasBlindTasteProgress();
+      case ProgressType.flashcard:
+        return await hasFlashcardProgress();
     }
   }
 }

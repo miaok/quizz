@@ -1,3 +1,10 @@
+// 练习模式乱序枚举
+enum PracticeShuffleMode {
+  fullRandom, // 完全乱序：题型和题型内部题目顺序均乱序
+  ordered, // 题型不乱序，题目不乱序：使用默认顺序
+  typeOrderedQuestionRandom, // 题型不乱序，内部题目乱序
+}
+
 // 设置数据模型
 class QuizSettings {
   final int singleChoiceCount;
@@ -14,6 +21,13 @@ class QuizSettings {
   final bool enableBlindTasteScore; // 是否启用总分品鉴
   final bool enableBlindTasteEquipment; // 是否启用设备品鉴
   final bool enableBlindTasteFermentation; // 是否启用发酵剂品鉴
+  final bool enableBlindTasteRandomOrder; // 品鉴模式是否随机酒样顺序
+  final bool enableFlashcardRandomOrder; // 闪卡模式是否随机酒样顺序
+  final bool enableDefaultContinueProgress; // 是否默认继续进度（不显示确认对话框）
+  final PracticeShuffleMode practiceShuffleMode; // 练习模式乱序模式
+  final int wineSimulationSampleCount; // 酒样练习模式的酒杯数量
+  final double wineSimulationDuplicateProbability; // 酒样练习重复概率 (0.0-1.0)
+  final int wineSimulationMaxDuplicateGroups; // 酒样练习最大重复组数
 
   const QuizSettings({
     this.singleChoiceCount = 33,
@@ -28,6 +42,13 @@ class QuizSettings {
     this.enableBlindTasteScore = true, // 默认启用总分品鉴
     this.enableBlindTasteEquipment = true, // 默认启用设备品鉴
     this.enableBlindTasteFermentation = true, // 默认启用发酵剂品鉴
+    this.enableBlindTasteRandomOrder = true, // 默认启用品鉴模式随机酒样顺序
+    this.enableFlashcardRandomOrder = true, // 默认启用闪卡模式随机酒样顺序
+    this.enableDefaultContinueProgress = true, // 默认启用默认继续进度
+    this.practiceShuffleMode = PracticeShuffleMode.fullRandom, // 默认完全乱序
+    this.wineSimulationSampleCount = 5, // 默认酒样练习模式酒杯数量为5
+    this.wineSimulationDuplicateProbability = 0.3, // 默认30%概率出现重复酒样
+    this.wineSimulationMaxDuplicateGroups = 1, // 默认最多1组重复酒样
   });
 
   QuizSettings copyWith({
@@ -43,6 +64,13 @@ class QuizSettings {
     bool? enableBlindTasteScore,
     bool? enableBlindTasteEquipment,
     bool? enableBlindTasteFermentation,
+    bool? enableBlindTasteRandomOrder,
+    bool? enableFlashcardRandomOrder,
+    bool? enableDefaultContinueProgress,
+    PracticeShuffleMode? practiceShuffleMode,
+    int? wineSimulationSampleCount,
+    double? wineSimulationDuplicateProbability,
+    int? wineSimulationMaxDuplicateGroups,
   }) {
     return QuizSettings(
       singleChoiceCount: singleChoiceCount ?? this.singleChoiceCount,
@@ -62,6 +90,21 @@ class QuizSettings {
           enableBlindTasteEquipment ?? this.enableBlindTasteEquipment,
       enableBlindTasteFermentation:
           enableBlindTasteFermentation ?? this.enableBlindTasteFermentation,
+      enableBlindTasteRandomOrder:
+          enableBlindTasteRandomOrder ?? this.enableBlindTasteRandomOrder,
+      enableFlashcardRandomOrder:
+          enableFlashcardRandomOrder ?? this.enableFlashcardRandomOrder,
+      enableDefaultContinueProgress:
+          enableDefaultContinueProgress ?? this.enableDefaultContinueProgress,
+      practiceShuffleMode: practiceShuffleMode ?? this.practiceShuffleMode,
+      wineSimulationSampleCount:
+          wineSimulationSampleCount ?? this.wineSimulationSampleCount,
+      wineSimulationDuplicateProbability:
+          wineSimulationDuplicateProbability ??
+          this.wineSimulationDuplicateProbability,
+      wineSimulationMaxDuplicateGroups:
+          wineSimulationMaxDuplicateGroups ??
+          this.wineSimulationMaxDuplicateGroups,
     );
   }
 
@@ -84,6 +127,13 @@ class QuizSettings {
       'enableBlindTasteScore': enableBlindTasteScore,
       'enableBlindTasteEquipment': enableBlindTasteEquipment,
       'enableBlindTasteFermentation': enableBlindTasteFermentation,
+      'enableBlindTasteRandomOrder': enableBlindTasteRandomOrder,
+      'enableFlashcardRandomOrder': enableFlashcardRandomOrder,
+      'enableDefaultContinueProgress': enableDefaultContinueProgress,
+      'practiceShuffleMode': practiceShuffleMode.name,
+      'wineSimulationSampleCount': wineSimulationSampleCount,
+      'wineSimulationDuplicateProbability': wineSimulationDuplicateProbability,
+      'wineSimulationMaxDuplicateGroups': wineSimulationMaxDuplicateGroups,
     };
   }
 
@@ -103,6 +153,18 @@ class QuizSettings {
       enableBlindTasteEquipment: json['enableBlindTasteEquipment'] ?? true,
       enableBlindTasteFermentation:
           json['enableBlindTasteFermentation'] ?? true,
+      enableBlindTasteRandomOrder: json['enableBlindTasteRandomOrder'] ?? true,
+      enableFlashcardRandomOrder: json['enableFlashcardRandomOrder'] ?? true,
+      enableDefaultContinueProgress:
+          json['enableDefaultContinueProgress'] ?? true,
+      practiceShuffleMode: _parsePracticeShuffleMode(
+        json['practiceShuffleMode'],
+      ),
+      wineSimulationSampleCount: json['wineSimulationSampleCount'] ?? 5,
+      wineSimulationDuplicateProbability:
+          json['wineSimulationDuplicateProbability'] ?? 0.3,
+      wineSimulationMaxDuplicateGroups:
+          json['wineSimulationMaxDuplicateGroups'] ?? 1,
     );
   }
 
@@ -121,7 +183,16 @@ class QuizSettings {
         other.enableBlindTasteAlcohol == enableBlindTasteAlcohol &&
         other.enableBlindTasteScore == enableBlindTasteScore &&
         other.enableBlindTasteEquipment == enableBlindTasteEquipment &&
-        other.enableBlindTasteFermentation == enableBlindTasteFermentation;
+        other.enableBlindTasteFermentation == enableBlindTasteFermentation &&
+        other.enableBlindTasteRandomOrder == enableBlindTasteRandomOrder &&
+        other.enableFlashcardRandomOrder == enableFlashcardRandomOrder &&
+        other.enableDefaultContinueProgress == enableDefaultContinueProgress &&
+        other.practiceShuffleMode == practiceShuffleMode &&
+        other.wineSimulationSampleCount == wineSimulationSampleCount &&
+        other.wineSimulationDuplicateProbability ==
+            wineSimulationDuplicateProbability &&
+        other.wineSimulationMaxDuplicateGroups ==
+            wineSimulationMaxDuplicateGroups;
   }
 
   @override
@@ -137,6 +208,64 @@ class QuizSettings {
         enableBlindTasteAlcohol.hashCode ^
         enableBlindTasteScore.hashCode ^
         enableBlindTasteEquipment.hashCode ^
-        enableBlindTasteFermentation.hashCode;
+        enableBlindTasteFermentation.hashCode ^
+        enableBlindTasteRandomOrder.hashCode ^
+        enableFlashcardRandomOrder.hashCode ^
+        enableDefaultContinueProgress.hashCode ^
+        practiceShuffleMode.hashCode ^
+        wineSimulationSampleCount.hashCode ^
+        wineSimulationDuplicateProbability.hashCode ^
+        wineSimulationMaxDuplicateGroups.hashCode;
+  }
+
+  // 解析练习模式乱序模式
+  static PracticeShuffleMode _parsePracticeShuffleMode(dynamic value) {
+    if (value == null) return PracticeShuffleMode.fullRandom;
+
+    switch (value.toString()) {
+      case 'fullRandom':
+        return PracticeShuffleMode.fullRandom;
+      case 'ordered':
+        return PracticeShuffleMode.ordered;
+      case 'typeOrderedQuestionRandom':
+        return PracticeShuffleMode.typeOrderedQuestionRandom;
+      default:
+        // 兼容旧版本的布尔值设置
+        if (value is bool) {
+          return value
+              ? PracticeShuffleMode.fullRandom
+              : PracticeShuffleMode.ordered;
+        }
+        return PracticeShuffleMode.fullRandom;
+    }
+  }
+
+  // 获取练习模式乱序模式的显示名称
+  String get practiceShuffleModeDisplayName {
+    switch (practiceShuffleMode) {
+      case PracticeShuffleMode.fullRandom:
+        return '完全乱序';
+      case PracticeShuffleMode.ordered:
+        return '默认顺序';
+      case PracticeShuffleMode.typeOrderedQuestionRandom:
+        return '题型顺序，题目乱序';
+    }
+  }
+
+  // 获取练习模式乱序模式的描述
+  String get practiceShuffleModeDescription {
+    switch (practiceShuffleMode) {
+      case PracticeShuffleMode.fullRandom:
+        return '题型和题型内部题目顺序均乱序';
+      case PracticeShuffleMode.ordered:
+        return '题型不乱序，题目不乱序，使用默认顺序';
+      case PracticeShuffleMode.typeOrderedQuestionRandom:
+        return '题型不乱序，内部题目乱序';
+    }
+  }
+
+  // 兼容性方法：获取是否为随机模式（用于向后兼容）
+  bool get enablePracticeRandomOrder {
+    return practiceShuffleMode == PracticeShuffleMode.fullRandom;
   }
 }

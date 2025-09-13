@@ -24,6 +24,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   bool _isAutoSwitching = false;
   bool _showingWrongAnswer = false; // 用于跟踪是否正在显示错误答案
   bool _showingCorrectAnswer = false; // 用于跟踪是否正在显示正确答案
+  bool _showingHintAnswer = false; // 用于跟踪是否正在显示提示答案
+
+  // 用于跟踪上一次的题目状态，以便检测选项是否发生变化
+  List<QuestionModel>? _previousQuestions;
 
   // 倒计时相关
   int _totalTimeInSeconds = 15 * 60; // 默认15分钟，将从设置中读取
@@ -106,6 +110,43 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _countdownTimer?.cancel(); // 确保倒计时器被停止
     final controller = ref.read(quizControllerProvider.notifier);
     controller.nextQuestion(); // 强制结束答题，进入结果页面
+  }
+
+  // 显示提示答案
+  void _showHintAnswer(QuizState state) {
+    if (state.mode == QuizMode.practice && state.questions.isNotEmpty) {
+      setState(() {
+        _showingHintAnswer = true;
+      });
+    }
+  }
+
+  // 隐藏提示答案
+  void _hideHintAnswer() {
+    setState(() {
+      _showingHintAnswer = false;
+    });
+  }
+
+  // 检查选项是否为正确答案
+  bool _isCorrectAnswer(String option) {
+    final quizState = ref.read(quizControllerProvider);
+    if (quizState.questions.isEmpty) return false;
+
+    final currentQuestion = quizState.questions[quizState.currentQuestionIndex];
+    final correctAnswer = currentQuestion.answer;
+
+    if (currentQuestion.type == QuestionType.multiple) {
+      // 多选题：检查选项是否在正确答案列表中
+      if (correctAnswer is List) {
+        return correctAnswer.contains(option);
+      }
+    } else {
+      // 单选题和判断题：直接比较
+      return correctAnswer == option;
+    }
+
+    return false;
   }
 
   // 格式化时间显示
@@ -239,7 +280,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('刷题大师'),
+          title: Text(quizState.mode == QuizMode.practice ? '理论练习' : '理论模拟'),
           // 使用新的MD3主题，移除自定义背景色
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -303,6 +344,34 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
   Widget _buildQuizContent(QuizState state, QuizController controller) {
     if (state.questions.isEmpty) return const Center(child: Text('没有题目'));
+
+    // 检测题目是否发生变化（选项重新洗牌）
+    if (_previousQuestions != null &&
+        _previousQuestions!.length == state.questions.length) {
+      final currentIndex = state.currentQuestionIndex;
+      if (currentIndex < _previousQuestions!.length &&
+          currentIndex < state.questions.length) {
+        final previousQuestion = _previousQuestions![currentIndex];
+        final currentQuestion = state.questions[currentIndex];
+
+        // 检查选项是否发生变化
+        if (previousQuestion.question == currentQuestion.question &&
+            !_areOptionsEqual(
+              previousQuestion.options,
+              currentQuestion.options,
+            )) {
+          // 选项发生了变化，需要更新本地答案状态
+          _updateAnswerStateAfterShuffle(
+            previousQuestion,
+            currentQuestion,
+            state,
+          );
+        }
+      }
+    }
+
+    // 更新题目状态记录
+    _previousQuestions = List.from(state.questions);
 
     // 确保PageController与当前题目索引同步
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -376,23 +445,28 @@ class _QuizPageState extends ConsumerState<QuizPage> {
           ),
         );
       },
-      child: Padding(
-        key: ValueKey(index), // 确保AnimatedSwitcher能正确识别不同的题目
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 题目编号和题干
-            _buildQuestionHeader(state, question, index),
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onLongPressStart: (_) => _showHintAnswer(state),
+        onLongPressEnd: (_) => _hideHintAnswer(),
+        child: Padding(
+          key: ValueKey(index), // 确保AnimatedSwitcher能正确识别不同的题目
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 题目编号和题干
+              _buildQuestionHeader(state, question, index),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // 选项
-            Expanded(child: _buildOptions(question, controller)),
+              // 选项
+              Expanded(child: _buildOptions(question, controller)),
 
-            // 导航按钮
-            _buildNavigationButtons(state, controller),
-          ],
+              // 导航按钮
+              _buildNavigationButtons(state, controller),
+            ],
+          ),
         ),
       ),
     );
@@ -521,12 +595,12 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: _getPrimaryColor(context).withValues(alpha: 0.1),
+                        color: Theme.of(context).colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: _getPrimaryColor(
+                          color: Theme.of(
                             context,
-                          ).withValues(alpha: 0.3),
+                          ).colorScheme.primary.withValues(alpha: 0.3),
                           width: 0.5,
                         ),
                       ),
@@ -534,7 +608,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                         '第${state.currentQuestionIndex + 1}题',
                         style: TextStyle(
                           fontSize: 10,
-                          color: _getPrimaryColor(context),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -632,7 +708,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
   // 获取主题相关的颜色
   Color _getPrimaryColor(BuildContext context) {
-    return Theme.of(context).primaryColor;
+    return Theme.of(context).colorScheme.primary;
   }
 
   Color _getOptionBackgroundColor(
@@ -641,6 +717,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     bool isAutoSwitching, {
     bool isWrongAnswer = false,
     bool isCorrectAnswer = false,
+    bool isHintAnswer = false,
   }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -649,6 +726,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     }
     if (isWrongAnswer && isSelected) {
       return Theme.of(context).colorScheme.errorContainer;
+    }
+    if (isHintAnswer) {
+      return Colors.orange.withValues(alpha: 0.2);
     }
     if (isAutoSwitching) {
       return Theme.of(context).colorScheme.primaryContainer;
@@ -672,6 +752,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     bool isAutoSwitching, {
     bool isWrongAnswer = false,
     bool isCorrectAnswer = false,
+    bool isHintAnswer = false,
   }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -680,6 +761,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     }
     if (isWrongAnswer && isSelected) {
       return Theme.of(context).colorScheme.error;
+    }
+    if (isHintAnswer) {
+      return Colors.orange;
     }
     if (isAutoSwitching) {
       return Theme.of(context).colorScheme.primary;
@@ -699,6 +783,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     bool isAutoSwitching, {
     bool isWrongAnswer = false,
     bool isCorrectAnswer = false,
+    bool isHintAnswer = false,
   }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -707,6 +792,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     }
     if (isWrongAnswer && isSelected) {
       return Theme.of(context).colorScheme.onErrorContainer;
+    }
+    if (isHintAnswer) {
+      return Colors.orange.shade800;
     }
     if (isAutoSwitching) {
       return Theme.of(context).colorScheme.onPrimaryContainer;
@@ -778,6 +866,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     final isAutoSwitching = isSelected && _isAutoSwitching;
     final isWrongAnswer = _showingWrongAnswer && isSelected;
     final isCorrectAnswer = _showingCorrectAnswer && isSelected;
+    final isHintAnswer = _showingHintAnswer && _isCorrectAnswer(option);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -790,6 +879,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)
             : isWrongAnswer
             ? Theme.of(context).colorScheme.error.withValues(alpha: 0.3)
+            : isHintAnswer
+            ? Colors.orange.withValues(alpha: 0.4)
             : isAutoSwitching
             ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
             : Theme.of(context).colorScheme.shadow.withValues(alpha: 0.2),
@@ -803,6 +894,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               isAutoSwitching,
               isWrongAnswer: isWrongAnswer,
               isCorrectAnswer: isCorrectAnswer,
+              isHintAnswer: isHintAnswer,
             ),
             borderRadius: BorderRadius.circular(_optionCardRadius),
             border: Border.all(
@@ -812,6 +904,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 isAutoSwitching,
                 isWrongAnswer: isWrongAnswer,
                 isCorrectAnswer: isCorrectAnswer,
+                isHintAnswer: isHintAnswer,
               ),
               width: isSelected ? 2 : 1,
             ),
@@ -828,6 +921,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   isAutoSwitching,
                   isWrongAnswer: isWrongAnswer,
                   isCorrectAnswer: isCorrectAnswer,
+                  isHintAnswer: isHintAnswer,
                 ),
                 fontSize: 18,
                 height: 1.4,
@@ -843,6 +937,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 ? Colors.green.shade700
                 : isWrongAnswer
                 ? Colors.red.shade600
+                : isHintAnswer
+                ? Colors.orange.shade600
                 : isAutoSwitching
                 ? Colors.green.shade600
                 : _getPrimaryColor(context),
@@ -898,6 +994,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     final isSelected = multipleAnswers.contains(option);
     final isWrongAnswer = _showingWrongAnswer && isSelected;
     final isCorrectAnswer = _showingCorrectAnswer && isSelected;
+    final isHintAnswer = _showingHintAnswer && _isCorrectAnswer(option);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
@@ -910,6 +1007,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
             : isWrongAnswer
             ? Theme.of(context).colorScheme.error.withValues(alpha: 0.25)
+            : isHintAnswer
+            ? Colors.orange.withValues(alpha: 0.3)
             : isSelected
             ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)
             : Theme.of(context).colorScheme.shadow.withValues(alpha: 0.15),
@@ -923,6 +1022,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               false,
               isWrongAnswer: isWrongAnswer,
               isCorrectAnswer: isCorrectAnswer,
+              isHintAnswer: isHintAnswer,
             ),
             borderRadius: BorderRadius.circular(_optionCardRadius),
             border: Border.all(
@@ -932,13 +1032,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 false,
                 isWrongAnswer: isWrongAnswer,
                 isCorrectAnswer: isCorrectAnswer,
+                isHintAnswer: isHintAnswer,
               ),
               width: isSelected ? 2 : 1,
             ),
           ),
           child: CheckboxListTile(
             contentPadding: _optionPadding,
-            controlAffinity: ListTileControlAffinity.leading, // 复选框放在左边
+            controlAffinity: ListTileControlAffinity.leading,
             title: AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 180),
               style: TextStyle(
@@ -949,6 +1050,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   false,
                   isWrongAnswer: isWrongAnswer,
                   isCorrectAnswer: isCorrectAnswer,
+                  isHintAnswer: isHintAnswer,
                 ),
                 fontSize: 16,
                 height: 1.4,
@@ -983,6 +1085,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 ? Colors.green.shade700
                 : isWrongAnswer
                 ? Colors.red.shade600
+                : isHintAnswer
+                ? Colors.orange.shade600
                 : _getPrimaryColor(context),
             checkColor: Colors.white,
             shape: RoundedRectangleBorder(
@@ -1448,17 +1552,69 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   void _handleBackPressed(BuildContext context) {
     final quizState = ref.read(quizControllerProvider);
     final quizController = ref.read(quizControllerProvider.notifier);
+    final settings = ref.read(settingsProvider);
 
-    // 练习模式：自动保存进度并退出
-    if (quizState.mode == QuizMode.practice) {
-      // 进度会在QuizController中自动保存
-      quizController.reset();
-      appRouter.goToHome();
-      return;
+    // 检查是否启用进度保存
+    if (settings.enableProgressSave) {
+      // 启用进度保存：根据默认继续进度设置决定是否显示对话框
+      if (settings.enableDefaultContinueProgress) {
+        // 默认继续进度：自动保存并退出
+        _saveProgressAndExit(quizController);
+      } else {
+        // 显示保存进度确认对话框
+        _showSaveProgressDialog(context, quizController);
+      }
+    } else {
+      // 未启用进度保存：根据模式决定处理方式
+      if (quizState.mode == QuizMode.practice) {
+        // 练习模式：直接退出
+        quizController.reset();
+        appRouter.goToHome();
+      } else {
+        // 考试模式：显示确认对话框
+        _showExitDialog(context);
+      }
     }
+  }
 
-    // 考试模式：显示确认对话框
-    _showExitDialog(context);
+  // 保存进度并退出
+  Future<void> _saveProgressAndExit(QuizController quizController) async {
+    await quizController.saveCurrentProgress();
+    quizController.reset();
+    appRouter.goToHome();
+  }
+
+  // 显示保存进度确认对话框
+  void _showSaveProgressDialog(
+    BuildContext context,
+    QuizController quizController,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('保存进度'),
+        content: const Text('是否保存当前答题进度？'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // 不保存进度，直接退出
+              quizController.reset();
+              appRouter.goToHome();
+            },
+            child: const Text('不保存'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // 保存进度并退出
+              _saveProgressAndExit(quizController);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showExitDialog(BuildContext context) {
@@ -1483,5 +1639,67 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         ],
       ),
     );
+  }
+
+  // 检查两个选项列表是否相等
+  bool _areOptionsEqual(List<String> options1, List<String> options2) {
+    if (options1.length != options2.length) return false;
+    for (int i = 0; i < options1.length; i++) {
+      if (options1[i] != options2[i]) return false;
+    }
+    return true;
+  }
+
+  // 在选项重新洗牌后更新本地答案状态
+  void _updateAnswerStateAfterShuffle(
+    QuestionModel previousQuestion,
+    QuestionModel currentQuestion,
+    QuizState state,
+  ) {
+    final currentIndex = state.currentQuestionIndex;
+    final userAnswer = state.userAnswers[currentIndex];
+
+    if (userAnswer == null) {
+      // 没有用户答案，清空本地状态
+      setState(() {
+        currentAnswer = null;
+        multipleAnswers.clear();
+      });
+      return;
+    }
+
+    if (currentQuestion.type == QuestionType.multiple) {
+      // 多选题：更新 multipleAnswers
+      if (userAnswer is List) {
+        final validAnswers = userAnswer
+            .where(
+              (answer) => currentQuestion.options.contains(answer.toString()),
+            )
+            .map((answer) => answer.toString())
+            .toSet();
+        setState(() {
+          multipleAnswers = validAnswers;
+          currentAnswer = null;
+        });
+      } else {
+        setState(() {
+          multipleAnswers.clear();
+          currentAnswer = null;
+        });
+      }
+    } else {
+      // 单选题和判断题：更新 currentAnswer
+      if (currentQuestion.options.contains(userAnswer.toString())) {
+        setState(() {
+          currentAnswer = userAnswer;
+          multipleAnswers.clear();
+        });
+      } else {
+        setState(() {
+          currentAnswer = null;
+          multipleAnswers.clear();
+        });
+      }
+    }
   }
 }

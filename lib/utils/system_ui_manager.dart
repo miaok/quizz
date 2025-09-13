@@ -11,14 +11,33 @@ class SystemUIManager {
   static List<SystemUiOverlay>? _currentOverlays;
   static SystemUiOverlayStyle? _currentStyle;
 
-  // 标准的系统UI样式
+  // 标准的系统UI样式 - 支持手势导航沉浸式
   static const SystemUiOverlayStyle _standardStyle = SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
     statusBarBrightness: Brightness.light,
     systemNavigationBarColor: Colors.transparent,
     systemNavigationBarIconBrightness: Brightness.dark,
+    systemNavigationBarDividerColor: Colors.transparent,
+    // 启用手势导航沉浸式
+    systemNavigationBarContrastEnforced: false,
   );
+
+  // 深色主题的系统UI样式
+  static const SystemUiOverlayStyle _darkStyle = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.light,
+    systemNavigationBarDividerColor: Colors.transparent,
+    systemNavigationBarContrastEnforced: false,
+  );
+
+  /// 获取当前主题对应的系统UI样式
+  static SystemUiOverlayStyle _getThemeStyle({bool isDark = false}) {
+    return isDark ? _darkStyle : _standardStyle;
+  }
 
   /// 统一的系统UI设置方法，避免重复设置
   static Future<void> _setSystemUI(
@@ -26,8 +45,9 @@ class SystemUIManager {
     List<SystemUiOverlay> overlays, {
     SystemUiOverlayStyle? style,
     bool force = false,
+    bool isDark = false,
   }) async {
-    final targetStyle = style ?? _standardStyle;
+    final targetStyle = style ?? _getThemeStyle(isDark: isDark);
 
     // 如果设置相同且不强制更新，则跳过
     if (!force &&
@@ -55,44 +75,58 @@ class SystemUIManager {
     return true;
   }
 
-  /// 隐藏系统导航栏，实现全屏沉浸式体验
-  static Future<void> hideSystemUI() async {
-    await _setSystemUI(SystemUiMode.immersiveSticky, [SystemUiOverlay.top]);
+  /// 设置沉浸式系统UI（支持手势导航小白条）
+  /// 状态栏透明，底部手势区域透明，实现真正的沉浸式体验
+  static Future<void> setImmersiveUI({bool isDark = false}) async {
+    await _setSystemUI(SystemUiMode.edgeToEdge, [
+      SystemUiOverlay.top,
+    ], isDark: isDark);
+  }
+
+  /// 隐藏系统导航栏，实现全屏沉浸式体验（用于特殊场景）
+  static Future<void> hideSystemUI({bool isDark = false}) async {
+    await _setSystemUI(SystemUiMode.immersiveSticky, [
+      SystemUiOverlay.top,
+    ], isDark: isDark);
   }
 
   /// 显示系统导航栏（用于特殊情况，如需要用户进行系统级操作）
-  static Future<void> showSystemUI() async {
-    await _setSystemUI(SystemUiMode.manual, SystemUiOverlay.values);
+  static Future<void> showSystemUI({bool isDark = false}) async {
+    await _setSystemUI(
+      SystemUiMode.manual,
+      SystemUiOverlay.values,
+      isDark: isDark,
+    );
   }
 
   /// 为答题页面优化的系统UI设置
-  /// 显示状态栏，隐藏导航栏，避免误触
-  static Future<void> setQuizPageUI() async {
-    await _setSystemUI(SystemUiMode.edgeToEdge, [SystemUiOverlay.top]);
+  /// 显示状态栏，底部手势区域透明，避免误触
+  static Future<void> setQuizPageUI({bool isDark = false}) async {
+    await setImmersiveUI(isDark: isDark);
   }
 
   /// 为结果页面优化的系统UI设置
   /// 允许用户更容易地进行导航操作
-  static Future<void> setResultPageUI() async {
-    await _setSystemUI(SystemUiMode.edgeToEdge, [SystemUiOverlay.top]);
+  static Future<void> setResultPageUI({bool isDark = false}) async {
+    await setImmersiveUI(isDark: isDark);
   }
 
   /// 为设置页面优化的系统UI设置
-  static Future<void> setSettingsPageUI() async {
-    await _setSystemUI(SystemUiMode.edgeToEdge, [SystemUiOverlay.top]);
+  static Future<void> setSettingsPageUI({bool isDark = false}) async {
+    await setImmersiveUI(isDark: isDark);
   }
 
   /// 恢复默认的系统UI设置
-  static Future<void> restoreDefaultUI() async {
-    await _setSystemUI(SystemUiMode.edgeToEdge, [SystemUiOverlay.top]);
+  static Future<void> restoreDefaultUI({bool isDark = false}) async {
+    await setImmersiveUI(isDark: isDark);
   }
 
   /// 处理系统UI变化的监听器
   /// 当用户从屏幕边缘滑动时，系统UI可能会重新出现
-  static void handleSystemUIChange() {
-    // 延迟重新隐藏系统UI，给用户一些操作时间
+  static void handleSystemUIChange({bool isDark = false}) {
+    // 延迟重新设置沉浸式UI，给用户一些操作时间
     Future.delayed(_animationDuration, () {
-      hideSystemUI();
+      setImmersiveUI(isDark: isDark);
     });
   }
 
@@ -138,34 +172,53 @@ class SystemUIManager {
 
   /// 初始化系统UI管理器
   /// 在应用启动时调用，设置全局的系统UI状态
-  static Future<void> initialize() async {
-    await _setSystemUI(SystemUiMode.edgeToEdge, [SystemUiOverlay.top]);
+  static Future<void> initialize({bool isDark = false}) async {
+    await setImmersiveUI(isDark: isDark);
   }
 
   /// 检查当前系统UI状态是否正确
   /// 用于在页面切换时确保状态栏始终显示
-  static Future<void> ensureStatusBarVisible() async {
+  static Future<void> ensureStatusBarVisible({bool isDark = false}) async {
     // 只有在当前设置不包含状态栏时才重新设置
     if (_currentOverlays == null ||
         !_currentOverlays!.contains(SystemUiOverlay.top)) {
-      await _setSystemUI(SystemUiMode.edgeToEdge, [
-        SystemUiOverlay.top,
-      ], force: true);
+      await setImmersiveUI(isDark: isDark);
     }
   }
 
   /// 为不同页面设置合适的安全区域内边距
+  /// 支持手势导航的沉浸式体验
   static EdgeInsets getSafeAreaPadding(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     return EdgeInsets.only(
       top: mediaQuery.padding.top,
-      bottom: 0, // 底部不需要内边距，因为我们隐藏了导航栏
+      // 底部保留手势区域的安全距离，但允许内容延伸到手势区域
+      bottom: 0,
     );
   }
 
-  /// 获取屏幕可用高度（排除状态栏）
+  /// 获取屏幕可用高度（排除状态栏，包含手势区域）
   static double getAvailableHeight(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     return mediaQuery.size.height - mediaQuery.padding.top;
+  }
+
+  /// 获取底部手势区域高度
+  static double getGestureAreaHeight(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    return mediaQuery.padding.bottom;
+  }
+
+  /// 获取完整屏幕高度（包含状态栏和手势区域）
+  static double getFullScreenHeight(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    return mediaQuery.size.height;
+  }
+
+  /// 检查是否使用手势导航
+  static bool isGestureNavigation(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    // 如果底部安全区域大于0，通常表示使用手势导航
+    return mediaQuery.padding.bottom > 0;
   }
 }

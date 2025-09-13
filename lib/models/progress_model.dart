@@ -2,11 +2,14 @@ import 'question_model.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/blind_taste_provider.dart';
 import 'blind_taste_model.dart';
+import 'flashcard_model.dart';
+import 'settings_model.dart';
 
 // 进度类型枚举
 enum ProgressType {
   quiz, // 答题进度
   blindTaste, // 品鉴进度
+  flashcard, // 闪卡记忆进度
 }
 
 // 答题进度模型
@@ -30,6 +33,16 @@ class QuizProgress {
   final String? blindTasteAromaFilter; // 香型筛选
   final double? blindTasteMinAlcohol; // 最小酒度
   final double? blindTasteMaxAlcohol; // 最大酒度
+  final bool? blindTasteRandomOrder; // 品鉴随机顺序设置
+
+  // 闪卡记忆相关字段
+  final Set<int>? flashcardViewedIds; // 已查看的闪卡ID集合
+  final String? flashcardAromaFilter; // 闪卡香型筛选
+  final double? flashcardMinAlcohol; // 闪卡最小酒度
+  final double? flashcardMaxAlcohol; // 闪卡最大酒度
+  final bool? flashcardRandomOrder; // 闪卡随机顺序设置
+  final PracticeShuffleMode? practiceShuffleMode; // 练习模式乱序模式设置
+  final bool? practiceRandomOrder; // 练习模式随机顺序设置（兼容性字段）
 
   const QuizProgress({
     required this.type,
@@ -49,10 +62,22 @@ class QuizProgress {
     this.blindTasteAromaFilter,
     this.blindTasteMinAlcohol,
     this.blindTasteMaxAlcohol,
+    this.blindTasteRandomOrder,
+    this.flashcardViewedIds,
+    this.flashcardAromaFilter,
+    this.flashcardMinAlcohol,
+    this.flashcardMaxAlcohol,
+    this.flashcardRandomOrder,
+    this.practiceShuffleMode,
+    this.practiceRandomOrder,
   });
 
   // 从答题状态创建进度
-  factory QuizProgress.fromQuizState(QuizState state) {
+  factory QuizProgress.fromQuizState(
+    QuizState state, {
+    PracticeShuffleMode? practiceShuffleMode,
+    bool? practiceRandomOrder, // 保留兼容性
+  }) {
     return QuizProgress(
       type: ProgressType.quiz,
       mode: state.mode,
@@ -63,11 +88,16 @@ class QuizProgress {
       startTime: state.quizStartTime,
       selectedCategory: state.selectedCategory,
       savedAt: DateTime.now(),
+      practiceShuffleMode: practiceShuffleMode,
+      practiceRandomOrder: practiceRandomOrder,
     );
   }
 
   // 从品鉴状态创建进度
-  factory QuizProgress.fromBlindTasteState(BlindTasteState state) {
+  factory QuizProgress.fromBlindTasteState(
+    BlindTasteState state, {
+    bool randomOrder = false,
+  }) {
     return QuizProgress(
       type: ProgressType.blindTaste,
       currentIndex: state.currentIndex,
@@ -81,6 +111,25 @@ class QuizProgress {
       blindTasteAromaFilter: state.selectedAromaFilter,
       blindTasteMinAlcohol: state.minAlcoholDegree,
       blindTasteMaxAlcohol: state.maxAlcoholDegree,
+      blindTasteRandomOrder: randomOrder,
+    );
+  }
+
+  // 从闪卡状态创建进度
+  factory QuizProgress.fromFlashcardState(
+    FlashcardState state, {
+    bool randomOrder = false,
+  }) {
+    return QuizProgress(
+      type: ProgressType.flashcard,
+      currentIndex: state.currentIndex,
+      startTime: DateTime.now(),
+      savedAt: DateTime.now(),
+      flashcardViewedIds: state.viewedCardIds,
+      flashcardAromaFilter: state.selectedAromaFilter,
+      flashcardMinAlcohol: state.minAlcoholDegree,
+      flashcardMaxAlcohol: state.maxAlcoholDegree,
+      flashcardRandomOrder: randomOrder,
     );
   }
 
@@ -103,6 +152,14 @@ class QuizProgress {
     String? blindTasteAromaFilter,
     double? blindTasteMinAlcohol,
     double? blindTasteMaxAlcohol,
+    bool? blindTasteRandomOrder,
+    Set<int>? flashcardViewedIds,
+    String? flashcardAromaFilter,
+    double? flashcardMinAlcohol,
+    double? flashcardMaxAlcohol,
+    bool? flashcardRandomOrder,
+    PracticeShuffleMode? practiceShuffleMode,
+    bool? practiceRandomOrder,
   }) {
     return QuizProgress(
       type: type ?? this.type,
@@ -125,6 +182,15 @@ class QuizProgress {
           blindTasteAromaFilter ?? this.blindTasteAromaFilter,
       blindTasteMinAlcohol: blindTasteMinAlcohol ?? this.blindTasteMinAlcohol,
       blindTasteMaxAlcohol: blindTasteMaxAlcohol ?? this.blindTasteMaxAlcohol,
+      blindTasteRandomOrder:
+          blindTasteRandomOrder ?? this.blindTasteRandomOrder,
+      flashcardViewedIds: flashcardViewedIds ?? this.flashcardViewedIds,
+      flashcardAromaFilter: flashcardAromaFilter ?? this.flashcardAromaFilter,
+      flashcardMinAlcohol: flashcardMinAlcohol ?? this.flashcardMinAlcohol,
+      flashcardMaxAlcohol: flashcardMaxAlcohol ?? this.flashcardMaxAlcohol,
+      flashcardRandomOrder: flashcardRandomOrder ?? this.flashcardRandomOrder,
+      practiceShuffleMode: practiceShuffleMode ?? this.practiceShuffleMode,
+      practiceRandomOrder: practiceRandomOrder ?? this.practiceRandomOrder,
     );
   }
 
@@ -154,6 +220,14 @@ class QuizProgress {
       'blindTasteAromaFilter': blindTasteAromaFilter,
       'blindTasteMinAlcohol': blindTasteMinAlcohol,
       'blindTasteMaxAlcohol': blindTasteMaxAlcohol,
+      'blindTasteRandomOrder': blindTasteRandomOrder,
+      'flashcardViewedIds': flashcardViewedIds?.toList(),
+      'flashcardAromaFilter': flashcardAromaFilter,
+      'flashcardMinAlcohol': flashcardMinAlcohol,
+      'flashcardMaxAlcohol': flashcardMaxAlcohol,
+      'flashcardRandomOrder': flashcardRandomOrder,
+      'practiceShuffleMode': practiceShuffleMode?.name,
+      'practiceRandomOrder': practiceRandomOrder,
     };
   }
 
@@ -226,6 +300,13 @@ class QuizProgress {
       blindTasteCompletedIds = completedJson.map((id) => id as int).toSet();
     }
 
+    // 处理闪卡记忆已查看ID集合
+    Set<int>? flashcardViewedIds;
+    if (json['flashcardViewedIds'] != null) {
+      final viewedJson = json['flashcardViewedIds'] as List<dynamic>;
+      flashcardViewedIds = viewedJson.map((id) => id as int).toSet();
+    }
+
     return QuizProgress(
       type: type,
       mode: mode,
@@ -244,6 +325,16 @@ class QuizProgress {
       blindTasteAromaFilter: json['blindTasteAromaFilter'] as String?,
       blindTasteMinAlcohol: json['blindTasteMinAlcohol'] as double?,
       blindTasteMaxAlcohol: json['blindTasteMaxAlcohol'] as double?,
+      blindTasteRandomOrder: json['blindTasteRandomOrder'] as bool?,
+      flashcardViewedIds: flashcardViewedIds,
+      flashcardAromaFilter: json['flashcardAromaFilter'] as String?,
+      flashcardMinAlcohol: json['flashcardMinAlcohol'] as double?,
+      flashcardMaxAlcohol: json['flashcardMaxAlcohol'] as double?,
+      flashcardRandomOrder: json['flashcardRandomOrder'] as bool?,
+      practiceShuffleMode: _parsePracticeShuffleMode(
+        json['practiceShuffleMode'],
+      ),
+      practiceRandomOrder: json['practiceRandomOrder'] as bool?,
     );
   }
 
@@ -256,6 +347,8 @@ class QuizProgress {
             currentIndex < questions.length;
       case ProgressType.blindTaste:
         return blindTasteItemId != null;
+      case ProgressType.flashcard:
+        return currentIndex >= 0 && flashcardViewedIds != null;
     }
   }
 
@@ -267,6 +360,9 @@ class QuizProgress {
         return '$modeText - 第${currentIndex + 1}题/共${questions.length}题';
       case ProgressType.blindTaste:
         return '品鉴模式 - 酒样品鉴进行中';
+      case ProgressType.flashcard:
+        final viewedCount = flashcardViewedIds?.length ?? 0;
+        return '闪卡记忆 - 第${currentIndex + 1}张，已查看$viewedCount张';
     }
   }
 
@@ -286,5 +382,21 @@ class QuizProgress {
         mode.hashCode ^
         currentIndex.hashCode ^
         savedAt.hashCode;
+  }
+
+  // 解析练习模式乱序模式
+  static PracticeShuffleMode? _parsePracticeShuffleMode(dynamic value) {
+    if (value == null) return null;
+
+    switch (value.toString()) {
+      case 'fullRandom':
+        return PracticeShuffleMode.fullRandom;
+      case 'ordered':
+        return PracticeShuffleMode.ordered;
+      case 'typeOrderedQuestionRandom':
+        return PracticeShuffleMode.typeOrderedQuestionRandom;
+      default:
+        return null;
+    }
   }
 }

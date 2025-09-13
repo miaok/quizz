@@ -453,6 +453,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
         // 练习模式：开始全题库答题
         await controller.startAllQuestionsQuiz(
           shuffleOptions: settings.shuffleOptions,
+          shuffleMode: settings.practiceShuffleMode,
         );
       } else {
         // 考试模式：使用设置中的配置开始模拟考试

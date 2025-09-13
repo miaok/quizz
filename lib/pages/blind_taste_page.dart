@@ -18,12 +18,51 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     super.initState();
     // 初始化品鉴
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // 只有在没有当前品鉴项目时才开始新的品鉴
-      final currentState = ref.read(blindTasteProvider);
-      if (currentState.currentItem == null) {
-        ref.read(blindTasteProvider.notifier).startNewTasting();
-      }
+      _initializeBlindTaste();
     });
+  }
+
+  Future<void> _initializeBlindTaste() async {
+    final settings = ref.read(settingsProvider);
+    final blindTasteController = ref.read(blindTasteProvider.notifier);
+
+    // 检查是否有保存的进度
+    if (settings.enableProgressSave) {
+      final hasSavedProgress = await blindTasteController.hasSavedProgress();
+      if (hasSavedProgress && mounted) {
+        final description = await blindTasteController
+            .getSavedProgressDescription();
+        if (!mounted) return;
+
+        bool shouldRestore;
+        if (settings.enableDefaultContinueProgress) {
+          // 默认继续进度，不显示对话框
+          shouldRestore = true;
+        } else {
+          // 显示确认对话框
+          shouldRestore = await _showRestoreProgressDialog(description);
+        }
+
+        if (shouldRestore) {
+          final restored = await blindTasteController.restoreProgress();
+          if (!restored && mounted) {
+            // 清除旧进度并重新开始
+            await blindTasteController.clearSavedProgress();
+            await blindTasteController.startNewTasting();
+          }
+        } else {
+          // 用户选择不恢复，清除保存的进度并重新开始
+          await blindTasteController.clearSavedProgress();
+          await blindTasteController.startNewTasting();
+        }
+      } else {
+        // 没有保存的进度，直接开始
+        await blindTasteController.startNewTasting();
+      }
+    } else {
+      // 未启用进度保存，直接开始
+      await blindTasteController.startNewTasting();
+    }
   }
 
   @override
@@ -32,16 +71,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          children: [
-            const Text('盲评大师'),
-            if (state.questionPool.isNotEmpty)
-              Text(
-                '进度: ${state.completedItemIds.length}/${state.totalItemsInPool}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-          ],
-        ),
+        title: const Text('酒样练习'),
         centerTitle: true,
         // 使用新的MD3主题，移除自定义背景色
         leading: IconButton(
@@ -49,6 +79,20 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
           icon: const Icon(Icons.arrow_back),
           tooltip: '返回',
         ),
+        actions: [
+          if (state.questionPool.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Center(
+                child: Text(
+                  '${state.completedItemIds.length}/${state.totalItemsInPool}',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       body: SafeArea(bottom: false, child: _buildBody(state)),
     );
@@ -188,33 +232,66 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
 
           const SizedBox(height: 16),
 
-          // 提交按钮
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _canSubmit(state, settings)
-                  ? () => _submitAnswer()
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                foregroundColor: Theme.of(
-                  context,
-                ).colorScheme.onPrimaryContainer,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          // 操作按钮行
+          Row(
+            children: [
+              // 跳过按钮
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _skipCurrentItem(),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                  child: Text(
+                    '跳过',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
                 ),
-                elevation: 2,
               ),
-              child: Text(
-                '提交答案',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+
+              const SizedBox(width: 12),
+
+              // 提交按钮
+              Expanded(
+                flex: 2, // 提交按钮占更多空间
+                child: ElevatedButton(
+                  onPressed: _canSubmit(state, settings)
+                      ? () => _submitAnswer()
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer,
+                    foregroundColor: Theme.of(
+                      context,
+                    ).colorScheme.onPrimaryContainer,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: Text(
+                    '提交答案',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
 
           const SizedBox(height: 16),
@@ -430,83 +507,80 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 2),
             Row(
               children: [
+                // 减分按钮
                 IconButton(
-                  onPressed: () => ref
-                      .read(blindTasteProvider.notifier)
-                      .adjustTotalScore(-1),
-                  icon: const Icon(Icons.remove_circle_outline, size: 20),
+                  onPressed: state.userAnswer.selectedTotalScore > 84.0
+                      ? () {
+                          final newScore =
+                              (state.userAnswer.selectedTotalScore - 0.2).clamp(
+                                84.0,
+                                98.0,
+                              );
+                          ref
+                              .read(blindTasteProvider.notifier)
+                              .setTotalScore(newScore);
+                        }
+                      : null,
+                  icon: const Icon(Icons.remove),
                   style: IconButton.styleFrom(
                     backgroundColor: Theme.of(
                       context,
-                    ).colorScheme.errorContainer,
-                    foregroundColor: Theme.of(
-                      context,
-                    ).colorScheme.onErrorContainer,
+                    ).colorScheme.surfaceContainerHighest,
+                    foregroundColor: Theme.of(context).colorScheme.onSurface,
+                    padding: const EdgeInsets.all(8),
                     minimumSize: const Size(36, 36),
                   ),
                 ),
-                IconButton(
-                  onPressed: () => ref
-                      .read(blindTasteProvider.notifier)
-                      .adjustTotalScore(-0.2),
-                  icon: const Icon(Icons.remove, size: 18),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.errorContainer.withValues(alpha: 0.5),
-                    foregroundColor: Theme.of(
-                      context,
-                    ).colorScheme.onErrorContainer,
-                    minimumSize: const Size(32, 32),
+                const SizedBox(width: 2),
+                Text(
+                  state.userAnswer.selectedTotalScore.toStringAsFixed(1),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
+                const SizedBox(width: 2),
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                      borderRadius: BorderRadius.circular(6),
+                  child: Slider(
+                    value: state.userAnswer.selectedTotalScore.clamp(
+                      84.0,
+                      98.0,
                     ),
-                    child: Text(
-                      state.userAnswer.selectedTotalScore.toStringAsFixed(1),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    min: 84.0,
+                    max: 98.0,
+                    divisions: 70, // (98-84)/0.2 = 70
+                    onChanged: (value) {
+                      ref
+                          .read(blindTasteProvider.notifier)
+                          .setTotalScore(value);
+                    },
                   ),
                 ),
+                const SizedBox(width: 2),
+                // 加分按钮
                 IconButton(
-                  onPressed: () => ref
-                      .read(blindTasteProvider.notifier)
-                      .adjustTotalScore(0.2),
-                  icon: const Icon(Icons.add, size: 18),
+                  onPressed: state.userAnswer.selectedTotalScore < 98.0
+                      ? () {
+                          final newScore =
+                              (state.userAnswer.selectedTotalScore + 0.2).clamp(
+                                84.0,
+                                98.0,
+                              );
+                          ref
+                              .read(blindTasteProvider.notifier)
+                              .setTotalScore(newScore);
+                        }
+                      : null,
+                  icon: const Icon(Icons.add),
                   style: IconButton.styleFrom(
                     backgroundColor: Theme.of(
                       context,
-                    ).colorScheme.primaryContainer.withValues(alpha: 0.5),
-                    foregroundColor: Theme.of(
-                      context,
-                    ).colorScheme.onPrimaryContainer,
-                    minimumSize: const Size(32, 32),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () =>
-                      ref.read(blindTasteProvider.notifier).adjustTotalScore(1),
-                  icon: const Icon(Icons.add_circle_outline, size: 20),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer,
-                    foregroundColor: Theme.of(
-                      context,
-                    ).colorScheme.onPrimaryContainer,
+                    ).colorScheme.surfaceContainerHighest,
+                    foregroundColor: Theme.of(context).colorScheme.onSurface,
+                    padding: const EdgeInsets.all(8),
                     minimumSize: const Size(36, 36),
                   ),
                 ),
@@ -654,12 +728,16 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
-          // 得分卡片
+          // 得分卡片 - 更小更紧凑
           Card(
             elevation: 1,
             child: Padding(
-              padding: const EdgeInsets.all(14.0),
-              child: Column(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 12.0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     score >= 80
@@ -667,35 +745,86 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                         : score >= 60
                         ? Icons.thumb_up
                         : Icons.sentiment_neutral,
-                    size: 48,
+                    size: 32,
                     color: score >= 80
                         ? Theme.of(context).colorScheme.tertiary
                         : score >= 60
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(context).colorScheme.outline,
                   ),
-
-                  const SizedBox(height: 6),
-                  Text(
-                    '${score.toStringAsFixed(1)}分',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: score >= 80
-                          ? Theme.of(context).colorScheme.tertiary
-                          : score >= 60
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.outline,
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${score.toStringAsFixed(1)}分',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: score >= 80
+                                  ? Theme.of(context).colorScheme.tertiary
+                                  : score >= 60
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.outline,
+                            ),
+                      ),
+                      Text(
+                        score >= 80
+                            ? '盲评大师！'
+                            : score >= 60
+                            ? '盲评达人！'
+                            : '继续努力！',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          //酒样信息
+          Card(
+            elevation: 1,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.wine_bar,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    score >= 80
-                        ? '盲评大师！'
-                        : score >= 60
-                        ? '盲评达人！'
-                        : '你太菜了！',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.name,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${item.aroma} • ${item.alcoholDegree}° • ${item.totalScore.toStringAsFixed(1)}分',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -703,9 +832,9 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
-          // 答案对比
+          // 答案对比 - 更清晰的布局
           Card(
             elevation: 1,
             child: Padding(
@@ -713,13 +842,22 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '答案对比',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.compare_arrows,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '答案对比',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   // 根据设置显示对比结果
                   if (settings.enableBlindTasteAroma)
                     _buildComparisonRow(
@@ -804,76 +942,118 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
   ) {
     final isCorrect = userAnswer == correctAnswer;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        color: isCorrect
+            ? Theme.of(
+                context,
+              ).colorScheme.primaryContainer.withValues(alpha: 0.2)
+            : Theme.of(
+                context,
+              ).colorScheme.errorContainer.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isCorrect
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
+              : Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 状态图标和标签
+          Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: isCorrect
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.error,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              isCorrect ? Icons.check : Icons.close,
+              size: 10,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 8),
           SizedBox(
-            width: 60,
+            width: 40,
             child: Text(
               label,
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
+          const SizedBox(width: 8),
+
+          // 用户答案
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      isCorrect ? Icons.check_circle : Icons.cancel,
-                      size: 16,
-                      color: isCorrect
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.error,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '你的答案: ',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Expanded(
-                      child: Text(
-                        userAnswer.isEmpty ? '未选择' : userAnswer,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: isCorrect
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.error,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
+            flex: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: isCorrect
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.4)
+                      : Theme.of(
+                          context,
+                        ).colorScheme.error.withValues(alpha: 0.4),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.lightbulb_outline,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '正确答案: ',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Expanded(
-                      child: Text(
-                        correctAnswer,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
+              ),
+              child: Text(
+                userAnswer.isEmpty ? '未选择' : userAnswer,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: isCorrect
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 8),
+          Icon(
+            Icons.arrow_forward,
+            size: 12,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+
+          // 正确答案
+          Expanded(
+            flex: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Text(
+                correctAnswer,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ],
@@ -892,79 +1072,177 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     final isCorrect =
         userSet.length == correctSet.length && userSet.containsAll(correctSet);
 
-    final userAnswerText = userAnswer.isEmpty ? '未选择' : userAnswer.join(', ');
-    final correctAnswerText = correctAnswer.join(', ');
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        color: isCorrect
+            ? Theme.of(
+                context,
+              ).colorScheme.primaryContainer.withValues(alpha: 0.2)
+            : Theme.of(
+                context,
+              ).colorScheme.errorContainer.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isCorrect
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
+              : Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 状态图标和标签
+          Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: isCorrect
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.error,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              isCorrect ? Icons.check : Icons.close,
+              size: 10,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 8),
           SizedBox(
-            width: 60,
+            width: 40,
             child: Text(
               label,
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
+          const SizedBox(width: 8),
+
+          // 用户答案
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      isCorrect ? Icons.check_circle : Icons.cancel,
-                      size: 16,
-                      color: isCorrect
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.error,
+            flex: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: isCorrect
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.4)
+                      : Theme.of(
+                          context,
+                        ).colorScheme.error.withValues(alpha: 0.4),
+                ),
+              ),
+              child: userAnswer.isEmpty
+                  ? Text(
+                      '未选择',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  : Wrap(
+                      spacing: 2,
+                      runSpacing: 2,
+                      children: userAnswer
+                          .map(
+                            (item) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isCorrect
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.primaryContainer
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              child: Text(
+                                item,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: isCorrect
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimaryContainer
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.onErrorContainer,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 10,
+                                    ),
+                              ),
+                            ),
+                          )
+                          .toList(),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '你的答案: ',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Expanded(
-                      child: Text(
-                        userAnswerText,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: isCorrect
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.error,
-                          fontWeight: FontWeight.w500,
+            ),
+          ),
+
+          const SizedBox(width: 8),
+          Icon(
+            Icons.arrow_forward,
+            size: 12,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+
+          // 正确答案
+          Expanded(
+            flex: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Wrap(
+                spacing: 2,
+                runSpacing: 2,
+                children: correctAnswer
+                    .map(
+                      (item) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(
+                          item,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 10,
+                              ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.lightbulb_outline,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '正确答案: ',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Expanded(
-                      child: Text(
-                        correctAnswerText,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                    )
+                    .toList(),
+              ),
             ),
           ),
         ],
@@ -991,6 +1269,10 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
 
   void _submitAnswer() {
     ref.read(blindTasteProvider.notifier).submitAnswer();
+  }
+
+  void _skipCurrentItem() {
+    ref.read(blindTasteProvider.notifier).skipCurrentItem();
   }
 
   void _handleNextQuestion() {
@@ -1071,5 +1353,42 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
         ),
       ),
     );
+  }
+
+  Future<bool> _showRestoreProgressDialog(String? description) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('恢复品鉴进度'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('检测到未完成的品鉴进度：'),
+                const SizedBox(height: 8),
+                Text(
+                  description ?? '未知进度',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text('是否要继续之前的品鉴？'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('重新开始'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('继续品鉴'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 }

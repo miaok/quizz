@@ -54,12 +54,30 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // 当应用恢复时，确保状态栏始终显示
+    // 当应用恢复时，确保系统UI状态正确
     if (state == AppLifecycleState.resumed) {
       Future.delayed(const Duration(milliseconds: 100), () {
-        SystemUIManager.ensureStatusBarVisible();
+        _updateSystemUI();
       });
     }
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    super.didChangePlatformBrightness();
+    // 当系统主题改变时，更新系统UI
+    _updateSystemUI();
+  }
+
+  void _updateSystemUI() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final brightness =
+            WidgetsBinding.instance.platformDispatcher.platformBrightness;
+        final isDark = brightness == Brightness.dark;
+        SystemUIManager.setImmersiveUI(isDark: isDark);
+      }
+    });
   }
 
   // 品牌主色 - #63A002 绿色
@@ -241,6 +259,11 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // 在构建时更新系统UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateSystemUI();
+    });
+
     return MaterialApp.router(
       title: 'QUIZ',
       debugShowCheckedModeBanner: false,
@@ -256,6 +279,11 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
 
       // 深色主题
       darkTheme: _buildDarkTheme(),
+
+      // 构建器，用于处理系统UI更新
+      builder: (context, child) {
+        return child ?? const SizedBox.shrink();
+      },
     );
   }
 }

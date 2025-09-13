@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/settings_model.dart';
 import '../services/settings_service.dart';
+import 'quiz_provider.dart';
 
 // 设置服务Provider
 final settingsServiceProvider = Provider<SettingsService>((ref) {
@@ -11,14 +12,16 @@ final settingsServiceProvider = Provider<SettingsService>((ref) {
 final settingsProvider =
     StateNotifierProvider<SettingsController, QuizSettings>((ref) {
       final settingsService = ref.read(settingsServiceProvider);
-      return SettingsController(settingsService);
+      return SettingsController(settingsService, ref);
     });
 
 // 设置控制器
 class SettingsController extends StateNotifier<QuizSettings> {
   final SettingsService _settingsService;
+  final Ref _ref;
 
-  SettingsController(this._settingsService) : super(const QuizSettings()) {
+  SettingsController(this._settingsService, this._ref)
+    : super(const QuizSettings()) {
     _loadSettings();
   }
 
@@ -55,6 +58,15 @@ class SettingsController extends StateNotifier<QuizSettings> {
   Future<void> updateShuffleOptions(bool shuffle) async {
     final newSettings = state.copyWith(shuffleOptions: shuffle);
     await _saveSettings(newSettings);
+
+    // 通知 QuizProvider 更新选项顺序（如果正在答题中）
+    try {
+      final quizController = _ref.read(quizControllerProvider.notifier);
+      quizController.updateShuffleOptions(shuffle);
+    } catch (e) {
+      // 如果 QuizProvider 不可用或出错，忽略错误
+      // 这种情况通常发生在没有进行答题时
+    }
   }
 
   // 更新快速切题设置
@@ -102,6 +114,62 @@ class SettingsController extends StateNotifier<QuizSettings> {
   // 更新品鉴模式发酵剂设置
   Future<void> updateEnableBlindTasteFermentation(bool enable) async {
     final newSettings = state.copyWith(enableBlindTasteFermentation: enable);
+    await _saveSettings(newSettings);
+  }
+
+  // 更新品鉴模式随机顺序设置
+  Future<void> updateEnableBlindTasteRandomOrder(bool enable) async {
+    final newSettings = state.copyWith(enableBlindTasteRandomOrder: enable);
+    await _saveSettings(newSettings);
+  }
+
+  // 更新闪卡随机顺序设置
+  Future<void> updateEnableFlashcardRandomOrder(bool enable) async {
+    final newSettings = state.copyWith(enableFlashcardRandomOrder: enable);
+    await _saveSettings(newSettings);
+  }
+
+  // 更新默认继续进度设置
+  Future<void> updateEnableDefaultContinueProgress(bool enable) async {
+    final newSettings = state.copyWith(enableDefaultContinueProgress: enable);
+    await _saveSettings(newSettings);
+  }
+
+  // 更新练习模式乱序模式设置
+  Future<void> updatePracticeShuffleMode(PracticeShuffleMode mode) async {
+    final newSettings = state.copyWith(practiceShuffleMode: mode);
+    await _saveSettings(newSettings);
+  }
+
+  // 兼容性方法：更新练习模式随机顺序设置
+  Future<void> updateEnablePracticeRandomOrder(bool enable) async {
+    final mode = enable
+        ? PracticeShuffleMode.fullRandom
+        : PracticeShuffleMode.ordered;
+    await updatePracticeShuffleMode(mode);
+  }
+
+  // 更新酒样练习模式酒杯数量设置
+  Future<void> updateWineSimulationSampleCount(int count) async {
+    final newSettings = state.copyWith(wineSimulationSampleCount: count);
+    await _saveSettings(newSettings);
+  }
+
+  // 更新酒样练习重复概率设置
+  Future<void> updateWineSimulationDuplicateProbability(
+    double probability,
+  ) async {
+    final newSettings = state.copyWith(
+      wineSimulationDuplicateProbability: probability,
+    );
+    await _saveSettings(newSettings);
+  }
+
+  // 更新酒样练习最大重复组数设置
+  Future<void> updateWineSimulationMaxDuplicateGroups(int maxGroups) async {
+    final newSettings = state.copyWith(
+      wineSimulationMaxDuplicateGroups: maxGroups,
+    );
     await _saveSettings(newSettings);
   }
 

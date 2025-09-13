@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:drift/drift.dart';
 import '../database/database.dart';
 import '../models/question_model.dart';
 import '../models/blind_taste_model.dart';
+import '../models/settings_model.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
@@ -31,12 +33,20 @@ class DatabaseService {
   }
 
   // 从assets加载题目数据
-  Future<void> _loadQuestionsFromAssets() async {
+  Future<void> _loadQuestionsFromAssets({bool forceReload = false}) async {
     try {
-      // 检查数据库是否已有数据
-      final existingCount = await _database.getQuestionCount();
-      if (existingCount > 0) {
-        return;
+      // 开发模式：每次都强制重新加载
+      // 生产模式：只在没有数据时加载
+      final shouldForceReload = forceReload || kDebugMode;
+
+      if (shouldForceReload) {
+        await _database.clearAllQuestions();
+      } else {
+        // 检查数据库是否已有数据
+        final existingCount = await _database.getQuestionCount();
+        if (existingCount > 0) {
+          return;
+        }
       }
 
       // 读取JSON文件
@@ -62,12 +72,20 @@ class DatabaseService {
   }
 
   // 从assets加载品鉴数据
-  Future<void> _loadBlindTasteDataFromAssets() async {
+  Future<void> _loadBlindTasteDataFromAssets({bool forceReload = false}) async {
     try {
-      // 检查数据库是否已有品鉴数据
-      final existingCount = await _database.getBlindTasteItemCount();
-      if (existingCount > 0) {
-        return;
+      // 开发模式：每次都强制重新加载
+      // 生产模式：只在没有数据时加载
+      final shouldForceReload = forceReload || kDebugMode;
+
+      if (shouldForceReload) {
+        await _database.clearAllBlindTasteItems();
+      } else {
+        // 检查数据库是否已有品鉴数据
+        final existingCount = await _database.getBlindTasteItemCount();
+        if (existingCount > 0) {
+          return;
+        }
       }
 
       // 读取JSON文件
@@ -219,6 +237,127 @@ class DatabaseService {
     return result;
   }
 
+  // 根据设置获取混合题目（返回原始题目，不处理选项顺序）
+  Future<List<QuestionModel>> getOriginalQuestionsBySettings({
+    required int singleCount,
+    required int multipleCount,
+    required int booleanCount,
+  }) async {
+    final List<QuestionModel> result = [];
+
+    // 按顺序获取各类型题目：判断题→单选题→多选题
+    if (booleanCount > 0) {
+      final booleanQuestions = await getQuestionsByType(
+        'boolean',
+        booleanCount,
+      );
+      result.addAll(booleanQuestions);
+    }
+
+    if (singleCount > 0) {
+      final singleQuestions = await getQuestionsByType('single', singleCount);
+      result.addAll(singleQuestions);
+    }
+
+    if (multipleCount > 0) {
+      final multipleQuestions = await getQuestionsByType(
+        'multiple',
+        multipleCount,
+      );
+      result.addAll(multipleQuestions);
+    }
+
+    return result; // 返回原始题目，不处理选项顺序
+  }
+
+  // 根据练习模式设置获取题目（支持三种乱序模式）
+  Future<List<QuestionModel>> getQuestionsForPractice({
+    required PracticeShuffleMode shuffleMode,
+    required bool shuffleOptions,
+  }) async {
+    List<QuestionModel> questions = await getAllQuestions();
+
+    if (questions.isEmpty) {
+      return questions;
+    }
+
+    switch (shuffleMode) {
+      case PracticeShuffleMode.fullRandom:
+        // 完全乱序：题型和题型内部题目顺序均乱序
+        questions.shuffle();
+        break;
+
+      case PracticeShuffleMode.ordered:
+        // 题型不乱序，题目不乱序：使用默认顺序
+        final booleanQuestions = questions
+            .where((q) => q.type == QuestionType.boolean)
+            .toList();
+        final singleQuestions = questions
+            .where((q) => q.type == QuestionType.single)
+            .toList();
+        final multipleQuestions = questions
+            .where((q) => q.type == QuestionType.multiple)
+            .toList();
+
+        // 各题型内部按顺序（不进行shuffle）
+        // 保持题目在数据库中的原始顺序
+
+        // 按顺序组合：判断题→单选题→多选题
+        questions = [
+          ...booleanQuestions,
+          ...singleQuestions,
+          ...multipleQuestions,
+        ];
+        break;
+
+      case PracticeShuffleMode.typeOrderedQuestionRandom:
+        // 题型不乱序，内部题目乱序
+        final booleanQuestions = questions
+            .where((q) => q.type == QuestionType.boolean)
+            .toList();
+        final singleQuestions = questions
+            .where((q) => q.type == QuestionType.single)
+            .toList();
+        final multipleQuestions = questions
+            .where((q) => q.type == QuestionType.multiple)
+            .toList();
+
+        // 各题型内部进行shuffle
+        booleanQuestions.shuffle();
+        singleQuestions.shuffle();
+        multipleQuestions.shuffle();
+
+        // 按顺序组合：判断题→单选题→多选题
+        questions = [
+          ...booleanQuestions,
+          ...singleQuestions,
+          ...multipleQuestions,
+        ];
+        break;
+    }
+
+    // 如果需要乱序选项
+    if (shuffleOptions) {
+      questions = questions.map((q) => q.shuffleOptions()).toList();
+    }
+
+    return questions;
+  }
+
+  // 兼容性方法：根据练习模式设置获取题目（支持完全随机或按题型顺序）
+  Future<List<QuestionModel>> getQuestionsForPracticeCompat({
+    required bool randomOrder,
+    required bool shuffleOptions,
+  }) async {
+    final shuffleMode = randomOrder
+        ? PracticeShuffleMode.fullRandom
+        : PracticeShuffleMode.ordered;
+    return getQuestionsForPractice(
+      shuffleMode: shuffleMode,
+      shuffleOptions: shuffleOptions,
+    );
+  }
+
   // 获取所有分类
   Future<List<String>> getAllCategories() async {
     return await _database.getAllCategories();
@@ -277,6 +416,19 @@ class DatabaseService {
 
       return false;
     }).toList();
+  }
+
+  // 强制重新加载数据（清空现有数据并重新从assets加载）
+  Future<void> forceReloadData() async {
+    if (!_isInitialized) {
+      throw StateError('Database not initialized. Call initialize() first.');
+    }
+
+    // 强制重新加载题目数据
+    await _loadQuestionsFromAssets(forceReload: true);
+
+    // 强制重新加载品鉴数据
+    await _loadBlindTasteDataFromAssets(forceReload: true);
   }
 
   // 关闭数据库

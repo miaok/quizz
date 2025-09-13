@@ -52,6 +52,7 @@ class BlindTasteService {
     String? aromaFilter,
     double? minAlcoholDegree,
     double? maxAlcoholDegree,
+    bool randomOrder = false, // 是否随机排序
   }) async {
     List<BlindTasteItemModel> items = await getAllItems();
 
@@ -72,8 +73,10 @@ class BlindTasteService {
           .toList();
     }
 
-    // 打乱顺序
-    items.shuffle();
+    // 根据设置决定是否打乱顺序
+    if (randomOrder) {
+      items.shuffle();
+    }
 
     // 限制数量
     if (maxItems > 0 && items.length > maxItems) {
