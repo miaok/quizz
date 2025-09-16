@@ -984,7 +984,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: _currentAnswer.selectedAroma,
+          initialValue: _currentAnswer.selectedAroma,
           decoration: InputDecoration(
             hintText: '选择香型',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
@@ -1066,7 +1066,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<double>(
-          value: _currentAnswer.selectedAlcoholDegree,
+          initialValue: _currentAnswer.selectedAlcoholDegree,
           decoration: InputDecoration(
             hintText: '选择酒度',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),

@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart';
 
 /// 内存管理工具类
 /// 用于优化应用内存使用，减少BLASTBufferQueue错误

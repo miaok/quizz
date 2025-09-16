@@ -651,8 +651,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     return Column(
       children: [
         _buildSwitchTile(
-          title: '品评模拟随机顺序',
-          subtitle: '品评模拟时随机打乱酒样出现顺序',
+          title: '酒样闪卡随机顺序',
+          subtitle: '酒样闪卡时随机打乱酒样出现顺序',
           icon: Icons.shuffle,
           value: settings.enableBlindTasteRandomOrder,
           onChanged: (value) =>

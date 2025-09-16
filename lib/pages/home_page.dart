@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/settings_model.dart';
@@ -575,23 +576,28 @@ class _HomePageState extends ConsumerState<HomePage> {
         }
 
         if (shouldRestore) {
+          debugPrint('User chose to restore progress, attempting restore...');
           final restored = await blindTasteController.restoreProgress();
           if (restored) {
-            // 导航到品评页面
+            debugPrint('Progress restored successfully in home page');
+            // 直接导航到品评页面，页面不需要再次恢复
             appRouter.goToBlindTaste();
             return;
           } else {
+            debugPrint('Failed to restore progress, will start new session');
             // 恢复失败（可能是设置不匹配），清除进度并重新开始
             await blindTasteController.clearSavedProgress();
           }
         } else {
+          debugPrint('User chose not to restore, clearing saved progress');
           // 用户选择不恢复，清除保存的进度
           await blindTasteController.clearSavedProgress();
         }
       }
     }
 
-    // 导航到品评页面
+    debugPrint('Navigating to blind taste page (no saved progress or user chose new session)');
+    // 导航到品评页面无保存进度或用户选择新开始）
     appRouter.goToBlindTaste();
   }
 

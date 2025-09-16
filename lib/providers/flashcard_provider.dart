@@ -195,7 +195,7 @@ class FlashcardController extends StateNotifier<FlashcardState> {
     final targetItem = state.items[index];
     final targetCard = FlashcardModel(item: targetItem);
 
-    // 更新已查看的卡片ID集合
+    // 更新已查看的卡片ID集合（保持原有的，并添加当前的）
     final updatedViewedIds = Set<int>.from(state.viewedCardIds);
     if (targetItem.id != null) {
       updatedViewedIds.add(targetItem.id!);
@@ -273,25 +273,74 @@ class FlashcardController extends StateNotifier<FlashcardState> {
         return false; // 返回false，让调用方重新开始
       }
 
-      // 重新加载闪卡数据，保持原有的筛选条件和随机顺序设置
-      await loadFlashcards(
-        aromaFilter: progress.flashcardAromaFilter,
-        minAlcohol: progress.flashcardMinAlcohol,
-        maxAlcohol: progress.flashcardMaxAlcohol,
-        randomOrder: progress.flashcardRandomOrder ?? false, // 使用保存的随机顺序设置
-      );
+      // 直接恢复状态，不调用loadFlashcards避免状态被重置
+      await _service.initialize();
+      final allItems = await _service.getAllItems();
 
-      // 恢复已查看的卡片ID集合和当前位置
-      if (progress.flashcardViewedIds != null) {
-        // 计算基于当前索引的进度
-        final currentProgress = (progress.currentIndex + 1) / state.totalCards;
+      // 应用筛选条件
+      List<BlindTasteItemModel> filteredItems = allItems;
 
-        state = state.copyWith(
-          viewedCardIds: progress.flashcardViewedIds,
-          progress: currentProgress,
-          isRoundCompleted: progress.currentIndex >= state.totalCards - 1,
-        );
+      if (progress.flashcardAromaFilter != null && progress.flashcardAromaFilter!.isNotEmpty) {
+        filteredItems = filteredItems
+            .where((item) => item.aroma == progress.flashcardAromaFilter!)
+            .toList();
       }
+
+      if (progress.flashcardMinAlcohol != null) {
+        filteredItems = filteredItems
+            .where((item) => item.alcoholDegree >= progress.flashcardMinAlcohol!)
+            .toList();
+      }
+
+      if (progress.flashcardMaxAlcohol != null) {
+        filteredItems = filteredItems
+            .where((item) => item.alcoholDegree <= progress.flashcardMaxAlcohol!)
+            .toList();
+      }
+
+      if (filteredItems.isEmpty) {
+        return false;
+      }
+
+      // 如果启用随机顺序，则打乱列表（但要保持与保存时一致的顺序）
+      if (progress.flashcardRandomOrder == true) {
+        // 使用固定种子确保与保存时的顺序一致
+        final random = Random(42); // 使用固定种子
+        filteredItems.shuffle(random);
+      }
+
+      // 检查保存的索引是否有效
+      if (progress.currentIndex >= filteredItems.length) {
+        debugPrint('Saved index out of range, clearing progress');
+        await clearProgress();
+        return false;
+      }
+
+      // 获取当前卡片
+      final currentItem = filteredItems[progress.currentIndex];
+      final currentCard = FlashcardModel(item: currentItem);
+
+      // 计算当前进度
+      final currentProgress = (progress.currentIndex + 1) / filteredItems.length;
+
+      // 设置当前的随机顺序设置
+      _currentRandomOrder = progress.flashcardRandomOrder ?? false;
+
+      // 恢复完整状态
+      state = state.copyWith(
+        isLoading: false,
+        error: null,
+        items: filteredItems,
+        currentIndex: progress.currentIndex,
+        currentCard: currentCard,
+        totalCards: filteredItems.length,
+        progress: currentProgress,
+        selectedAromaFilter: progress.flashcardAromaFilter,
+        minAlcoholDegree: progress.flashcardMinAlcohol,
+        maxAlcoholDegree: progress.flashcardMaxAlcohol,
+        viewedCardIds: progress.flashcardViewedIds ?? <int>{},
+        isRoundCompleted: progress.currentIndex >= filteredItems.length - 1,
+      );
 
       return true;
     } catch (e) {

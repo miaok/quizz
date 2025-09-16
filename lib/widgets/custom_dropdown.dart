@@ -38,7 +38,7 @@ class CustomDropdown<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         hintText: hintText ?? '请选择',
         border: const OutlineInputBorder(),
@@ -89,14 +89,14 @@ class CompactDropdown<T> extends CustomDropdown<T> {
     required super.onChanged,
     super.hintText,
   }) : super(
-          fontSize: 12.0,
-          itemVerticalPadding: 6.0,
-          itemHorizontalPadding: 4.0,
-          inputVerticalPadding: 6.0,
-          inputHorizontalPadding: 6.0,
-          menuMaxHeight: 150.0,
-          fontWeight: FontWeight.w400,
-        );
+         fontSize: 12.0,
+         itemVerticalPadding: 6.0,
+         itemHorizontalPadding: 4.0,
+         inputVerticalPadding: 6.0,
+         inputHorizontalPadding: 6.0,
+         menuMaxHeight: 150.0,
+         fontWeight: FontWeight.w400,
+       );
 }
 
 /// 大号样式的下拉列表组件
@@ -109,12 +109,12 @@ class LargeDropdown<T> extends CustomDropdown<T> {
     required super.onChanged,
     super.hintText,
   }) : super(
-          fontSize: 16.0,
-          itemVerticalPadding: 12.0,
-          itemHorizontalPadding: 8.0,
-          inputVerticalPadding: 12.0,
-          inputHorizontalPadding: 12.0,
-          menuMaxHeight: 250.0,
-          fontWeight: FontWeight.w600,
-        );
+         fontSize: 16.0,
+         itemVerticalPadding: 12.0,
+         itemHorizontalPadding: 8.0,
+         inputVerticalPadding: 12.0,
+         inputHorizontalPadding: 12.0,
+         menuMaxHeight: 250.0,
+         fontWeight: FontWeight.w600,
+       );
 }

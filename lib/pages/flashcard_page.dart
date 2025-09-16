@@ -25,6 +25,10 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
   // 动画方向：-1表示向左，1表示向右，0表示无方向
   double _animationDirection = 0;
 
+  // 防止重复初始化的标志
+  bool _isInitialized = false;
+  bool _isInitializing = false;
+
   @override
   void initState() {
     super.initState();
@@ -69,31 +73,29 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
     _flipController.dispose();
     _slideController.dispose();
     _shuffleController.dispose();
+    _isInitialized = false; // 重置初始化标志
+    _isInitializing = false;
     super.dispose();
   }
 
   Future<void> _initializeFlashcards() async {
-    final settings = ref.read(settingsProvider);
-    final flashcardController = ref.read(flashcardProvider.notifier);
+    // 防止重复初始化
+    if (_isInitialized || _isInitializing) {
+      debugPrint('Flashcard initialization already in progress or completed');
+      return;
+    }
 
-    // 检查是否有保存的进度
-    if (settings.enableProgressSave) {
-      final hasSavedProgress = await flashcardController.hasSavedProgress();
-      if (hasSavedProgress && mounted) {
-        final description = await flashcardController
-            .getSavedProgressDescription();
-        if (!mounted) return;
+    _isInitializing = true;
 
-        bool shouldRestore;
-        if (settings.enableDefaultContinueProgress) {
-          // 默认继续进度，不显示对话框
-          shouldRestore = true;
-        } else {
-          // 显示确认对话框
-          shouldRestore = await _showRestoreProgressDialog(description);
-        }
+    try {
+      final settings = ref.read(settingsProvider);
+      final flashcardController = ref.read(flashcardProvider.notifier);
 
-        if (shouldRestore) {
+      // 检查是否有保存的进度
+      if (settings.enableProgressSave) {
+        final hasSavedProgress = await flashcardController.hasSavedProgress();
+        if (hasSavedProgress && mounted) {
+          // 直接恢复进度，不显示弹窗确认
           final restored = await flashcardController.restoreProgress(
             randomOrder: settings.enableFlashcardRandomOrder,
           );
@@ -105,23 +107,23 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
             );
           }
         } else {
-          // 用户选择不恢复，清除保存的进度并重新开始
-          await flashcardController.clearProgress();
+          // 没有保存的进度，直接开始
           await flashcardController.loadFlashcards(
             randomOrder: settings.enableFlashcardRandomOrder,
           );
         }
       } else {
-        // 没有保存的进度，直接开始
+        // 未启用进度保存，直接开始
         await flashcardController.loadFlashcards(
           randomOrder: settings.enableFlashcardRandomOrder,
         );
       }
-    } else {
-      // 未启用进度保存，直接开始
-      await flashcardController.loadFlashcards(
-        randomOrder: settings.enableFlashcardRandomOrder,
-      );
+
+      _isInitialized = true;
+    } catch (e) {
+      debugPrint('Error initializing flashcards: $e');
+    } finally {
+      _isInitializing = false;
     }
   }
 
@@ -140,7 +142,7 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('酒样记忆'),
+          title: const Text('酒样闪卡'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.of(context).pop(),
@@ -726,27 +728,6 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
     // 自动保存进度，无需确认对话框
     // 进度保存由Provider的_autoSaveProgress方法自动处理
     // 直接退出即可
-  }
-
-  Future<bool> _showRestoreProgressDialog(String description) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('恢复进度'),
-        content: Text('发现保存的进度：\n$description\n\n是否继续上次的学习？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('重新开始'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('继续学习'),
-          ),
-        ],
-      ),
-    );
-    return result ?? false;
   }
 
   /// 构建轮次完成视图

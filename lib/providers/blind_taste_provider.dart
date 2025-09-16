@@ -127,16 +127,12 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     double? minAlcoholDegree,
     double? maxAlcoholDegree,
   }) async {
+    debugPrint('Starting new blind taste session with params: maxItems=$maxItemsPerRound, aroma=$aromaFilter, minAlc=$minAlcoholDegree, maxAlc=$maxAlcoholDegree');
+
     state = state.copyWith(isLoading: true, error: null);
 
     try {
       await _service.initialize();
-
-      // 如果当前有题目池且未完成一轮，继续当前轮次
-      if (state.questionPool.isNotEmpty && state.hasNextItem) {
-        await _loadNextItemFromPool();
-        return;
-      }
 
       // 获取随机顺序设置
       final settings = _ref.read(settingsProvider);
@@ -150,13 +146,17 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
         randomOrder: settings.enableBlindTasteRandomOrder,
       );
 
+      debugPrint('Generated question pool: ${questionPool.length} items');
+
       if (questionPool.isEmpty) {
+        debugPrint('Question pool is empty, no matching items found');
         state = state.copyWith(isLoading: false, error: '没有符合条件的品鉴数据');
         return;
       }
 
       // 获取第一个题目
       final firstItem = questionPool.first;
+      debugPrint('First item: ${firstItem.name} (ID: ${firstItem.id})');
 
       state = state.copyWith(
         currentItem: firstItem,
@@ -176,9 +176,12 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
         maxAlcoholDegree: maxAlcoholDegree,
       );
 
+      debugPrint('New blind taste session initialized successfully');
+
       // 自动保存进度
       await _autoSaveProgress();
     } catch (e) {
+      debugPrint('Error starting new blind taste session: $e');
       state = state.copyWith(isLoading: false, error: '加载品鉴数据失败: $e');
     }
   }
@@ -439,8 +442,26 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
 
   /// 恢复进度
   Future<bool> restoreProgress() async {
+    debugPrint('Attempting to restore blind taste progress...');
     final progress = await _progressService.loadBlindTasteProgress();
-    if (progress != null && progress.isValid) {
+
+    if (progress == null) {
+      debugPrint('No saved progress found');
+      return false;
+    }
+
+    if (!progress.isValid) {
+      debugPrint('Saved progress is invalid');
+      return false;
+    }
+
+    debugPrint('Found valid saved progress: type=${progress.type}, currentIndex=${progress.currentIndex}, itemId=${progress.blindTasteItemId}');
+
+    try {
+      // 重新初始化服务，确保应用重启后能正常工作
+      await _service.initialize();
+      debugPrint('Service initialized successfully');
+
       // 检查随机顺序设置是否匹配
       final settings = _ref.read(settingsProvider);
       if (progress.blindTasteRandomOrder != null &&
@@ -456,29 +477,118 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
       // 恢复题目池状态
       if (progress.blindTasteQuestionPool != null &&
           progress.blindTasteQuestionPool!.isNotEmpty) {
+        debugPrint('Restoring question pool with ${progress.blindTasteQuestionPool!.length} items');
+
         BlindTasteItemModel? currentItem;
+        BlindTasteAnswer? currentAnswer = progress.blindTasteAnswer;
+        bool isCompleted = false;
+
+        // 首先尝试恢复当前题目
         if (progress.blindTasteItemId != null) {
-          currentItem = await _service.getItemById(progress.blindTasteItemId!);
+          debugPrint('Attempting to restore current item with ID: ${progress.blindTasteItemId}');
+
+          // 检查当前题目是否已完成
+          final isCurrentCompleted = progress.blindTasteCompletedIds != null &&
+              progress.blindTasteCompletedIds!.contains(progress.blindTasteItemId!);
+
+          debugPrint('Current item completed status: $isCurrentCompleted');
+
+          if (isCurrentCompleted) {
+            // 当前题目已完成，找下一题
+            debugPrint('Current item is completed, looking for next uncompleted item');
+            currentItem = _service.getNextUncompletedItem(
+              progress.blindTasteQuestionPool!,
+              progress.blindTasteCompletedIds!,
+            );
+            if (currentItem != null) {
+              debugPrint('Found next uncompleted item: ${currentItem.name} (ID: ${currentItem.id})');
+              currentAnswer = BlindTasteAnswer(); // 新题目使用空答案
+              isCompleted = false;
+            } else {
+              debugPrint('No more uncompleted items found');
+            }
+          } else {
+            // 当前题目未完成，尝试恢复
+            debugPrint('Current item is not completed, attempting to restore');
+            try {
+              currentItem = await _service.getItemById(progress.blindTasteItemId!);
+              if (currentItem != null) {
+                debugPrint('Successfully restored current item: ${currentItem.name}');
+                isCompleted = false; // 未完成的题目
+              } else {
+                debugPrint('Failed to find current item by ID');
+              }
+            } catch (e) {
+              debugPrint('Failed to restore current item: $e');
+            }
+          }
         }
+
+        // 如果仍然没有currentItem，从题目池中获取第一个未完成的
+        if (currentItem == null) {
+          debugPrint('No current item found, getting first uncompleted item from pool');
+          currentItem = _service.getNextUncompletedItem(
+            progress.blindTasteQuestionPool!,
+            progress.blindTasteCompletedIds ?? <int>{},
+          );
+          if (currentItem != null) {
+            debugPrint('Found first uncompleted item: ${currentItem.name} (ID: ${currentItem.id})');
+            currentAnswer = BlindTasteAnswer();
+            isCompleted = false;
+          } else {
+            debugPrint('No uncompleted items available in question pool');
+          }
+        }
+
+        // 如果还是没有题目，说明轮次已完成
+        if (currentItem == null) {
+          debugPrint('No available items in question pool, round completed');
+        }
+
+        // 计算轮次是否完成
+        final isRoundCompleted = _service.isRoundCompleted(
+          progress.blindTasteQuestionPool!,
+          progress.blindTasteCompletedIds ?? <int>{},
+        );
+
+        debugPrint('Round completed status: $isRoundCompleted');
 
         state = BlindTasteState(
           currentItem: currentItem,
-          userAnswer: progress.blindTasteAnswer ?? BlindTasteAnswer(),
+          userAnswer: currentAnswer ?? BlindTasteAnswer(),
           currentIndex: progress.currentIndex,
-          isCompleted: false,
+          isCompleted: isCompleted,
+          finalScore: isCompleted && currentItem != null ? progress.blindTasteAnswer?.calculateScore(
+            currentItem,
+            enableAroma: settings.enableBlindTasteAroma,
+            enableAlcohol: settings.enableBlindTasteAlcohol,
+            enableScore: settings.enableBlindTasteScore,
+            enableEquipment: settings.enableBlindTasteEquipment,
+            enableFermentation: settings.enableBlindTasteFermentation,
+          ) : null,
           isLoading: false,
           questionPool: progress.blindTasteQuestionPool!,
           completedItemIds: progress.blindTasteCompletedIds ?? <int>{},
           totalItemsInPool: progress.blindTasteQuestionPool!.length,
-          isRoundCompleted: false,
+          isRoundCompleted: isRoundCompleted,
           maxItemsPerRound: progress.blindTasteMaxItems ?? 0,
           selectedAromaFilter: progress.blindTasteAromaFilter,
           minAlcoholDegree: progress.blindTasteMinAlcohol,
           maxAlcoholDegree: progress.blindTasteMaxAlcohol,
         );
+
+        debugPrint('Progress restored successfully. Current item: ${currentItem?.name ?? "null"}');
         return true;
+      } else {
+        debugPrint('No question pool found in saved progress');
       }
+    } catch (e) {
+      debugPrint('Error restoring blind taste progress: $e');
+      await clearSavedProgress();
+      return false;
     }
+
+    debugPrint('Failed to restore progress');
     return false;
   }
 
