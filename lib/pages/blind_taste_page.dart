@@ -25,42 +25,54 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
   Future<void> _initializeBlindTaste() async {
     final settings = ref.read(settingsProvider);
     final blindTasteController = ref.read(blindTasteProvider.notifier);
+    final currentState = ref.read(blindTasteProvider);
+
+    // 检查当前状态是否已经有数据（可能已经在首页恢复了进度）
+    if (currentState.questionPool.isNotEmpty && currentState.currentItem != null) {
+      debugPrint('Blind taste state already initialized, skipping re-initialization');
+      return;
+    }
+
+    // 检查当前状态是否为空（可能已经被重置）
+    if (currentState.questionPool.isEmpty && currentState.currentItem == null) {
+      debugPrint('Blind taste state is empty, starting new session');
+      // 状态为空，直接开始新的品鉴
+      await blindTasteController.startNewTasting();
+      return;
+    }
 
     // 检查是否有保存的进度
     if (settings.enableProgressSave) {
       final hasSavedProgress = await blindTasteController.hasSavedProgress();
       if (hasSavedProgress && mounted) {
-        final description = await blindTasteController
-            .getSavedProgressDescription();
-        if (!mounted) return;
-
-        bool shouldRestore;
-        if (settings.enableDefaultContinueProgress) {
-          // 默认继续进度，不显示对话框
-          shouldRestore = true;
-        } else {
-          // 显示确认对话框
-          shouldRestore = await _showRestoreProgressDialog(description);
-        }
-
-        if (shouldRestore) {
-          final restored = await blindTasteController.restoreProgress();
-          if (!restored && mounted) {
-            // 清除旧进度并重新开始
-            await blindTasteController.clearSavedProgress();
-            await blindTasteController.startNewTasting();
+        // 直接恢复进度，不显示弹窗确认
+        debugPrint('Found saved progress, attempting to restore in page');
+        final restored = await blindTasteController.restoreProgress();
+        if (restored) {
+          debugPrint('Progress restored successfully in page');
+          // 成功恢复进度，检查是否需要加载下一题
+          final state = ref.read(blindTasteProvider);
+          if (state.isCompleted && !state.isRoundCompleted) {
+            // 如果当前题已完成但轮次未完成，自动进入下一题
+            await blindTasteController.nextQuestion();
           }
-        } else {
-          // 用户选择不恢复，清除保存的进度并重新开始
+          return;
+        } else if (mounted) {
+          debugPrint('Failed to restore progress, starting new session');
+          // 清除旧进度并重新开始
           await blindTasteController.clearSavedProgress();
+          // 先重置状态再开始新的品鉴
+          blindTasteController.reset();
           await blindTasteController.startNewTasting();
         }
       } else {
         // 没有保存的进度，直接开始
+        debugPrint('No saved progress, starting new session');
         await blindTasteController.startNewTasting();
       }
     } else {
       // 未启用进度保存，直接开始
+      debugPrint('Progress save disabled, starting new session');
       await blindTasteController.startNewTasting();
     }
   }
@@ -85,7 +97,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
               padding: const EdgeInsets.only(right: 16.0),
               child: Center(
                 child: Text(
-                  '${state.completedItemIds.length}/${state.totalItemsInPool}',
+                  '${state.completedItemIds.length + 1}/${state.totalItemsInPool}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                   ),
@@ -1353,42 +1365,5 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
         ),
       ),
     );
-  }
-
-  Future<bool> _showRestoreProgressDialog(String? description) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('恢复品鉴进度'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('检测到未完成的品鉴进度：'),
-                const SizedBox(height: 8),
-                Text(
-                  description ?? '未知进度',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text('是否要继续之前的品鉴？'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('重新开始'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('继续品鉴'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
   }
 }

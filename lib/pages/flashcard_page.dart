@@ -90,16 +90,30 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
     try {
       final settings = ref.read(settingsProvider);
       final flashcardController = ref.read(flashcardProvider.notifier);
+      final currentState = ref.read(flashcardProvider);
+
+      // 检查当前状态是否为空（可能已经被重置）
+      if (currentState.items.isEmpty) {
+        debugPrint('Flashcard state is empty, loading new flashcards');
+        // 状态为空，直接加载新的闪卡
+        await flashcardController.loadFlashcards(
+          randomOrder: settings.enableFlashcardRandomOrder,
+        );
+        _isInitialized = true;
+        return;
+      }
 
       // 检查是否有保存的进度
       if (settings.enableProgressSave) {
         final hasSavedProgress = await flashcardController.hasSavedProgress();
         if (hasSavedProgress && mounted) {
+          debugPrint('Found saved progress, attempting to restore');
           // 直接恢复进度，不显示弹窗确认
           final restored = await flashcardController.restoreProgress(
             randomOrder: settings.enableFlashcardRandomOrder,
           );
           if (!restored && mounted) {
+            debugPrint('Failed to restore progress, loading new flashcards');
             // 清除旧进度并重新开始
             await flashcardController.clearProgress();
             await flashcardController.loadFlashcards(
@@ -107,12 +121,14 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
             );
           }
         } else {
+          debugPrint('No saved progress, loading new flashcards');
           // 没有保存的进度，直接开始
           await flashcardController.loadFlashcards(
             randomOrder: settings.enableFlashcardRandomOrder,
           );
         }
       } else {
+        debugPrint('Progress save disabled, loading new flashcards');
         // 未启用进度保存，直接开始
         await flashcardController.loadFlashcards(
           randomOrder: settings.enableFlashcardRandomOrder,

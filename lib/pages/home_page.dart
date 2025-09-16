@@ -587,11 +587,15 @@ class _HomePageState extends ConsumerState<HomePage> {
             debugPrint('Failed to restore progress, will start new session');
             // 恢复失败（可能是设置不匹配），清除进度并重新开始
             await blindTasteController.clearSavedProgress();
+            // 重置状态，确保从头开始
+            blindTasteController.reset();
           }
         } else {
           debugPrint('User chose not to restore, clearing saved progress');
           // 用户选择不恢复，清除保存的进度
           await blindTasteController.clearSavedProgress();
+          // 重置状态，确保从头开始
+          blindTasteController.reset();
         }
       }
     }
@@ -636,10 +640,14 @@ class _HomePageState extends ConsumerState<HomePage> {
           } else {
             // 恢复失败（可能是设置不匹配），清除进度并重新开始
             await flashcardController.clearProgress();
+            // 重置状态，确保从头开始
+            flashcardController.reset();
           }
         } else {
           // 用户选择不恢复，清除保存的进度
           await flashcardController.clearProgress();
+          // 重置状态，确保从头开始
+          flashcardController.reset();
         }
       }
     }
