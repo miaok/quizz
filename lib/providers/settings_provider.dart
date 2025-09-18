@@ -173,6 +173,14 @@ class SettingsController extends StateNotifier<QuizSettings> {
     await _saveSettings(newSettings);
   }
 
+  // 更新多选题自动切题延迟设置
+  Future<void> updateMultipleChoiceAutoSwitchDelay(int delayMs) async {
+    final newSettings = state.copyWith(
+      multipleChoiceAutoSwitchDelay: delayMs,
+    );
+    await _saveSettings(newSettings);
+  }
+
   // 批量更新设置
   Future<void> updateSettings(QuizSettings settings) async {
     await _saveSettings(settings);

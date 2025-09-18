@@ -313,7 +313,7 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
     if (settings.enableBlindTasteAlcohol &&
         answer.selectedAlcoholDegree != null) {
       allChips.add(
-        _buildAnswerChip('${answer.selectedAlcoholDegree}°', Colors.orange),
+        _buildAnswerChip('${answer.selectedAlcoholDegree!.toInt()}°', Colors.orange),
       );
     }
 
@@ -662,9 +662,9 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
                   _buildComparisonRow(
                     '酒度',
                     glass.userAnswer!.selectedAlcoholDegree != null
-                        ? '${glass.userAnswer!.selectedAlcoholDegree}°'
+                        ? '${glass.userAnswer!.selectedAlcoholDegree!.toInt()}°'
                         : '未选择',
-                    '${glass.wineItem!.alcoholDegree}°',
+                    '${glass.wineItem!.alcoholDegree.toInt()}°',
                   ),
                 if (settings.enableBlindTasteScore)
                   _buildComparisonRow(
@@ -911,19 +911,24 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
 
                     const SizedBox(height: 8),
 
-                    // 香型和酒度选择
-                    if (settings.enableBlindTasteAroma ||
-                        settings.enableBlindTasteAlcohol)
-                      _buildAromaAndAlcoholSection(settings),
+                    // 香型选择
+                    if (settings.enableBlindTasteAroma)
+                      _buildAromaSection(),
 
-                    if (settings.enableBlindTasteAroma ||
-                        settings.enableBlindTasteAlcohol)
+                    if (settings.enableBlindTasteAroma)
                       const SizedBox(height: 6),
 
-                    // 总分选择
+                    // 总分选择（移到酒度之前）
                     if (settings.enableBlindTasteScore) _buildScoreSection(),
 
                     if (settings.enableBlindTasteScore)
+                      const SizedBox(height: 6),
+
+                    // 酒度选择（移到总分之后）
+                    if (settings.enableBlindTasteAlcohol)
+                      _buildAlcoholSection(),
+
+                    if (settings.enableBlindTasteAlcohol)
                       const SizedBox(height: 6),
 
                     // 设备选择
@@ -997,199 +1002,165 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
     );
   }
 
-  Widget _buildAromaAndAlcoholSection(dynamic settings) {
-    final List<Widget> children = [];
-
-    // 香型选择
-    if (settings.enableBlindTasteAroma) {
-      children.add(Expanded(child: _buildAromaSelection()));
-    }
-
-    // 酒度选择
-    if (settings.enableBlindTasteAlcohol) {
-      if (children.isNotEmpty) {
-        children.add(const SizedBox(width: 12));
-      }
-      children.add(Expanded(child: _buildAlcoholSelection()));
-    }
-
-    if (children.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
+  Widget _buildAromaSection() {
     return Card(
       elevation: 1,
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(6.0),
-        child: Row(children: children),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  '香型',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const Spacer(),
+                if (_currentAnswer.selectedAroma != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _currentAnswer.selectedAroma!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<String>(
+              initialValue: _currentAnswer.selectedAroma,
+              decoration: InputDecoration(
+                hintText: '选择香型',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 6,
+                ),
+              ),
+              dropdownColor: Theme.of(context).colorScheme.surface,
+              menuMaxHeight: 300,
+              items: BlindTasteOptions.aromaTypes.map((aroma) {
+                return DropdownMenuItem(
+                  value: aroma,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                    child: Text(
+                      aroma,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  HapticManager.medium();
+                  setState(() {
+                    _currentAnswer = BlindTasteAnswer(
+                      selectedAroma: value,
+                      selectedAlcoholDegree: _currentAnswer.selectedAlcoholDegree,
+                      selectedTotalScore: _currentAnswer.selectedTotalScore,
+                      selectedEquipment: List.from(
+                        _currentAnswer.selectedEquipment,
+                      ),
+                      selectedFermentationAgent: List.from(
+                        _currentAnswer.selectedFermentationAgent,
+                      ),
+                    );
+                  });
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildAromaSelection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+  Widget _buildAlcoholSection() {
+    return Card(
+      elevation: 1,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(6.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '香型',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const Spacer(),
-            if (_currentAnswer.selectedAroma != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(6),
+            Row(
+              children: [
+                Text(
+                  '酒度',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                child: Text(
-                  _currentAnswer.selectedAroma!,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                const Spacer(),
+                if (_currentAnswer.selectedAlcoholDegree != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '答案: ${_currentAnswer.selectedAlcoholDegree!.toInt()}°',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
                   ),
-                ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: BlindTasteOptions.alcoholDegrees.map((degree) {
+                final isSelected = _currentAnswer.selectedAlcoholDegree == degree;
+                return FilterChip(
+                  label: Text('${degree.toInt()}°'),
+                  selected: isSelected,
+                  onSelected: (_) {
+                    HapticManager.medium();
+                    setState(() {
+                      _currentAnswer = BlindTasteAnswer(
+                        selectedAroma: _currentAnswer.selectedAroma,
+                        selectedAlcoholDegree: degree,
+                        selectedTotalScore: _currentAnswer.selectedTotalScore,
+                        selectedEquipment: List.from(
+                          _currentAnswer.selectedEquipment,
+                        ),
+                        selectedFermentationAgent: List.from(
+                          _currentAnswer.selectedFermentationAgent,
+                        ),
+                      );
+                    });
+                  },
+                  selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                  showCheckmark: false, // 隐藏对勾
+                );
+              }).toList(),
+            ),
           ],
         ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          initialValue: _currentAnswer.selectedAroma,
-          decoration: InputDecoration(
-            hintText: '选择香型',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 8,
-              vertical: 6,
-            ),
-          ),
-          dropdownColor: Theme.of(context).colorScheme.surface,
-          menuMaxHeight: 300,
-          items: BlindTasteOptions.aromaTypes.map((aroma) {
-            return DropdownMenuItem(
-              value: aroma,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                child: Text(
-                  aroma,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-          onChanged: (value) {
-            if (value != null) {
-              HapticManager.medium();
-              setState(() {
-                _currentAnswer = BlindTasteAnswer(
-                  selectedAroma: value,
-                  selectedAlcoholDegree: _currentAnswer.selectedAlcoholDegree,
-                  selectedTotalScore: _currentAnswer.selectedTotalScore,
-                  selectedEquipment: List.from(
-                    _currentAnswer.selectedEquipment,
-                  ),
-                  selectedFermentationAgent: List.from(
-                    _currentAnswer.selectedFermentationAgent,
-                  ),
-                );
-              });
-            }
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAlcoholSelection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              '酒度',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const Spacer(),
-            if (_currentAnswer.selectedAlcoholDegree != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '${_currentAnswer.selectedAlcoholDegree}°',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<double>(
-          initialValue: _currentAnswer.selectedAlcoholDegree,
-          decoration: InputDecoration(
-            hintText: '选择酒度',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 6,
-            ),
-          ),
-          dropdownColor: Theme.of(context).colorScheme.surface,
-          menuMaxHeight: 300,
-          items: BlindTasteOptions.alcoholDegrees.map((degree) {
-            return DropdownMenuItem(
-              value: degree,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                child: Text(
-                  '$degree°',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-          onChanged: (value) {
-            if (value != null) {
-              HapticManager.medium();
-              setState(() {
-                _currentAnswer = BlindTasteAnswer(
-                  selectedAroma: _currentAnswer.selectedAroma,
-                  selectedAlcoholDegree: value,
-                  selectedTotalScore: _currentAnswer.selectedTotalScore,
-                  selectedEquipment: List.from(
-                    _currentAnswer.selectedEquipment,
-                  ),
-                  selectedFermentationAgent: List.from(
-                    _currentAnswer.selectedFermentationAgent,
-                  ),
-                );
-              });
-            }
-          },
-        ),
-      ],
+      ),
     );
   }
 

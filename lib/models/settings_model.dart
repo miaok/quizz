@@ -28,6 +28,7 @@ class QuizSettings {
   final int wineSimulationSampleCount; // 酒样练习模式的酒杯数量
   final double wineSimulationDuplicateProbability; // 酒样练习重复概率 (0.0-1.0)
   final int wineSimulationMaxDuplicateGroups; // 酒样练习最大重复组数
+  final int multipleChoiceAutoSwitchDelay; // 多选题自动切题延迟时间（毫秒），范围1000-10000ms
 
   const QuizSettings({
     this.singleChoiceCount = 33,
@@ -49,6 +50,7 @@ class QuizSettings {
     this.wineSimulationSampleCount = 5, // 默认酒样练习模式酒杯数量为5
     this.wineSimulationDuplicateProbability = 0.3, // 默认30%概率出现重复酒样
     this.wineSimulationMaxDuplicateGroups = 1, // 默认最多1组重复酒样
+    this.multipleChoiceAutoSwitchDelay = 1200, // 默认多选题自动切题延迟1200ms
   });
 
   QuizSettings copyWith({
@@ -71,6 +73,7 @@ class QuizSettings {
     int? wineSimulationSampleCount,
     double? wineSimulationDuplicateProbability,
     int? wineSimulationMaxDuplicateGroups,
+    int? multipleChoiceAutoSwitchDelay,
   }) {
     return QuizSettings(
       singleChoiceCount: singleChoiceCount ?? this.singleChoiceCount,
@@ -105,6 +108,8 @@ class QuizSettings {
       wineSimulationMaxDuplicateGroups:
           wineSimulationMaxDuplicateGroups ??
           this.wineSimulationMaxDuplicateGroups,
+      multipleChoiceAutoSwitchDelay:
+          multipleChoiceAutoSwitchDelay ?? this.multipleChoiceAutoSwitchDelay,
     );
   }
 
@@ -134,6 +139,7 @@ class QuizSettings {
       'wineSimulationSampleCount': wineSimulationSampleCount,
       'wineSimulationDuplicateProbability': wineSimulationDuplicateProbability,
       'wineSimulationMaxDuplicateGroups': wineSimulationMaxDuplicateGroups,
+      'multipleChoiceAutoSwitchDelay': multipleChoiceAutoSwitchDelay,
     };
   }
 
@@ -165,6 +171,8 @@ class QuizSettings {
           json['wineSimulationDuplicateProbability'] ?? 0.3,
       wineSimulationMaxDuplicateGroups:
           json['wineSimulationMaxDuplicateGroups'] ?? 1,
+      multipleChoiceAutoSwitchDelay:
+          json['multipleChoiceAutoSwitchDelay'] ?? 1200,
     );
   }
 
@@ -192,7 +200,8 @@ class QuizSettings {
         other.wineSimulationDuplicateProbability ==
             wineSimulationDuplicateProbability &&
         other.wineSimulationMaxDuplicateGroups ==
-            wineSimulationMaxDuplicateGroups;
+            wineSimulationMaxDuplicateGroups &&
+        other.multipleChoiceAutoSwitchDelay == multipleChoiceAutoSwitchDelay;
   }
 
   @override
@@ -215,7 +224,8 @@ class QuizSettings {
         practiceShuffleMode.hashCode ^
         wineSimulationSampleCount.hashCode ^
         wineSimulationDuplicateProbability.hashCode ^
-        wineSimulationMaxDuplicateGroups.hashCode;
+        wineSimulationMaxDuplicateGroups.hashCode ^
+        multipleChoiceAutoSwitchDelay.hashCode;
   }
 
   // 解析练习模式乱序模式

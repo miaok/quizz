@@ -563,9 +563,7 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
   Widget _buildCompactInfoTags(FlashcardModel card) {
     return Column(
       children: [
-        _buildInfoTag('香型', card.item.aroma, Icons.local_florist),
-        const SizedBox(height: 12),
-        _buildInfoTag('酒度', '${card.item.alcoholDegree}°', Icons.thermostat),
+        _buildInfoTag('酒度', '${card.item.alcoholDegree.round()}°', Icons.thermostat),
         const SizedBox(height: 12),
         _buildInfoTag('总分', '${card.item.totalScore}分', Icons.star),
         if (card.item.equipment.isNotEmpty) ...[

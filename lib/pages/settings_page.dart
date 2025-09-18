@@ -535,6 +535,98 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     );
   }
 
+  // 多选题切题延迟时间设置卡片
+  Widget _buildMultipleChoiceDelayCard(
+    QuizSettings settings,
+    SettingsController controller,
+  ) {
+    // 确保字段不为空，如果为空则使用默认值
+    final delayMs = settings.multipleChoiceAutoSwitchDelay ?? 1200;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.timer,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '多选题切题延迟',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      '设置多选题自动切换到下一题的延迟时间，给予充分时间选择多个选项',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${(delayMs / 1000).toStringAsFixed(1)}秒',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Slider(
+            value: delayMs.toDouble(),
+            min: 1000.0,
+            max: 10000.0,
+            divisions: 90, // 每100ms一个分段
+            onChanged: (value) {
+              HapticManager.selection();
+              controller.updateMultipleChoiceAutoSwitchDelay(value.round());
+            },
+            activeColor: Theme.of(context).colorScheme.primary,
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '1.0秒',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              Text(
+                '10.0秒',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   // 考试时间设置区域
   Widget _buildExamTimeSection(
     QuizSettings settings,
@@ -618,6 +710,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           onChanged: controller.updateAutoNextQuestion,
         ),
         const SizedBox(height: 8),
+        _buildMultipleChoiceDelayCard(settings, controller),
+        const SizedBox(height: 8),
         _buildPracticeShuffleModeSelector(settings, controller),
       ],
     );
@@ -630,12 +724,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   ) {
     return Column(
       children: [
-        _buildSwitchTile(
+        _buildDisabledSwitchTile(
           title: '香型品评',
-          subtitle: '学习香型',
+          subtitle: '功能暂时关闭',
           icon: Icons.local_florist,
-          value: settings.enableBlindTasteAroma,
-          onChanged: controller.updateEnableBlindTasteAroma,
         ),
         const SizedBox(height: 8),
         _buildSwitchTile(
@@ -848,6 +940,57 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               HapticManager.medium();
               onChanged(newValue);
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 禁用状态的开关组件
+  Widget _buildDisabledSwitchTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainer.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: false,
+            onChanged: null, // 禁用开关
           ),
         ],
       ),

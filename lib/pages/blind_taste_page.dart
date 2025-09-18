@@ -25,41 +25,36 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
   }
 
   // 统一的按钮样式方法
-  ButtonStyle _secondaryButtonStyle(BuildContext context) => OutlinedButton.styleFrom(
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-    side: BorderSide(
-      color: Theme.of(context).colorScheme.outline,
-    ),
-  );
+  ButtonStyle _secondaryButtonStyle(BuildContext context) =>
+      OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
+      );
 
   // 跳过按钮样式（统一样式）
-  ButtonStyle _skipButtonStyle(BuildContext context) => ElevatedButton.styleFrom(
-    backgroundColor: Theme.of(context).colorScheme.surface,
-    foregroundColor: Theme.of(context).colorScheme.onSurface,
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-    elevation: 1,
-    side: BorderSide(
-      color: Theme.of(context).colorScheme.outline,
-      width: 1,
-    ),
-  );
+  ButtonStyle _skipButtonStyle(BuildContext context) =>
+      ElevatedButton.styleFrom(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 1,
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outline,
+          width: 1,
+        ),
+      );
 
   // 提交按钮样式（统一样式但颜色不同）
-  ButtonStyle _submitButtonStyle(BuildContext context) => ElevatedButton.styleFrom(
-    backgroundColor: Theme.of(context).colorScheme.primary,
-    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-    elevation: 2,
-  );
+  ButtonStyle _submitButtonStyle(BuildContext context) =>
+      ElevatedButton.styleFrom(
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 2,
+      );
 
   Future<void> _initializeBlindTaste() async {
     final settings = ref.read(settingsProvider);
@@ -318,19 +313,20 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
 
           const SizedBox(height: 12),
 
-          // 香型和酒度选择（根据设置显示）
-          if (settings.enableBlindTasteAroma ||
-              settings.enableBlindTasteAlcohol)
-            _buildAromaAndAlcoholSection(state, settings),
+          // 香型选择（根据设置显示）
+          if (settings.enableBlindTasteAroma) _buildAromaSection(state),
 
-          if (settings.enableBlindTasteAroma ||
-              settings.enableBlindTasteAlcohol)
-            const SizedBox(height: 8),
+          if (settings.enableBlindTasteAroma) const SizedBox(height: 8),
 
           // 总分调整（根据设置显示）
           if (settings.enableBlindTasteScore) _buildTotalScoreSection(state),
 
           if (settings.enableBlindTasteScore) const SizedBox(height: 8),
+
+          // 酒度选择（根据设置显示，放在总分下方）
+          if (settings.enableBlindTasteAlcohol) _buildAlcoholSection(state),
+
+          if (settings.enableBlindTasteAlcohol) const SizedBox(height: 8),
 
           // 设备选择（根据设置显示）
           if (settings.enableBlindTasteEquipment) _buildEquipmentSection(state),
@@ -397,176 +393,154 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     );
   }
 
-  Widget _buildAromaAndAlcoholSection(BlindTasteState state, settings) {
-    final List<Widget> children = [];
-
-    // 香型选择（根据设置显示）
-    if (settings.enableBlindTasteAroma) {
-      children.add(Expanded(child: _buildAromaSelection(state)));
-    }
-
-    // 酒度选择（根据设置显示）
-    if (settings.enableBlindTasteAlcohol) {
-      if (children.isNotEmpty) {
-        children.add(const SizedBox(width: 12));
-      }
-      children.add(Expanded(child: _buildAlcoholSelection(state)));
-    }
-
-    if (children.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
+  Widget _buildAromaSection(BlindTasteState state) {
     return Card(
       elevation: 1,
       child: Padding(
         padding: const EdgeInsets.all(10.0),
-        child: Row(children: children),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  '香型',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const Spacer(),
+                if (state.userAnswer.selectedAroma != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      state.userAnswer.selectedAroma!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            DropdownButtonFormField<String>(
+              initialValue: state.userAnswer.selectedAroma,
+              decoration: const InputDecoration(
+                hintText: '请选择',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
+                isDense: true,
+              ),
+              style: TextStyle(
+                fontSize: 16,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              dropdownColor: Theme.of(context).colorScheme.surface,
+              menuMaxHeight: 300,
+              items: BlindTasteOptions.aromaTypes.map((aroma) {
+                return DropdownMenuItem(
+                  value: aroma,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 2,
+                      horizontal: 4,
+                    ),
+                    child: Text(
+                      aroma,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  HapticManager.medium();
+                  ref.read(blindTasteProvider.notifier).selectAroma(value);
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildAromaSelection(BlindTasteState state) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+  Widget _buildAlcoholSection(BlindTasteState state) {
+    return Card(
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(10.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '香型',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const Spacer(),
-            if (state.userAnswer.selectedAroma != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(6),
+            Row(
+              children: [
+                Text(
+                  '酒度',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                child: Text(
-                  state.userAnswer.selectedAroma!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    fontSize: 10,
+                const Spacer(),
+                if (state.userAnswer.selectedAlcoholDegree != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '答案: ${state.userAnswer.selectedAlcoholDegree!.toInt()}°',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        fontSize: 10,
+                      ),
+                    ),
                   ),
-                ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: BlindTasteOptions.alcoholDegrees.map((degree) {
+                final isSelected =
+                    state.userAnswer.selectedAlcoholDegree == degree;
+                return FilterChip(
+                  label: Text('${degree.toInt()}°'),
+                  selected: isSelected,
+                  onSelected: (_) {
+                    HapticManager.medium();
+                    ref
+                        .read(blindTasteProvider.notifier)
+                        .selectAlcoholDegree(degree);
+                  },
+                  selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                  showCheckmark: false, // 隐藏对勾
+                );
+              }).toList(),
+            ),
           ],
         ),
-        const SizedBox(height: 4),
-        DropdownButtonFormField<String>(
-          initialValue: state.userAnswer.selectedAroma,
-          decoration: const InputDecoration(
-            hintText: '请选择',
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            isDense: true,
-          ),
-          style: TextStyle(
-            fontSize: 16,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          dropdownColor: Theme.of(context).colorScheme.surface,
-          menuMaxHeight: 300,
-          items: BlindTasteOptions.aromaTypes.map((aroma) {
-            return DropdownMenuItem(
-              value: aroma,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                child: Text(
-                  aroma,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-          onChanged: (value) {
-            if (value != null) {
-              HapticManager.medium();
-              ref.read(blindTasteProvider.notifier).selectAroma(value);
-            }
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAlcoholSelection(BlindTasteState state) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              '酒度',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const Spacer(),
-            if (state.userAnswer.selectedAlcoholDegree != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '${state.userAnswer.selectedAlcoholDegree}°',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        DropdownButtonFormField<double>(
-          initialValue: state.userAnswer.selectedAlcoholDegree,
-          decoration: const InputDecoration(
-            hintText: '请选择',
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            isDense: true,
-          ),
-          style: TextStyle(
-            fontSize: 14,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          dropdownColor: Theme.of(context).colorScheme.surface,
-          menuMaxHeight: 300,
-          items: BlindTasteOptions.alcoholDegrees.map((degree) {
-            return DropdownMenuItem(
-              value: degree,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                child: Text(
-                  '$degree°',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-          onChanged: (value) {
-            if (value != null) {
-              HapticManager.medium();
-              ref.read(blindTasteProvider.notifier).selectAlcoholDegree(value);
-            }
-          },
-        ),
-      ],
+      ),
     );
   }
 
@@ -916,17 +890,11 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                         Text(
                           item.name,
                           style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${item.aroma} • ${item.alcoholDegree}° • ${item.totalScore.toStringAsFixed(1)}分',
-                          style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
                               ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
@@ -973,9 +941,9 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                     _buildComparisonRow(
                       '酒度',
                       state.userAnswer.selectedAlcoholDegree != null
-                          ? '${state.userAnswer.selectedAlcoholDegree}°'
+                          ? '${state.userAnswer.selectedAlcoholDegree!.toInt()}°'
                           : '未选择',
-                      '${item.alcoholDegree}°',
+                      '${item.alcoholDegree.toInt()}°',
                     ),
                   if (settings.enableBlindTasteScore)
                     _buildComparisonRow(

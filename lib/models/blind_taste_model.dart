@@ -248,16 +248,7 @@ class BlindTasteOptions {
   ];
 
   // 酒度选项 (常见酒度)
-  static const List<double> alcoholDegrees = [
-    30.0,
-    42.0,
-    45.0,
-    50.0,
-    52.0,
-    53.0,
-    54.0,
-    55.0,
-  ];
+  static const List<double> alcoholDegrees = [32, 45, 50, 52, 53, 54, 55];
 
   // 设备选项
   static const List<String> equipmentTypes = [
@@ -265,7 +256,7 @@ class BlindTasteOptions {
     '地缸',
     '石窖',
     '砖窖',
-    '水泥窖',
+    '水泥池',
     '瓷砖窖',
     '陶罐',
     '发酵罐',

@@ -60,7 +60,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   static const double _buttonRadius = 10.0;
   static const EdgeInsets _optionPadding = EdgeInsets.symmetric(
     horizontal: 12, // 减小水平内边距
-    vertical: 4,    // 大幅减小垂直内边距
+    vertical: 4, // 大幅减小垂直内边距
   );
   static const EdgeInsets _buttonPadding = EdgeInsets.symmetric(
     vertical: 12,
@@ -215,23 +215,6 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         }
       });
 
-      // 显示成功提示
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              const Text('回答正确！'),
-            ],
-          ),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          duration: const Duration(milliseconds: 1000),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
-
       // 延迟1秒后切换到下一题，让用户看到绿色高亮
       Future.delayed(const Duration(milliseconds: 1000), () {
         if (mounted) {
@@ -249,24 +232,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       HapticManager.wrongAnswer();
       setState(() {
         _showingWrongAnswer = true;
+        _isProcessingAnswer = false; // 立即恢复其他选项的正常状态，允许重新选择
       });
-
-      // 显示错误提示
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              const Text('回答错误，请重新选择'),
-            ],
-          ),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          duration: const Duration(milliseconds: 1000),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
 
       // 延迟重置答案，让用户看到错误选项的高亮显示
       Future.delayed(const Duration(milliseconds: 1000), () {
@@ -277,7 +244,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             currentAnswer = null;
             multipleAnswers.clear();
             _showingWrongAnswer = false;
-            _isProcessingAnswer = false; // 重置处理状态
+            // _isProcessingAnswer 已经在错误发生时立即设为 false，这里不需要再次设置
           });
         }
       });
@@ -289,8 +256,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     // 取消之前的检查定时器
     _multipleChoiceCheckTimer?.cancel();
 
-    // 设置1.2秒后检查答案
-    _multipleChoiceCheckTimer = Timer(const Duration(milliseconds: 1200), () {
+    // 设置自定义延迟后检查答案
+    _multipleChoiceCheckTimer = Timer(Duration(milliseconds: ref.read(settingsProvider).multipleChoiceAutoSwitchDelay ?? 1200), () {
       if (mounted) {
         _handlePracticeModeAnswer(controller);
       }
@@ -309,15 +276,15 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     if (settings.autoNextQuestion && !quizState.isLastQuestion) {
       setState(() {
         _isAutoSwitching = true;
-        _isProcessingAnswer = true; // 设置处理状态，防止快速点击
+        // 不在这里设置 _isProcessingAnswer = true，让用户能继续选择其他选项
       });
 
-      // 设置1.2秒后自动切换到下一题并添加切题震动
-      _multipleChoiceCheckTimer = Timer(const Duration(milliseconds: 1200), () {
+      // 设置自定义延迟后自动切换到下一题并添加切题震动
+      _multipleChoiceCheckTimer = Timer(Duration(milliseconds: settings.multipleChoiceAutoSwitchDelay ?? 1200), () {
         if (mounted && !quizState.isLastQuestion) {
           HapticManager.switchQuestion();
           setState(() {
-            _isProcessingAnswer = false; // 重置处理状态
+            _isProcessingAnswer = true; // 只在切题前禁用选项
           });
           _autoSwitchToNext(controller);
         }
@@ -796,8 +763,16 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     bool isWrongAnswer = false,
     bool isCorrectAnswer = false,
     bool isHintAnswer = false,
+    bool isDisabled = false,
   }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // 禁用状态下，只有未选择的选项背景略微变灰，已选择的选项保持正常状态
+    if (isDisabled && !isSelected) {
+      return isDarkMode
+          ? Theme.of(context).cardColor.withValues(alpha: 0.7)
+          : Theme.of(context).cardColor.withValues(alpha: 0.8);
+    }
 
     if (isCorrectAnswer && isSelected) {
       return Theme.of(context).colorScheme.primaryContainer;
@@ -831,8 +806,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     bool isWrongAnswer = false,
     bool isCorrectAnswer = false,
     bool isHintAnswer = false,
+    bool isDisabled = false,
   }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // 禁用状态下，只有未选择的选项边框轻微变灰
+    if (isDisabled && !isSelected) {
+      return Theme.of(context).colorScheme.outline.withValues(alpha: 0.2);
+    }
 
     if (isCorrectAnswer && isSelected) {
       return Theme.of(context).colorScheme.primary;
@@ -862,8 +843,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     bool isWrongAnswer = false,
     bool isCorrectAnswer = false,
     bool isHintAnswer = false,
+    bool isDisabled = false,
   }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // 禁用状态下，只有未选择的选项文字轻微变灰
+    if (isDisabled && !isSelected) {
+      return Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+    }
 
     if (isCorrectAnswer && isSelected) {
       return Theme.of(context).colorScheme.onPrimaryContainer;
@@ -951,9 +938,11 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       curve: Curves.easeInOut,
       margin: const EdgeInsets.only(bottom: 8),
       child: Material(
-        elevation: isSelected ? 3 : 1,
+        elevation: (_isProcessingAnswer && !isSelected) ? 0.5 : (isSelected ? 3 : 1),
         borderRadius: BorderRadius.circular(_optionCardRadius),
-        shadowColor: isCorrectAnswer
+        shadowColor: (_isProcessingAnswer && !isSelected)
+            ? Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1)
+            : isCorrectAnswer
             ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)
             : isWrongAnswer
             ? Theme.of(context).colorScheme.error.withValues(alpha: 0.3)
@@ -973,6 +962,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               isWrongAnswer: isWrongAnswer,
               isCorrectAnswer: isCorrectAnswer,
               isHintAnswer: isHintAnswer,
+              isDisabled: _isProcessingAnswer,
             ),
             borderRadius: BorderRadius.circular(_optionCardRadius),
             border: Border.all(
@@ -983,6 +973,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 isWrongAnswer: isWrongAnswer,
                 isCorrectAnswer: isCorrectAnswer,
                 isHintAnswer: isHintAnswer,
+                isDisabled: _isProcessingAnswer,
               ),
               width: isSelected ? 2 : 1,
             ),
@@ -1001,7 +992,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isSelected
+                    color: (_isProcessingAnswer && !isSelected)
+                        ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)
+                        : isSelected
                         ? (isCorrectAnswer
                               ? Colors.green.shade700
                               : isWrongAnswer
@@ -1042,8 +1035,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   isWrongAnswer: isWrongAnswer,
                   isCorrectAnswer: isCorrectAnswer,
                   isHintAnswer: isHintAnswer,
+                  isDisabled: _isProcessingAnswer,
                 ),
-                fontSize: 20, // 增大单选题字体大小
+                fontSize: 18, // 增大单选题字体大小
                 height: 1.4,
               ),
               child: Text(option),
@@ -1088,7 +1082,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     // 练习模式：立即判断对错
     if (quizState.mode == QuizMode.practice) {
       _handlePracticeModeAnswer(controller);
-      _startOptionLockTimer();
+      // 不启动选项锁定定时器，因为：
+      // - 如果答对，_handlePracticeModeAnswer 会保持 _isProcessingAnswer = true 直到切题
+      // - 如果答错，_handlePracticeModeAnswer 会立即重置 _isProcessingAnswer = false，允许重新选择
       return;
     }
 
@@ -1419,6 +1415,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   void _autoSwitchToNext(QuizController controller) {
     setState(() {
       _isAutoSwitching = false; // 动画开始时重置状态
+      _isProcessingAnswer = false; // 重置处理状态，允许下一题的选项点击
     });
 
     if (_pageController.hasClients) {
