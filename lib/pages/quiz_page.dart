@@ -257,11 +257,16 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _multipleChoiceCheckTimer?.cancel();
 
     // 设置自定义延迟后检查答案
-    _multipleChoiceCheckTimer = Timer(Duration(milliseconds: ref.read(settingsProvider).multipleChoiceAutoSwitchDelay ?? 1200), () {
-      if (mounted) {
-        _handlePracticeModeAnswer(controller);
-      }
-    });
+    _multipleChoiceCheckTimer = Timer(
+      Duration(
+        milliseconds: ref.read(settingsProvider).multipleChoiceAutoSwitchDelay,
+      ),
+      () {
+        if (mounted) {
+          _handlePracticeModeAnswer(controller);
+        }
+      },
+    );
   }
 
   // 安排考试模式下多选题的延迟切题（给用户时间选择多个选项）
@@ -280,15 +285,18 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       });
 
       // 设置自定义延迟后自动切换到下一题并添加切题震动
-      _multipleChoiceCheckTimer = Timer(Duration(milliseconds: settings.multipleChoiceAutoSwitchDelay ?? 1200), () {
-        if (mounted && !quizState.isLastQuestion) {
-          HapticManager.switchQuestion();
-          setState(() {
-            _isProcessingAnswer = true; // 只在切题前禁用选项
-          });
-          _autoSwitchToNext(controller);
-        }
-      });
+      _multipleChoiceCheckTimer = Timer(
+        Duration(milliseconds: settings.multipleChoiceAutoSwitchDelay),
+        () {
+          if (mounted && !quizState.isLastQuestion) {
+            HapticManager.switchQuestion();
+            setState(() {
+              _isProcessingAnswer = true; // 只在切题前禁用选项
+            });
+            _autoSwitchToNext(controller);
+          }
+        },
+      );
     }
   }
 
@@ -938,7 +946,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       curve: Curves.easeInOut,
       margin: const EdgeInsets.only(bottom: 8),
       child: Material(
-        elevation: (_isProcessingAnswer && !isSelected) ? 0.5 : (isSelected ? 3 : 1),
+        elevation: (_isProcessingAnswer && !isSelected)
+            ? 0.5
+            : (isSelected ? 3 : 1),
         borderRadius: BorderRadius.circular(_optionCardRadius),
         shadowColor: (_isProcessingAnswer && !isSelected)
             ? Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1)
@@ -993,7 +1003,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: (_isProcessingAnswer && !isSelected)
-                        ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.outline.withValues(alpha: 0.3)
                         : isSelected
                         ? (isCorrectAnswer
                               ? Colors.green.shade700

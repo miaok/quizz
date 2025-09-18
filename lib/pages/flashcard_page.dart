@@ -93,8 +93,7 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
       final currentState = ref.read(flashcardProvider);
 
       // 检查当前状态是否已经有数据（可能已经在首页恢复了进度）
-      if (currentState.items.isNotEmpty &&
-          !currentState.isRoundCompleted) {
+      if (currentState.items.isNotEmpty && !currentState.isRoundCompleted) {
         debugPrint(
           'Flashcard state already initialized, skipping re-initialization',
         );
@@ -124,16 +123,12 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
 
     // 监听触感设置变化并更新HapticManager
     ref.listen<HapticSettings>(hapticSettingsProvider, (previous, current) {
-      HapticManager.updateSettings(
-        hapticEnabled: current.hapticEnabled,
-      );
+      HapticManager.updateSettings(hapticEnabled: current.hapticEnabled);
     });
 
     // 初始化时也要更新设置
     final hapticSettings = ref.read(hapticSettingsProvider);
-    HapticManager.updateSettings(
-      hapticEnabled: hapticSettings.hapticEnabled,
-    );
+    HapticManager.updateSettings(hapticEnabled: hapticSettings.hapticEnabled);
 
     return PopScope(
       canPop: true,
@@ -563,7 +558,11 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
   Widget _buildCompactInfoTags(FlashcardModel card) {
     return Column(
       children: [
-        _buildInfoTag('酒度', '${card.item.alcoholDegree.round()}°', Icons.thermostat),
+        _buildInfoTag(
+          '酒度',
+          '${card.item.alcoholDegree.round()}°',
+          Icons.thermostat,
+        ),
         const SizedBox(height: 12),
         _buildInfoTag('总分', '${card.item.totalScore}分', Icons.star),
         if (card.item.equipment.isNotEmpty) ...[

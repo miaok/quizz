@@ -171,10 +171,18 @@ class _HomePageState extends ConsumerState<HomePage> {
       _FeatureCard(
         title: '酒样闪卡',
         subtitle: '记忆酒样特征，提升识别能力',
-        icon: Icons.psychology,
+        icon: Icons.card_membership,
         color: Colors.purple,
         onTap: () => _startFlashcard(context, ref),
         isLarge: false,
+      ),
+      _FeatureCard(
+        title: '模拟品评',
+        subtitle: '模拟流程，提升经验',
+        icon: Icons.local_bar,
+        color: Colors.teal,
+        onTap: () => appRouter.goToWineSimulation(),
+        isLarge: true,
       ),
       _FeatureCard(
         title: '酒样练习',
@@ -182,14 +190,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         icon: Icons.wine_bar,
         color: Colors.red,
         onTap: () => _startBlindTaste(context, ref),
-        isLarge: true,
-      ),
-      _FeatureCard(
-        title: '模拟品评',
-        subtitle: '专业品评流程，提升实战经验',
-        icon: Icons.local_bar,
-        color: Colors.teal,
-        onTap: () => appRouter.goToWineSimulation(),
         isLarge: false,
       ),
       _FeatureCard(

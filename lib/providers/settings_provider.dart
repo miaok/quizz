@@ -150,6 +150,15 @@ class SettingsController extends StateNotifier<QuizSettings> {
   }
 
   // 更新酒样练习模式酒杯数量设置
+  // 更新同酒样系列模式开关
+  Future<void> updateEnableWineSimulationSameWineSeries(bool enable) async {
+    final newSettings = state.copyWith(
+      enableWineSimulationSameWineSeries: enable,
+      wineSimulationSampleCount: enable ? 5 : state.wineSimulationSampleCount,
+    );
+    await _saveSettings(newSettings);
+  }
+
   Future<void> updateWineSimulationSampleCount(int count) async {
     final newSettings = state.copyWith(wineSimulationSampleCount: count);
     await _saveSettings(newSettings);
@@ -175,9 +184,7 @@ class SettingsController extends StateNotifier<QuizSettings> {
 
   // 更新多选题自动切题延迟设置
   Future<void> updateMultipleChoiceAutoSwitchDelay(int delayMs) async {
-    final newSettings = state.copyWith(
-      multipleChoiceAutoSwitchDelay: delayMs,
-    );
+    final newSettings = state.copyWith(multipleChoiceAutoSwitchDelay: delayMs);
     await _saveSettings(newSettings);
   }
 

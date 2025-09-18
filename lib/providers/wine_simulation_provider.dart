@@ -109,7 +109,10 @@ class WineSimulationNotifier extends StateNotifier<WineSimulationState> {
 
       // 获取设置中的酒杯数量
       final settings = _ref.read(settingsProvider);
-      final glassCount = settings.wineSimulationSampleCount;
+      final bool enableSameSeries = settings.enableWineSimulationSameWineSeries;
+      final int glassCount = enableSameSeries
+          ? 5
+          : settings.wineSimulationSampleCount;
 
       // 获取所有可用的酒样
       final allWines = await _service.getAllItems();
@@ -119,7 +122,9 @@ class WineSimulationNotifier extends StateNotifier<WineSimulationState> {
       }
 
       // 生成酒样分配（包含重复酒样）
-      final wineAssignment = _generateWineAssignment(allWines, glassCount);
+      final wineAssignment = enableSameSeries
+          ? _generateSameWineSeries(allWines, glassCount)
+          : _generateWineAssignment(allWines, glassCount);
 
       // 创建酒杯状态列表
       final wineGlasses = List.generate(glassCount, (index) {
@@ -143,6 +148,49 @@ class WineSimulationNotifier extends StateNotifier<WineSimulationState> {
   }
 
   /// 生成酒样分配（包含重复酒样逻辑）
+  /// 生成同酒样系列的酒样分配
+  Map<String, dynamic> _generateSameWineSeries(
+    List<BlindTasteItemModel> allWines,
+    int glassCount,
+  ) {
+    if (allWines.isEmpty || glassCount <= 0) {
+      return {
+        'wines': <BlindTasteItemModel>[],
+        'duplicateGroups': <String, List<int>>{},
+      };
+    }
+
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final baseWine = allWines[timestamp % allWines.length];
+    final sanitizedBaseName = baseWine.name
+        .replaceAll(RegExp(r'(?:\d+#)$'), '')
+        .trim();
+    final baseDisplayName = sanitizedBaseName.isEmpty
+        ? baseWine.name
+        : sanitizedBaseName;
+    final appendHash = !baseDisplayName.endsWith('#');
+
+    final wines = List<BlindTasteItemModel>.generate(glassCount, (index) {
+      final suffix = appendHash ? '${index + 1}#' : '${index + 1}';
+      return BlindTasteItemModel(
+        id: baseWine.id,
+        name: '$baseDisplayName$suffix',
+        aroma: baseWine.aroma,
+        alcoholDegree: baseWine.alcoholDegree,
+        totalScore: baseWine.totalScore,
+        equipment: List<String>.from(baseWine.equipment),
+        fermentationAgent: List<String>.from(baseWine.fermentationAgent),
+      );
+    });
+
+    return {
+      'wines': wines,
+      'duplicateGroups': {
+        baseDisplayName: List<int>.generate(glassCount, (index) => index),
+      },
+    };
+  }
+
   Map<String, dynamic> _generateWineAssignment(
     List<BlindTasteItemModel> allWines,
     int glassCount,

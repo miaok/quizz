@@ -24,19 +24,21 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
   }
 
   // 统一的按钮样式方法
-  ButtonStyle _primaryButtonStyle(BuildContext context) => ElevatedButton.styleFrom(
-    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-    foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    elevation: 2,
-  );
+  ButtonStyle _primaryButtonStyle(BuildContext context) =>
+      ElevatedButton.styleFrom(
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 2,
+      );
 
-  ButtonStyle _secondaryButtonStyle(BuildContext context) => OutlinedButton.styleFrom(
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    side: BorderSide(color: Theme.of(context).colorScheme.outline),
-  );
+  ButtonStyle _secondaryButtonStyle(BuildContext context) =>
+      OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -69,18 +71,18 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
               icon: const Icon(Icons.refresh),
               tooltip: '重新生成酒样组合',
             ),
-          if (state.wineGlasses.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Center(
-                child: Text(
-                  '${state.completedCount}/${state.wineGlasses.length}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
+          // if (state.wineGlasses.isNotEmpty)
+          //   Padding(
+          // padding: const EdgeInsets.only(right: 16.0),
+          // child: Center(
+          // child: Text(
+          //   '${state.completedCount}/${state.wineGlasses.length}',
+          //   style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          //     fontWeight: FontWeight.w500,
+          //   ),
+          // ),
+          //     ),
+          //   ),
         ],
       ),
       body: SafeArea(bottom: false, child: _buildBody(state)),
@@ -305,7 +307,7 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
     final List<Widget> allChips = [];
 
     // 香型
-    if (settings.enableBlindTasteAroma && answer.selectedAroma != null) {
+    if (settings.enableBlindTasteAromaForced && answer.selectedAroma != null) {
       allChips.add(_buildAnswerChip(answer.selectedAroma!, Colors.purple));
     }
 
@@ -313,7 +315,10 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
     if (settings.enableBlindTasteAlcohol &&
         answer.selectedAlcoholDegree != null) {
       allChips.add(
-        _buildAnswerChip('${answer.selectedAlcoholDegree!.toInt()}°', Colors.orange),
+        _buildAnswerChip(
+          '${answer.selectedAlcoholDegree!.toInt()}°',
+          Colors.orange,
+        ),
       );
     }
 
@@ -652,12 +657,12 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
 
               // 详细对比
               if (glass.userAnswer != null) ...[
-                if (settings.enableBlindTasteAroma)
-                  _buildComparisonRow(
-                    '香型',
-                    glass.userAnswer!.selectedAroma ?? '未选择',
-                    glass.wineItem!.aroma,
-                  ),
+                // if (settings.enableBlindTasteAromaForced)
+                //   _buildComparisonRow(
+                //     '香型',
+                //     glass.userAnswer!.selectedAroma ?? '未选择',
+                //     glass.wineItem!.aroma,
+                //   ),
                 if (settings.enableBlindTasteAlcohol)
                   _buildComparisonRow(
                     '酒度',
@@ -815,19 +820,21 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
   }
 
   // 统一的按钮样式方法
-  ButtonStyle _primaryButtonStyle(BuildContext context) => ElevatedButton.styleFrom(
-    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-    foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    elevation: 2,
-  );
+  ButtonStyle _primaryButtonStyle(BuildContext context) =>
+      ElevatedButton.styleFrom(
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 2,
+      );
 
-  ButtonStyle _secondaryButtonStyle(BuildContext context) => OutlinedButton.styleFrom(
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    side: BorderSide(color: Theme.of(context).colorScheme.outline),
-  );
+  ButtonStyle _secondaryButtonStyle(BuildContext context) =>
+      OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -912,11 +919,11 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                     const SizedBox(height: 8),
 
                     // 香型选择
-                    if (settings.enableBlindTasteAroma)
-                      _buildAromaSection(),
+                    // if (settings.enableBlindTasteAromaForced)
+                    //   _buildAromaSection(),
 
-                    if (settings.enableBlindTasteAroma)
-                      const SizedBox(height: 6),
+                    // if (settings.enableBlindTasteAromaForced)
+                    //   const SizedBox(height: 6),
 
                     // 总分选择（移到酒度之前）
                     if (settings.enableBlindTasteScore) _buildScoreSection(),
@@ -1002,95 +1009,104 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
     );
   }
 
-  Widget _buildAromaSection() {
-    return Card(
-      elevation: 1,
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(6.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  '香型',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                if (_currentAnswer.selectedAroma != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      _currentAnswer.selectedAroma!,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            DropdownButtonFormField<String>(
-              initialValue: _currentAnswer.selectedAroma,
-              decoration: InputDecoration(
-                hintText: '选择香型',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 6,
-                ),
-              ),
-              dropdownColor: Theme.of(context).colorScheme.surface,
-              menuMaxHeight: 300,
-              items: BlindTasteOptions.aromaTypes.map((aroma) {
-                return DropdownMenuItem(
-                  value: aroma,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                    child: Text(
-                      aroma,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  HapticManager.medium();
-                  setState(() {
-                    _currentAnswer = BlindTasteAnswer(
-                      selectedAroma: value,
-                      selectedAlcoholDegree: _currentAnswer.selectedAlcoholDegree,
-                      selectedTotalScore: _currentAnswer.selectedTotalScore,
-                      selectedEquipment: List.from(
-                        _currentAnswer.selectedEquipment,
-                      ),
-                      selectedFermentationAgent: List.from(
-                        _currentAnswer.selectedFermentationAgent,
-                      ),
-                    );
-                  });
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget _buildAromaSection() {
+  //   return Card(
+  //     elevation: 1,
+  //     margin: EdgeInsets.zero,
+  //     child: Padding(
+  //       padding: const EdgeInsets.all(6.0),
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           Row(
+  //             children: [
+  //               Text(
+  //                 '香型',
+  //                 style: Theme.of(
+  //                   context,
+  //                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+  //               ),
+  //               const Spacer(),
+  //               if (_currentAnswer.selectedAroma != null)
+  //                 Container(
+  //                   padding: const EdgeInsets.symmetric(
+  //                     horizontal: 6,
+  //                     vertical: 2,
+  //                   ),
+  //                   decoration: BoxDecoration(
+  //                     color: Theme.of(context).colorScheme.primaryContainer,
+  //                     borderRadius: BorderRadius.circular(6),
+  //                   ),
+  //                   child: Text(
+  //                     _currentAnswer.selectedAroma!,
+  //                     style: TextStyle(
+  //                       fontSize: 11,
+  //                       fontWeight: FontWeight.w500,
+  //                       color: Theme.of(context).colorScheme.onPrimaryContainer,
+  //                     ),
+  //                   ),
+  //                 ),
+  //             ],
+  //           ),
+  //           const SizedBox(height: 6),
+  //           DropdownButtonFormField<String>(
+  //             initialValue: _currentAnswer.selectedAroma,
+  //             decoration: InputDecoration(
+  //               hintText: '选择香型',
+  //               border: OutlineInputBorder(
+  //                 borderRadius: BorderRadius.circular(6),
+  //               ),
+  //               contentPadding: const EdgeInsets.symmetric(
+  //                 horizontal: 8,
+  //                 vertical: 6,
+  //               ),
+  //             ),
+  //             dropdownColor: Theme.of(context).colorScheme.surface,
+  //             menuMaxHeight: 300,
+  //             items: BlindTasteOptions.aromaTypes.map((aroma) {
+  //               return DropdownMenuItem(
+  //                 value: aroma,
+  //                 child: Padding(
+  //                   padding: const EdgeInsets.symmetric(
+  //                     vertical: 4,
+  //                     horizontal: 4,
+  //                   ),
+  //                   child: Text(
+  //                     aroma,
+  //                     style: TextStyle(
+  //                       fontSize: 14,
+  //                       fontWeight: FontWeight.w500,
+  //                       color: Theme.of(context).colorScheme.onSurface,
+  //                     ),
+  //                   ),
+  //                 ),
+  //               );
+  //             }).toList(),
+  //             onChanged: (value) {
+  //               if (value != null) {
+  //                 HapticManager.medium();
+  //                 setState(() {
+  //                   _currentAnswer = BlindTasteAnswer(
+  //                     selectedAroma: value,
+  //                     selectedAlcoholDegree:
+  //                         _currentAnswer.selectedAlcoholDegree,
+  //                     selectedTotalScore: _currentAnswer.selectedTotalScore,
+  //                     selectedEquipment: List.from(
+  //                       _currentAnswer.selectedEquipment,
+  //                     ),
+  //                     selectedFermentationAgent: List.from(
+  //                       _currentAnswer.selectedFermentationAgent,
+  //                     ),
+  //                   );
+  //                 });
+  //               }
+  //             },
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildAlcoholSection() {
     return Card(
@@ -1112,7 +1128,10 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                 const Spacer(),
                 if (_currentAnswer.selectedAlcoholDegree != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(6),
@@ -1133,7 +1152,8 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
               spacing: 8,
               runSpacing: 6,
               children: BlindTasteOptions.alcoholDegrees.map((degree) {
-                final isSelected = _currentAnswer.selectedAlcoholDegree == degree;
+                final isSelected =
+                    _currentAnswer.selectedAlcoholDegree == degree;
                 return FilterChip(
                   label: Text('${degree.toInt()}°'),
                   selected: isSelected,
@@ -1419,7 +1439,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
   bool _canSubmit(dynamic settings) {
     bool canSubmit = true;
 
-    if (settings.enableBlindTasteAroma) {
+    if (settings.enableBlindTasteAromaForced) {
       canSubmit = canSubmit && _currentAnswer.selectedAroma != null;
     }
 

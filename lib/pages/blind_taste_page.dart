@@ -314,9 +314,9 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
           const SizedBox(height: 12),
 
           // 香型选择（根据设置显示）
-          if (settings.enableBlindTasteAroma) _buildAromaSection(state),
+          // if (settings.enableBlindTasteAromaForced) _buildAromaSection(state),
 
-          if (settings.enableBlindTasteAroma) const SizedBox(height: 8),
+          // if (settings.enableBlindTasteAromaForced) const SizedBox(height: 8),
 
           // 总分调整（根据设置显示）
           if (settings.enableBlindTasteScore) _buildTotalScoreSection(state),
@@ -393,92 +393,92 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     );
   }
 
-  Widget _buildAromaSection(BlindTasteState state) {
-    return Card(
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  '香型',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                if (state.userAnswer.selectedAroma != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      state.userAnswer.selectedAroma!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            DropdownButtonFormField<String>(
-              initialValue: state.userAnswer.selectedAroma,
-              decoration: const InputDecoration(
-                hintText: '请选择',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 8,
-                ),
-                isDense: true,
-              ),
-              style: TextStyle(
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              dropdownColor: Theme.of(context).colorScheme.surface,
-              menuMaxHeight: 300,
-              items: BlindTasteOptions.aromaTypes.map((aroma) {
-                return DropdownMenuItem(
-                  value: aroma,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 2,
-                      horizontal: 4,
-                    ),
-                    child: Text(
-                      aroma,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  HapticManager.medium();
-                  ref.read(blindTasteProvider.notifier).selectAroma(value);
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget _buildAromaSection(BlindTasteState state) {
+  //   return Card(
+  //     elevation: 1,
+  //     child: Padding(
+  //       padding: const EdgeInsets.all(10.0),
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           Row(
+  //             children: [
+  //               Text(
+  //                 '香型',
+  //                 style: Theme.of(
+  //                   context,
+  //                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+  //               ),
+  //               const Spacer(),
+  //               if (state.userAnswer.selectedAroma != null)
+  //                 Container(
+  //                   padding: const EdgeInsets.symmetric(
+  //                     horizontal: 6,
+  //                     vertical: 2,
+  //                   ),
+  //                   decoration: BoxDecoration(
+  //                     color: Theme.of(context).colorScheme.primaryContainer,
+  //                     borderRadius: BorderRadius.circular(6),
+  //                   ),
+  //                   child: Text(
+  //                     state.userAnswer.selectedAroma!,
+  //                     style: TextStyle(
+  //                       color: Theme.of(context).colorScheme.onPrimaryContainer,
+  //                       fontSize: 10,
+  //                     ),
+  //                   ),
+  //                 ),
+  //             ],
+  //           ),
+  //           const SizedBox(height: 4),
+  //           DropdownButtonFormField<String>(
+  //             initialValue: state.userAnswer.selectedAroma,
+  //             decoration: const InputDecoration(
+  //               hintText: '请选择',
+  //               border: OutlineInputBorder(),
+  //               contentPadding: EdgeInsets.symmetric(
+  //                 horizontal: 8,
+  //                 vertical: 8,
+  //               ),
+  //               isDense: true,
+  //             ),
+  //             style: TextStyle(
+  //               fontSize: 16,
+  //               color: Theme.of(context).colorScheme.onSurface,
+  //             ),
+  //             dropdownColor: Theme.of(context).colorScheme.surface,
+  //             menuMaxHeight: 300,
+  //             items: BlindTasteOptions.aromaTypes.map((aroma) {
+  //               return DropdownMenuItem(
+  //                 value: aroma,
+  //                 child: Padding(
+  //                   padding: const EdgeInsets.symmetric(
+  //                     vertical: 2,
+  //                     horizontal: 4,
+  //                   ),
+  //                   child: Text(
+  //                     aroma,
+  //                     style: TextStyle(
+  //                       fontSize: 14,
+  //                       fontWeight: FontWeight.w500,
+  //                       color: Theme.of(context).colorScheme.onSurface,
+  //                     ),
+  //                   ),
+  //                 ),
+  //               );
+  //             }).toList(),
+  //             onChanged: (value) {
+  //               if (value != null) {
+  //                 HapticManager.medium();
+  //                 ref.read(blindTasteProvider.notifier).selectAroma(value);
+  //               }
+  //             },
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildAlcoholSection(BlindTasteState state) {
     return Card(
@@ -931,12 +931,12 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   ),
                   const SizedBox(height: 12),
                   // 根据设置显示对比结果
-                  if (settings.enableBlindTasteAroma)
-                    _buildComparisonRow(
-                      '香型',
-                      state.userAnswer.selectedAroma ?? '未选择',
-                      item.aroma,
-                    ),
+                  // if (settings.enableBlindTasteAromaForced)
+                  //   _buildComparisonRow(
+                  //     '香型',
+                  //     state.userAnswer.selectedAroma ?? '未选择',
+                  //     item.aroma,
+                  //   ),
                   if (settings.enableBlindTasteAlcohol)
                     _buildComparisonRow(
                       '酒度',
@@ -1315,7 +1315,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     // 检查启用的品鉴项目是否都已选择
     bool canSubmit = true;
 
-    if (settings.enableBlindTasteAroma) {
+    if (settings.enableBlindTasteAromaForced) {
       canSubmit = canSubmit && state.userAnswer.selectedAroma != null;
     }
 

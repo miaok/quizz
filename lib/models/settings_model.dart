@@ -25,6 +25,7 @@ class QuizSettings {
   final bool enableFlashcardRandomOrder; // 闪卡模式是否随机酒样顺序
   final bool enableDefaultContinueProgress; // 是否默认继续进度（不显示确认对话框）
   final PracticeShuffleMode practiceShuffleMode; // 练习模式乱序模式
+  final bool enableWineSimulationSameWineSeries; // 是否启用同酒样系列模式
   final int wineSimulationSampleCount; // 酒样练习模式的酒杯数量
   final double wineSimulationDuplicateProbability; // 酒样练习重复概率 (0.0-1.0)
   final int wineSimulationMaxDuplicateGroups; // 酒样练习最大重复组数
@@ -38,7 +39,7 @@ class QuizSettings {
     this.autoNextQuestion = true,
     this.enableProgressSave = true, // 默认启用进度保存
     this.examTimeMinutes = 15, // 默认考试时间15分钟
-    this.enableBlindTasteAroma = true, // 默认启用香型品鉴
+    this.enableBlindTasteAroma = false, // 默认启用香型品鉴
     this.enableBlindTasteAlcohol = true, // 默认启用酒度品鉴
     this.enableBlindTasteScore = true, // 默认启用总分品鉴
     this.enableBlindTasteEquipment = true, // 默认启用设备品鉴
@@ -47,6 +48,7 @@ class QuizSettings {
     this.enableFlashcardRandomOrder = true, // 默认启用闪卡模式随机酒样顺序
     this.enableDefaultContinueProgress = true, // 默认启用默认继续进度
     this.practiceShuffleMode = PracticeShuffleMode.fullRandom, // 默认完全乱序
+    this.enableWineSimulationSameWineSeries = false, // 默认关闭同酒样系列模式
     this.wineSimulationSampleCount = 5, // 默认酒样练习模式酒杯数量为5
     this.wineSimulationDuplicateProbability = 0.3, // 默认30%概率出现重复酒样
     this.wineSimulationMaxDuplicateGroups = 1, // 默认最多1组重复酒样
@@ -70,6 +72,7 @@ class QuizSettings {
     bool? enableFlashcardRandomOrder,
     bool? enableDefaultContinueProgress,
     PracticeShuffleMode? practiceShuffleMode,
+    bool? enableWineSimulationSameWineSeries,
     int? wineSimulationSampleCount,
     double? wineSimulationDuplicateProbability,
     int? wineSimulationMaxDuplicateGroups,
@@ -100,6 +103,9 @@ class QuizSettings {
       enableDefaultContinueProgress:
           enableDefaultContinueProgress ?? this.enableDefaultContinueProgress,
       practiceShuffleMode: practiceShuffleMode ?? this.practiceShuffleMode,
+      enableWineSimulationSameWineSeries:
+          enableWineSimulationSameWineSeries ??
+          this.enableWineSimulationSameWineSeries,
       wineSimulationSampleCount:
           wineSimulationSampleCount ?? this.wineSimulationSampleCount,
       wineSimulationDuplicateProbability:
@@ -136,6 +142,7 @@ class QuizSettings {
       'enableFlashcardRandomOrder': enableFlashcardRandomOrder,
       'enableDefaultContinueProgress': enableDefaultContinueProgress,
       'practiceShuffleMode': practiceShuffleMode.name,
+      'enableWineSimulationSameWineSeries': enableWineSimulationSameWineSeries,
       'wineSimulationSampleCount': wineSimulationSampleCount,
       'wineSimulationDuplicateProbability': wineSimulationDuplicateProbability,
       'wineSimulationMaxDuplicateGroups': wineSimulationMaxDuplicateGroups,
@@ -153,7 +160,7 @@ class QuizSettings {
       autoNextQuestion: json['autoNextQuestion'] ?? false,
       enableProgressSave: json['enableProgressSave'] ?? true,
       examTimeMinutes: json['examTimeMinutes'] ?? 15,
-      enableBlindTasteAroma: json['enableBlindTasteAroma'] ?? true,
+      enableBlindTasteAroma: json['enableBlindTasteAroma'] ?? false,
       enableBlindTasteAlcohol: json['enableBlindTasteAlcohol'] ?? true,
       enableBlindTasteScore: json['enableBlindTasteScore'] ?? true,
       enableBlindTasteEquipment: json['enableBlindTasteEquipment'] ?? true,
@@ -166,6 +173,8 @@ class QuizSettings {
       practiceShuffleMode: _parsePracticeShuffleMode(
         json['practiceShuffleMode'],
       ),
+      enableWineSimulationSameWineSeries:
+          json['enableWineSimulationSameWineSeries'] ?? false,
       wineSimulationSampleCount: json['wineSimulationSampleCount'] ?? 5,
       wineSimulationDuplicateProbability:
           json['wineSimulationDuplicateProbability'] ?? 0.3,
@@ -196,6 +205,8 @@ class QuizSettings {
         other.enableFlashcardRandomOrder == enableFlashcardRandomOrder &&
         other.enableDefaultContinueProgress == enableDefaultContinueProgress &&
         other.practiceShuffleMode == practiceShuffleMode &&
+        other.enableWineSimulationSameWineSeries ==
+            enableWineSimulationSameWineSeries &&
         other.wineSimulationSampleCount == wineSimulationSampleCount &&
         other.wineSimulationDuplicateProbability ==
             wineSimulationDuplicateProbability &&
@@ -222,6 +233,7 @@ class QuizSettings {
         enableFlashcardRandomOrder.hashCode ^
         enableDefaultContinueProgress.hashCode ^
         practiceShuffleMode.hashCode ^
+        enableWineSimulationSameWineSeries.hashCode ^
         wineSimulationSampleCount.hashCode ^
         wineSimulationDuplicateProbability.hashCode ^
         wineSimulationMaxDuplicateGroups.hashCode ^
@@ -278,4 +290,7 @@ class QuizSettings {
   bool get enablePracticeRandomOrder {
     return practiceShuffleMode == PracticeShuffleMode.fullRandom;
   }
+
+  // 强制香型品评始终禁用（覆盖原始值）
+  bool get enableBlindTasteAromaForced => false;
 }

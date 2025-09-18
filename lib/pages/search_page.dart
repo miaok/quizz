@@ -127,7 +127,7 @@ class _SearchPageState extends ConsumerState<SearchPage>
         decoration: InputDecoration(
           hintText: searchState.currentTab == SearchTab.multipleChoice
               ? '搜索题目、选项'
-              : '搜索酒样名称、香型、设备...',
+              : '搜索酒样名称、发酵剂、设备...',
           prefixIcon: const Icon(Icons.search),
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(

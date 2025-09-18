@@ -338,8 +338,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   // 品评模拟酒样数量调节卡片（限制范围2-6）
   Widget _buildWineSimulationCountCard(
     int currentValue,
-    Function(int) onChanged,
-  ) {
+    Function(int) onChanged, {
+    bool isLocked = false,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -353,21 +354,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '品评模拟酒样数',
+                  '品鉴模式杯数设置',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
                 Text(
-                  '设置品评模拟的酒样数量（2-6）',
+                  '酒样模拟的基础数量范围为2-6杯',
                   style: TextStyle(
                     fontSize: 12,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
+                if (isLocked)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '同酒样系列模式开启，杯数固定为5杯',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
           IconButton(
-            onPressed: currentValue > 2
+            onPressed: !isLocked && currentValue > 2
                 ? () {
                     HapticManager.medium();
                     onChanged(currentValue - 1);
@@ -379,17 +391,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           Container(
             width: 40,
             alignment: Alignment.center,
-            child: Text(
-              '$currentValue',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.amber,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$currentValue',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber,
+                  ),
+                ),
+                if (isLocked)
+                  const Icon(Icons.lock, size: 14, color: Colors.amber),
+              ],
             ),
           ),
           IconButton(
-            onPressed: currentValue < 6
+            onPressed: !isLocked && currentValue < 6
                 ? () {
                     HapticManager.medium();
                     onChanged(currentValue + 1);
@@ -403,7 +422,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     );
   }
 
-  // 品评模拟重复概率设置卡片
+  // 品鉴模式重复概率卡片
   Widget _buildWineSimulationProbabilityCard(
     double currentValue,
     Function(double) onChanged,
@@ -541,7 +560,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     SettingsController controller,
   ) {
     // 确保字段不为空，如果为空则使用默认值
-    final delayMs = settings.multipleChoiceAutoSwitchDelay ?? 1200;
+    final delayMs = settings.multipleChoiceAutoSwitchDelay;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -595,8 +614,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           Slider(
             value: delayMs.toDouble(),
             min: 1000.0,
-            max: 10000.0,
-            divisions: 90, // 每100ms一个分段
+            max: 5000.0,
+            divisions: 20,
             onChanged: (value) {
               HapticManager.selection();
               controller.updateMultipleChoiceAutoSwitchDelay(value.round());
@@ -614,7 +633,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 ),
               ),
               Text(
-                '10.0秒',
+                '5.0秒',
                 style: TextStyle(
                   fontSize: 10,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -724,10 +743,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   ) {
     return Column(
       children: [
-        _buildDisabledSwitchTile(
+        _buildSwitchTile(
           title: '香型品评',
-          subtitle: '功能暂时关闭',
+          subtitle: '功能已禁用',
           icon: Icons.local_florist,
+          value: false,
+          onChanged: null, // 禁用开关，不允许用户切换
         ),
         const SizedBox(height: 8),
         _buildSwitchTile(
@@ -762,9 +783,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           onChanged: controller.updateEnableBlindTasteFermentation,
         ),
         const SizedBox(height: 8),
+        _buildSwitchTile(
+          title: '同酒样系列模式',
+          subtitle: '固定5杯，同一酒样以1-5#编号',
+          icon: Icons.numbers,
+          value: settings.enableWineSimulationSameWineSeries,
+          onChanged: (value) =>
+              controller.updateEnableWineSimulationSameWineSeries(value),
+        ),
+        const SizedBox(height: 8),
         _buildWineSimulationCountCard(
-          settings.wineSimulationSampleCount,
+          settings.enableWineSimulationSameWineSeries
+              ? 5
+              : settings.wineSimulationSampleCount,
           controller.updateWineSimulationSampleCount,
+          isLocked: settings.enableWineSimulationSameWineSeries,
         ),
         const SizedBox(height: 8),
         _buildWineSimulationProbabilityCard(
@@ -904,7 +937,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     required String subtitle,
     required IconData icon,
     required bool value,
-    required Function(bool) onChanged,
+    required Function(bool)? onChanged, // 允许为null
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -936,61 +969,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           ),
           Switch(
             value: value,
-            onChanged: (newValue) {
-              HapticManager.medium();
-              onChanged(newValue);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 禁用状态的开关组件
-  Widget _buildDisabledSwitchTile({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: false,
-            onChanged: null, // 禁用开关
+            onChanged: onChanged != null
+                ? (newValue) {
+                    HapticManager.medium();
+                    onChanged(newValue);
+                  }
+                : null, // 如果onChanged为null，则禁用开关
           ),
         ],
       ),
