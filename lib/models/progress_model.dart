@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'question_model.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/blind_taste_provider.dart';
@@ -340,15 +341,54 @@ class QuizProgress {
 
   // 检查进度是否有效
   bool get isValid {
-    switch (type) {
-      case ProgressType.quiz:
-        return questions.isNotEmpty &&
-            currentIndex >= 0 &&
-            currentIndex < questions.length;
-      case ProgressType.blindTaste:
-        return blindTasteItemId != null;
-      case ProgressType.flashcard:
-        return currentIndex >= 0 && flashcardViewedIds != null;
+    try {
+      switch (type) {
+        case ProgressType.quiz:
+          // 验证题目数据
+          if (questions.isEmpty) {
+            debugPrint('Progress validation failed: no questions');
+            return false;
+          }
+          // 验证当前索引
+          if (currentIndex < 0 || currentIndex >= questions.length) {
+            debugPrint(
+              'Progress validation failed: invalid currentIndex $currentIndex (questions.length: ${questions.length})',
+            );
+            return false;
+          }
+          // 验证答题模式
+          if (mode == null) {
+            debugPrint('Progress validation failed: quiz mode is null');
+            return false;
+          }
+          // 验证练习模式的设置一致性
+          if (mode == QuizMode.practice && practiceShuffleMode == null) {
+            debugPrint(
+              'Progress validation warning: practice mode without shuffle mode setting',
+            );
+            // 这不是致命错误，但会记录警告
+          }
+          return true;
+        case ProgressType.blindTaste:
+          if (blindTasteItemId == null) {
+            debugPrint(
+              'Progress validation failed: blind taste item ID is null',
+            );
+            return false;
+          }
+          return true;
+        case ProgressType.flashcard:
+          if (currentIndex < 0 || flashcardViewedIds == null) {
+            debugPrint(
+              'Progress validation failed: invalid flashcard progress',
+            );
+            return false;
+          }
+          return true;
+      }
+    } catch (e) {
+      debugPrint('Progress validation error: $e');
+      return false;
     }
   }
 
@@ -359,7 +399,20 @@ class QuizProgress {
         final modeText = mode == QuizMode.practice ? '练习模式' : '考试模式';
         return '$modeText - 第${currentIndex + 1}题/共${questions.length}题';
       case ProgressType.blindTaste:
-        return '品鉴模式 - 酒样品鉴进行中';
+        final totalFromPool = blindTasteQuestionPool?.length ?? 0;
+        final totalFromSetting = blindTasteMaxItems ?? 0;
+        final totalItems = totalFromPool > 0 ? totalFromPool : totalFromSetting;
+        if (totalItems <= 0) {
+          return '酒样练习 - 进度已保存';
+        }
+        final completedCount = blindTasteCompletedIds?.length ?? 0;
+        final currentCup = completedCount >= totalItems
+            ? totalItems
+            : completedCount + 1;
+        final progressText = '酒样练习 - 第$currentCup杯/共$totalItems杯';
+        return completedCount > 0
+            ? '$progressText，已完成$completedCount杯'
+            : progressText;
       case ProgressType.flashcard:
         final viewedCount = flashcardViewedIds?.length ?? 0;
         return '闪卡记忆 - 第${currentIndex + 1}张，已查看$viewedCount张';

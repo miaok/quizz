@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/question_model.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/haptic_settings_provider.dart';
 import '../router/app_router.dart';
 import '../utils/memory_manager.dart';
+import '../utils/haptic_manager.dart';
 
 class QuizPage extends ConsumerStatefulWidget {
   const QuizPage({super.key});
@@ -39,6 +41,13 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   DateTime? _lastUIUpdate;
   static const Duration _uiUpdateThrottle = Duration(milliseconds: 100);
 
+  // 防快速点击相关
+  bool _isProcessingAnswer = false; // 是否正在处理答案
+  Timer? _optionLockTimer; // 选项锁定定时器
+  static const Duration _optionLockDuration = Duration(
+    milliseconds: 800,
+  ); // 选项锁定时长
+
   // 动画参数常量
   static const Duration _buttonSwitchDuration = Duration(milliseconds: 250);
   static const Duration _autoSwitchDuration = Duration(milliseconds: 300);
@@ -50,8 +59,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   static const double _optionCardRadius = 12.0;
   static const double _buttonRadius = 10.0;
   static const EdgeInsets _optionPadding = EdgeInsets.symmetric(
-    horizontal: 2,
-    vertical: 2,
+    horizontal: 12, // 减小水平内边距
+    vertical: 4,    // 大幅减小垂直内边距
   );
   static const EdgeInsets _buttonPadding = EdgeInsets.symmetric(
     vertical: 12,
@@ -83,6 +92,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _autoNextTimer?.cancel();
     _countdownTimer?.cancel();
     _multipleChoiceCheckTimer?.cancel();
+    _optionLockTimer?.cancel();
     _pageController.dispose();
     _questionCardScrollController.dispose();
 
@@ -141,6 +151,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   // 显示提示答案
   void _showHintAnswer(QuizState state) {
     if (state.mode == QuizMode.practice && state.questions.isNotEmpty) {
+      // 触发长按查看答案的震动反馈
+      HapticManager.showHint();
       setState(() {
         _showingHintAnswer = true;
       });
@@ -185,11 +197,22 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   // 处理练习模式的答案判断
   void _handlePracticeModeAnswer(QuizController controller) {
     final isCorrect = controller.isCurrentAnswerCorrect();
+    final quizState = ref.read(quizControllerProvider);
+
+    // 设置处理状态，防止快速点击
+    setState(() {
+      _isProcessingAnswer = true;
+    });
 
     if (isCorrect) {
-      // 答案正确，显示绿色高亮状态
+      // 答案正确，显示绿色高亮状态和切题动画，触发轻快震动
+      HapticManager.correctAnswer();
       setState(() {
         _showingCorrectAnswer = true;
+        // 如果不是最后一题，显示切题动画
+        if (!quizState.isLastQuestion) {
+          _isAutoSwitching = true;
+        }
       });
 
       // 显示成功提示
@@ -214,12 +237,16 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         if (mounted) {
           setState(() {
             _showingCorrectAnswer = false;
+            _isAutoSwitching = false;
+            _isProcessingAnswer = false; // 重置处理状态
           });
+          HapticManager.switchQuestion();
           _goToNextQuestion(controller, ref.read(quizControllerProvider));
         }
       });
     } else {
-      // 答案错误，显示错误状态
+      // 答案错误，显示错误状态，触发稍强震动
+      HapticManager.wrongAnswer();
       setState(() {
         _showingWrongAnswer = true;
       });
@@ -250,6 +277,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             currentAnswer = null;
             multipleAnswers.clear();
             _showingWrongAnswer = false;
+            _isProcessingAnswer = false; // 重置处理状态
           });
         }
       });
@@ -281,11 +309,16 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     if (settings.autoNextQuestion && !quizState.isLastQuestion) {
       setState(() {
         _isAutoSwitching = true;
+        _isProcessingAnswer = true; // 设置处理状态，防止快速点击
       });
 
-      // 设置1.2秒后自动切换到下一题
+      // 设置1.2秒后自动切换到下一题并添加切题震动
       _multipleChoiceCheckTimer = Timer(const Duration(milliseconds: 1200), () {
         if (mounted && !quizState.isLastQuestion) {
+          HapticManager.switchQuestion();
+          setState(() {
+            _isProcessingAnswer = false; // 重置处理状态
+          });
           _autoSwitchToNext(controller);
         }
       });
@@ -296,6 +329,15 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   Widget build(BuildContext context) {
     final quizState = ref.watch(quizControllerProvider);
     final quizController = ref.read(quizControllerProvider.notifier);
+
+    // 监听触感设置变化并更新HapticManager
+    ref.listen<HapticSettings>(hapticSettingsProvider, (previous, current) {
+      HapticManager.updateSettings(hapticEnabled: current.hapticEnabled);
+    });
+
+    // 初始化时也要更新设置
+    final hapticSettings = ref.read(hapticSettingsProvider);
+    HapticManager.updateSettings(hapticEnabled: hapticSettings.hapticEnabled);
 
     return PopScope(
       canPop: false, // 禁止直接返回
@@ -428,11 +470,12 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             onPageChanged: (index) {
               // 滑动切换题目时更新状态
               controller.goToQuestion(index);
-              // 取消自动切题状态和错误状态
+              // 取消自动切题状态和错误状态，重置选项锁定状态
               setState(() {
                 _isAutoSwitching = false;
                 _showingWrongAnswer = false;
                 _showingCorrectAnswer = false;
+                _isProcessingAnswer = false; // 重置选项锁定状态
               });
 
               // 页面切换时进行内存优化
@@ -553,7 +596,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: GestureDetector(
-        onTap: () => _showQuestionCard(context, state),
+        onTap: () {
+          HapticManager.openQuestionCard();
+          _showQuestionCard(context, state);
+        },
         child: Container(
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
@@ -941,8 +987,50 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               width: isSelected ? 2 : 1,
             ),
           ),
-          child: RadioListTile<String>(
+          child: ListTile(
             contentPadding: _optionPadding,
+            leading: GestureDetector(
+              onTap: _isProcessingAnswer
+                  ? null
+                  : () {
+                      _handleSingleChoiceSelection(option, controller);
+                    },
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected
+                        ? (isCorrectAnswer
+                              ? Colors.green.shade700
+                              : isWrongAnswer
+                              ? Colors.red.shade600
+                              : isHintAnswer
+                              ? Colors.orange.shade600
+                              : isAutoSwitching
+                              ? Colors.green.shade600
+                              : _getPrimaryColor(context))
+                        : Theme.of(context).colorScheme.outline,
+                    width: 2,
+                  ),
+                  color: isSelected
+                      ? (isCorrectAnswer
+                            ? Colors.green.shade700
+                            : isWrongAnswer
+                            ? Colors.red.shade600
+                            : isHintAnswer
+                            ? Colors.orange.shade600
+                            : isAutoSwitching
+                            ? Colors.green.shade600
+                            : _getPrimaryColor(context))
+                      : Colors.transparent,
+                ),
+                child: isSelected
+                    ? Icon(Icons.circle, size: 14, color: Colors.white)
+                    : null,
+              ),
+            ),
             title: AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
@@ -955,25 +1043,16 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   isCorrectAnswer: isCorrectAnswer,
                   isHintAnswer: isHintAnswer,
                 ),
-                fontSize: 18,
+                fontSize: 20, // 增大单选题字体大小
                 height: 1.4,
               ),
               child: Text(option),
             ),
-            value: option,
-            groupValue: currentAnswer,
-            onChanged: (value) {
-              _handleSingleChoiceSelection(value, controller);
-            },
-            activeColor: isCorrectAnswer
-                ? Colors.green.shade700
-                : isWrongAnswer
-                ? Colors.red.shade600
-                : isHintAnswer
-                ? Colors.orange.shade600
-                : isAutoSwitching
-                ? Colors.green.shade600
-                : _getPrimaryColor(context),
+            onTap: _isProcessingAnswer
+                ? null
+                : () {
+                    _handleSingleChoiceSelection(option, controller);
+                  },
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(_optionCardRadius),
             ),
@@ -984,10 +1063,16 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   }
 
   void _handleSingleChoiceSelection(String? value, QuizController controller) {
-    if (value == null) return;
+    if (value == null || _isProcessingAnswer) return;
 
-    // 取消之前的自动切题定时器
+    // 设置处理状态，防止快速点击
+    setState(() {
+      _isProcessingAnswer = true;
+    });
+
+    // 取消之前的自动切题定时器和选项锁定定时器
     _autoNextTimer?.cancel();
+    _optionLockTimer?.cancel();
 
     setState(() {
       currentAnswer = value;
@@ -1003,23 +1088,42 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     // 练习模式：立即判断对错
     if (quizState.mode == QuizMode.practice) {
       _handlePracticeModeAnswer(controller);
+      _startOptionLockTimer();
       return;
     }
 
-    // 考试模式：检查是否需要自动切题
+    // 考试模式：立即触发点击震动反馈
+    HapticManager.submitAnswer();
 
+    // 考试模式：检查是否需要自动切题
     if (settings.autoNextQuestion && !quizState.isLastQuestion) {
       setState(() {
         _isAutoSwitching = true;
       });
 
-      // 延迟0.6秒后自动切换到下一题
+      // 延迟0.6秒后自动切换到下一题并添加切题震动
       _autoNextTimer = Timer(const Duration(milliseconds: 600), () {
         if (mounted && !quizState.isLastQuestion) {
+          HapticManager.switchQuestion();
           _autoSwitchToNext(controller);
         }
       });
     }
+
+    // 启动选项锁定定时器
+    _startOptionLockTimer();
+  }
+
+  // 启动选项锁定定时器，防止快速点击
+  void _startOptionLockTimer() {
+    _optionLockTimer?.cancel();
+    _optionLockTimer = Timer(_optionLockDuration, () {
+      if (mounted) {
+        setState(() {
+          _isProcessingAnswer = false;
+        });
+      }
+    });
   }
 
   Widget _buildMultipleChoiceOption(String option, QuizController controller) {
@@ -1084,35 +1188,41 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   isCorrectAnswer: isCorrectAnswer,
                   isHintAnswer: isHintAnswer,
                 ),
-                fontSize: 16,
+                fontSize: 18, // 增大多选题字体大小
                 height: 1.4,
               ),
               child: Text(option),
             ),
             value: isSelected,
-            onChanged: (value) {
-              // 取消自动切题定时器
-              _autoNextTimer?.cancel();
-              setState(() {
-                _isAutoSwitching = false;
-                if (value == true) {
-                  multipleAnswers.add(option);
-                } else {
-                  multipleAnswers.remove(option);
-                }
-              });
-              controller.submitAnswer(multipleAnswers.toList());
+            onChanged: _isProcessingAnswer
+                ? null
+                : (value) {
+                    // 取消自动切题定时器
+                    _autoNextTimer?.cancel();
+                    setState(() {
+                      _isAutoSwitching = false;
+                      if (value == true) {
+                        multipleAnswers.add(option);
+                      } else {
+                        multipleAnswers.remove(option);
+                      }
+                    });
+                    controller.submitAnswer(multipleAnswers.toList());
 
-              // 根据模式处理延迟逻辑
-              final quizState = ref.read(quizControllerProvider);
-              if (quizState.mode == QuizMode.practice) {
-                // 练习模式下，延迟判断答案（给用户时间选择多个选项）
-                _scheduleMultipleChoiceCheck(controller);
-              } else if (quizState.mode == QuizMode.exam) {
-                // 考试模式下，延迟自动切题（给用户时间选择多个选项）
-                _scheduleExamModeMultipleChoiceAutoNext(controller);
-              }
-            },
+                    // 根据模式处理延迟逻辑
+                    final quizState = ref.read(quizControllerProvider);
+                    if (quizState.mode == QuizMode.practice) {
+                      // 练习模式：立即触发点击震动反馈
+                      HapticManager.submitAnswer();
+                      // 练习模式下，延迟判断答案（给用户时间选择多个选项）
+                      _scheduleMultipleChoiceCheck(controller);
+                    } else if (quizState.mode == QuizMode.exam) {
+                      // 考试模式：立即触发点击震动反馈
+                      HapticManager.submitAnswer();
+                      // 考试模式下，延迟自动切题（给用户时间选择多个选项）
+                      _scheduleExamModeMultipleChoiceAutoNext(controller);
+                    }
+                  },
             activeColor: isCorrectAnswer
                 ? Colors.green.shade700
                 : isWrongAnswer
@@ -1258,10 +1368,12 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   }
 
   void _goToPreviousQuestion(QuizController controller) {
-    // 取消自动切题
+    // 取消自动切题和选项锁定定时器
     _autoNextTimer?.cancel();
+    _optionLockTimer?.cancel();
     setState(() {
       _isAutoSwitching = false;
+      _isProcessingAnswer = false; // 重置处理状态，允许选项点击
     });
 
     if (_pageController.hasClients) {
@@ -1275,12 +1387,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   }
 
   void _goToNextQuestion(QuizController controller, QuizState state) {
-    // 取消自动切题
+    // 取消自动切题和选项锁定定时器
     _autoNextTimer?.cancel();
+    _optionLockTimer?.cancel();
     setState(() {
       _isAutoSwitching = false;
       _showingWrongAnswer = false; // 重置错误状态
       _showingCorrectAnswer = false; // 重置正确状态
+      _isProcessingAnswer = false; // 重置处理状态，允许下一题的选项点击
     });
 
     if (_pageController.hasClients) {
@@ -1324,6 +1438,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       _isAutoSwitching = false;
       _showingWrongAnswer = false; // 重置错误状态
       _showingCorrectAnswer = false; // 重置正确状态
+      _isProcessingAnswer = false; // 重置选项锁定状态
     });
 
     if (_pageController.hasClients) {
@@ -1528,6 +1643,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
     return GestureDetector(
       onTap: () {
+        HapticManager.selectQuestion();
         _goToQuestionByIndex(index, controller);
         Navigator.of(context).pop(); // 关闭答题卡
       },
@@ -1586,7 +1702,13 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     final quizController = ref.read(quizControllerProvider.notifier);
     final settings = ref.read(settingsProvider);
 
-    // 检查是否启用进度保存
+    // 理论模拟（考试模式）：直接显示确认退出对话框
+    if (quizState.mode == QuizMode.exam) {
+      _showExitConfirmDialog(context);
+      return;
+    }
+
+    // 理论练习（练习模式）：检查是否启用进度保存
     if (settings.enableProgressSave) {
       // 启用进度保存：根据默认继续进度设置决定是否显示对话框
       if (settings.enableDefaultContinueProgress) {
@@ -1597,23 +1719,27 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         _showSaveProgressDialog(context, quizController);
       }
     } else {
-      // 未启用进度保存：根据模式决定处理方式
-      if (quizState.mode == QuizMode.practice) {
-        // 练习模式：直接退出
-        quizController.reset();
-        appRouter.goToHome();
-      } else {
-        // 考试模式：显示确认对话框
-        _showExitDialog(context);
-      }
+      // 未启用进度保存：显示保存进度确认对话框（让用户选择是否临时保存）
+      _showSaveProgressDialog(context, quizController);
     }
   }
 
   // 保存进度并退出
   Future<void> _saveProgressAndExit(QuizController quizController) async {
-    await quizController.saveCurrentProgress();
-    quizController.reset();
-    appRouter.goToHome();
+    try {
+      final currentMode = ref.read(quizControllerProvider).mode;
+      debugPrint('Saving progress before exit for ${currentMode.name} mode');
+      await quizController.saveCurrentProgress();
+      // 注意：不调用 reset(currentMode)，因为这会清除刚保存的进度
+      // 只重置 UI 状态，不清除已保存的进度数据
+      quizController.reset(); // 不传递模式参数，避免清除进度
+      appRouter.goToHome();
+    } catch (e) {
+      debugPrint('Error saving progress before exit: $e');
+      // 即使保存失败也要退出，但不清除进度
+      quizController.reset(); // 不传递模式参数
+      appRouter.goToHome();
+    }
   }
 
   // 显示保存进度确认对话框
@@ -1621,17 +1747,34 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     BuildContext context,
     QuizController quizController,
   ) {
+    final settings = ref.read(settingsProvider);
+    final quizState = ref.read(quizControllerProvider);
+
+    // 根据是否启用自动保存显示不同的对话框内容
+    String title;
+    String content;
+
+    if (settings.enableProgressSave) {
+      title = '保存进度';
+      content = '是否保存当前答题进度？';
+    } else {
+      title = '保存进度';
+      content =
+          '检测到您已关闭自动保存功能，是否要临时保存当前答题进度？\n\n保存后可在下次开始${quizState.mode == QuizMode.practice ? '理论练习' : '理论模拟'}时选择继续。';
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('保存进度'),
-        content: const Text('是否保存当前答题进度？'),
+        title: Text(title),
+        content: Text(content),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
               // 不保存进度，直接退出
-              quizController.reset();
+              final currentMode = ref.read(quizControllerProvider).mode;
+              quizController.reset(currentMode);
               appRouter.goToHome();
             },
             child: const Text('不保存'),
@@ -1639,7 +1782,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // 保存进度并退出
+              // 保存进度并退出（即使用户关闭了自动保存，也允许临时保存）
               _saveProgressAndExit(quizController);
             },
             child: const Text('保存'),
@@ -1649,12 +1792,13 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     );
   }
 
-  void _showExitDialog(BuildContext context) {
+  // 显示考试模式的退出确认对话框
+  void _showExitConfirmDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('确认退出'),
-        content: const Text('确定要退出答题吗？当前进度将会丢失。'),
+        content: const Text('确定要退出理论模拟吗？当前进度将会丢失。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -1663,7 +1807,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              ref.read(quizControllerProvider.notifier).reset();
+              final currentMode = ref.read(quizControllerProvider).mode;
+              ref.read(quizControllerProvider.notifier).reset(currentMode);
               appRouter.goToHome();
             },
             child: const Text('确定'),

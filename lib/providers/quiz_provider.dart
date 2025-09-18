@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/question_model.dart';
 import '../models/progress_model.dart';
@@ -308,13 +309,24 @@ class QuizController extends StateNotifier<QuizState> {
     final nextIndex = state.currentQuestionIndex + 1;
 
     if (nextIndex >= state.questions.length) {
-      // 答题完成，记录完成时间并清除保存的进度
+      // 答题完成，记录完成时间
+      final currentMode = state.mode;
       state = state.copyWith(
         status: QuizStatus.completed,
         quizCompletedTime: DateTime.now(),
       );
-      // 答题完成时清除保存的进度
-      clearSavedProgress();
+
+      // 根据模式决定是否清除进度
+      if (currentMode == QuizMode.exam) {
+        // 考试模式：完成后总是清除进度
+        clearSavedProgress(currentMode);
+        debugPrint('Exam completed, clearing saved progress');
+      } else if (currentMode == QuizMode.practice) {
+        // 练习模式：完成所有题目后，保留进度但标记为已完成
+        // 这样用户下次进入时可以选择继续（重新开始）或查看结果
+        debugPrint('Practice completed all ${state.questions.length} questions, progress retained for restart option');
+        // 注意：这里不清除进度，让用户下次进入时可以看到"已完成"状态
+      }
     } else {
       // 进入下一题
       final newStartTimes = Map<int, DateTime>.from(state.questionStartTimes);
@@ -407,101 +419,198 @@ class QuizController extends StateNotifier<QuizState> {
   }
 
   // 重置答题状态
-  void reset() {
+  void reset([QuizMode? specificMode]) {
+    if (specificMode != null) {
+      // 清除指定模式的进度
+      clearSavedProgress(specificMode);
+    }
+    state = const QuizState();
+  }
+
+  // 重新开始当前模式的答题（清除进度并保持在当前页面）
+  Future<void> restartCurrentMode() async {
+    final currentMode = state.mode;
+    // 清除当前模式的进度
+    await clearSavedProgress(currentMode);
+
+    // 重置状态但保持在当前页面，用户可以重新开始答题
     state = const QuizState();
   }
 
   // 自动保存当前进度（练习模式和考试模式）
   Future<void> _autoSaveProgress() async {
     if (state.status == QuizStatus.inProgress) {
-      PracticeShuffleMode? practiceShuffleMode;
-      if (state.mode == QuizMode.practice) {
-        final settings = _ref.read(settingsProvider);
-        practiceShuffleMode = settings.practiceShuffleMode;
+      // 检查用户是否启用了进度保存功能
+      final settings = _ref.read(settingsProvider);
+      if (!settings.enableProgressSave) {
+        return; // 用户未启用进度保存，直接返回
       }
-      final progress = QuizProgress.fromQuizState(
-        state,
-        practiceShuffleMode: practiceShuffleMode,
-      );
-      await _progressService.saveQuizProgress(progress);
+
+      // 只为练习模式自动保存进度，考试模式不自动保存
+      if (state.mode != QuizMode.practice) {
+        return;
+      }
+
+      try {
+        PracticeShuffleMode? practiceShuffleMode;
+        if (state.mode == QuizMode.practice) {
+          practiceShuffleMode = settings.practiceShuffleMode;
+        }
+        final progress = QuizProgress.fromQuizState(
+          state,
+          practiceShuffleMode: practiceShuffleMode,
+        );
+        await _progressService.saveQuizProgress(progress);
+        debugPrint('Auto-saved quiz progress for ${state.mode.name} mode');
+      } catch (e) {
+        debugPrint('Error auto-saving quiz progress: $e');
+      }
     }
   }
 
   // 手动保存当前进度（用于退出时保存）
   Future<void> saveCurrentProgress() async {
     if (state.status == QuizStatus.inProgress) {
-      PracticeShuffleMode? practiceShuffleMode;
-      if (state.mode == QuizMode.practice) {
-        final settings = _ref.read(settingsProvider);
-        practiceShuffleMode = settings.practiceShuffleMode;
+      // 只为练习模式手动保存进度，考试模式不保存
+      if (state.mode != QuizMode.practice) {
+        return;
       }
-      final progress = QuizProgress.fromQuizState(
-        state,
-        practiceShuffleMode: practiceShuffleMode,
-      );
-      await _progressService.saveQuizProgress(progress);
+
+      try {
+        PracticeShuffleMode? practiceShuffleMode;
+        if (state.mode == QuizMode.practice) {
+          final settings = _ref.read(settingsProvider);
+          practiceShuffleMode = settings.practiceShuffleMode;
+        }
+        final progress = QuizProgress.fromQuizState(
+          state,
+          practiceShuffleMode: practiceShuffleMode,
+        );
+        // 手动保存时不检查用户设置，直接保存
+        await _progressService.saveQuizProgress(progress);
+        debugPrint('Manually saved quiz progress for ${state.mode.name} mode');
+      } catch (e) {
+        debugPrint('Error manually saving quiz progress: $e');
+      }
     }
   }
 
   // 恢复进度
-  Future<bool> restoreProgress() async {
-    final progress = await _progressService.loadQuizProgress();
-    if (progress != null && progress.isValid && progress.mode != null) {
-      // 检查练习模式乱序设置是否匹配
-      if (progress.mode == QuizMode.practice &&
-          progress.practiceShuffleMode != null) {
-        final settings = _ref.read(settingsProvider);
-        if (progress.practiceShuffleMode != settings.practiceShuffleMode) {
-          // 设置不匹配，清除进度并返回false
-          await clearSavedProgress();
+  Future<bool> restoreProgress([QuizMode? targetMode]) async {
+    try {
+      final progress = await _progressService.loadQuizProgress(targetMode);
+      if (progress != null && progress.isValid && progress.mode != null) {
+        // 检查练习模式乱序设置是否匹配
+        if (progress.mode == QuizMode.practice &&
+            progress.practiceShuffleMode != null) {
+          final settings = _ref.read(settingsProvider);
+          if (progress.practiceShuffleMode != settings.practiceShuffleMode) {
+            // 设置不匹配，清除进度并返回false
+            debugPrint('Practice shuffle mode mismatch: saved=${progress.practiceShuffleMode}, current=${settings.practiceShuffleMode}');
+            await clearSavedProgress(progress.mode);
+            return false;
+          }
+        }
+
+        // 验证进度数据的完整性
+        if (progress.questions.isEmpty) {
+          debugPrint('Progress has no questions, clearing invalid progress');
+          await clearSavedProgress(progress.mode);
           return false;
         }
-      }
 
-      state = QuizState(
-        status: QuizStatus.inProgress,
-        mode: progress.mode!,
-        questions: progress.questions,
-        originalQuestions: progress.questions, // 恢复时保存原始题目
-        currentQuestionIndex: progress.currentIndex,
-        userAnswers: progress.userAnswers,
-        questionStartTimes: progress.questionStartTimes,
-        quizStartTime: progress.startTime,
-        selectedCategory: progress.selectedCategory,
-      );
-      return true;
+        // 验证当前题目索引的有效性
+        if (progress.currentIndex < 0 || progress.currentIndex >= progress.questions.length) {
+          debugPrint('Invalid current question index: ${progress.currentIndex}/${progress.questions.length}');
+          await clearSavedProgress(progress.mode);
+          return false;
+        }
+
+        state = QuizState(
+          status: QuizStatus.inProgress,
+          mode: progress.mode!,
+          questions: progress.questions,
+          originalQuestions: progress.questions, // 恢复时保存原始题目
+          currentQuestionIndex: progress.currentIndex,
+          userAnswers: progress.userAnswers,
+          questionStartTimes: progress.questionStartTimes,
+          quizStartTime: progress.startTime,
+          selectedCategory: progress.selectedCategory,
+        );
+        debugPrint('Successfully restored quiz progress for ${progress.mode!.name} mode');
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Error restoring quiz progress: $e');
+      if (targetMode != null) {
+        await clearSavedProgress(targetMode);
+      }
     }
     return false;
   }
 
   // 清除保存的进度
-  Future<void> clearSavedProgress() async {
-    await _progressService.clearQuizProgress();
+  Future<void> clearSavedProgress([QuizMode? mode]) async {
+    await _progressService.clearQuizProgress(mode);
   }
 
   // 检查是否有保存的进度
-  Future<bool> hasSavedProgress() async {
-    return await _progressService.hasQuizProgress();
+  Future<bool> hasSavedProgress([QuizMode? mode]) async {
+    return await _progressService.hasQuizProgress(mode);
   }
 
   // 检查是否有指定模式的保存进度
   Future<bool> hasSavedProgressForMode(QuizMode mode) async {
-    final progress = await _progressService.loadQuizProgress();
-    if (progress != null && progress.isValid) {
-      if (progress.mode == mode) {
+    try {
+      final progress = await _progressService.loadQuizProgress(mode);
+      if (progress != null && progress.isValid) {
+        // 检查模式是否匹配
+        if (progress.mode != mode) {
+          // 模式不匹配，清除进度
+          debugPrint('Mode mismatch: expected=${mode.name}, saved=${progress.mode?.name}');
+          await clearSavedProgress(mode);
+          return false;
+        }
+
+        // 对于练习模式，检查乱序设置是否匹配
+        if (mode == QuizMode.practice && progress.practiceShuffleMode != null) {
+          final settings = _ref.read(settingsProvider);
+          if (progress.practiceShuffleMode != settings.practiceShuffleMode) {
+            // 设置不匹配，记录但不清除进度，让用户决定
+            debugPrint('Practice shuffle mode mismatch: saved=${progress.practiceShuffleMode}, current=${settings.practiceShuffleMode}');
+            debugPrint('Keeping progress despite mode mismatch - user can choose to continue or restart');
+            // 不清除进度，让用户在UI中选择
+            // await clearSavedProgress(mode);
+            // return false;
+          }
+        }
+
+        // 验证进度数据的完整性
+        if (progress.questions.isEmpty) {
+          debugPrint('Progress has no questions, clearing invalid progress');
+          await clearSavedProgress(mode);
+          return false;
+        }
+
+        // 验证当前题目索引的有效性
+        if (progress.currentIndex < 0 || progress.currentIndex >= progress.questions.length) {
+          debugPrint('Invalid current question index: ${progress.currentIndex}/${progress.questions.length}');
+          await clearSavedProgress(mode);
+          return false;
+        }
+
         return true;
-      } else {
-        // 模式不匹配，清除进度
-        await clearSavedProgress();
-        return false;
       }
+    } catch (e) {
+      debugPrint('Error checking saved progress for ${mode.name} mode: $e');
+      await clearSavedProgress(mode);
     }
     return false;
   }
 
   // 获取保存的进度描述
-  Future<String?> getSavedProgressDescription() async {
-    final progress = await _progressService.loadQuizProgress();
+  Future<String?> getSavedProgressDescription([QuizMode? mode]) async {
+    final progress = await _progressService.loadQuizProgress(mode);
     return progress?.description;
   }
 

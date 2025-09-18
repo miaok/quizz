@@ -4,6 +4,8 @@ import '../providers/settings_provider.dart';
 import '../providers/blind_taste_provider.dart';
 import '../providers/flashcard_provider.dart';
 import '../providers/quiz_provider.dart';
+import '../providers/haptic_settings_provider.dart';
+import '../utils/haptic_manager.dart';
 import '../models/settings_model.dart';
 import '../services/progress_service.dart';
 
@@ -34,17 +36,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final settingsController = ref.read(settingsProvider.notifier);
+    final hapticSettings = ref.watch(hapticSettingsProvider);
+
+    // 更新HapticManager的设置
+    HapticManager.updateSettings(hapticEnabled: hapticSettings.hapticEnabled);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('应用设置'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            HapticManager.medium();
+            Navigator.of(context).pop();
+          },
         ),
         actions: [
           TextButton(
-            onPressed: () => _showResetDialog(context, settingsController),
+            onPressed: () {
+              HapticManager.medium();
+              _showResetDialog(context, settingsController);
+            },
             child: Text(
               '重置',
               style: TextStyle(
@@ -142,6 +154,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
+        _buildSectionCard(
+          title: '触感管理',
+          icon: Icons.vibration,
+          child: _buildHapticSection(),
+        ),
+        const SizedBox(height: 16),
         _buildSectionCard(
           title: '进度管理',
           icon: Icons.save,
@@ -282,7 +300,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           ),
           IconButton(
             onPressed: currentValue > 0
-                ? () => onChanged(currentValue - 1)
+                ? () {
+                    HapticManager.medium();
+                    onChanged(currentValue - 1);
+                  }
                 : null,
             icon: const Icon(Icons.remove_circle_outline),
             iconSize: 20,
@@ -301,7 +322,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           ),
           IconButton(
             onPressed: currentValue < 100
-                ? () => onChanged(currentValue + 1)
+                ? () {
+                    HapticManager.medium();
+                    onChanged(currentValue + 1);
+                  }
                 : null,
             icon: const Icon(Icons.add_circle_outline),
             iconSize: 20,
@@ -344,7 +368,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           ),
           IconButton(
             onPressed: currentValue > 2
-                ? () => onChanged(currentValue - 1)
+                ? () {
+                    HapticManager.medium();
+                    onChanged(currentValue - 1);
+                  }
                 : null,
             icon: const Icon(Icons.remove_circle_outline),
             iconSize: 20,
@@ -363,7 +390,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           ),
           IconButton(
             onPressed: currentValue < 6
-                ? () => onChanged(currentValue + 1)
+                ? () {
+                    HapticManager.medium();
+                    onChanged(currentValue + 1);
+                  }
                 : null,
             icon: const Icon(Icons.add_circle_outline),
             iconSize: 20,
@@ -426,7 +456,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             min: 0.0,
             max: 1.0,
             divisions: 10,
-            onChanged: onChanged,
+            onChanged: (value) {
+              HapticManager.selection();
+              onChanged(value);
+            },
             activeColor: Colors.amber,
           ),
         ],
@@ -467,7 +500,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           ),
           IconButton(
             onPressed: currentValue > 1
-                ? () => onChanged(currentValue - 1)
+                ? () {
+                    HapticManager.medium();
+                    onChanged(currentValue - 1);
+                  }
                 : null,
             icon: const Icon(Icons.remove_circle_outline),
             iconSize: 20,
@@ -486,7 +522,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           ),
           IconButton(
             onPressed: currentValue < 3
-                ? () => onChanged(currentValue + 1)
+                ? () {
+                    HapticManager.medium();
+                    onChanged(currentValue + 1);
+                  }
                 : null,
             icon: const Icon(Icons.add_circle_outline),
             iconSize: 20,
@@ -517,9 +556,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           ),
           IconButton(
             onPressed: settings.examTimeMinutes > 1
-                ? () => controller.updateExamTimeMinutes(
-                    settings.examTimeMinutes - 1,
-                  )
+                ? () {
+                    HapticManager.medium();
+                    controller.updateExamTimeMinutes(
+                      settings.examTimeMinutes - 1,
+                    );
+                  }
                 : null,
             icon: const Icon(Icons.remove_circle_outline),
             iconSize: 20,
@@ -538,9 +580,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           ),
           IconButton(
             onPressed: settings.examTimeMinutes < 60
-                ? () => controller.updateExamTimeMinutes(
-                    settings.examTimeMinutes + 1,
-                  )
+                ? () {
+                    HapticManager.medium();
+                    controller.updateExamTimeMinutes(
+                      settings.examTimeMinutes + 1,
+                    );
+                  }
                 : null,
             icon: const Icon(Icons.add_circle_outline),
             iconSize: 20,
@@ -654,20 +699,34 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           title: '酒样闪卡随机顺序',
           subtitle: '酒样闪卡时随机打乱酒样出现顺序',
           icon: Icons.shuffle,
-          value: settings.enableBlindTasteRandomOrder,
+          value: settings.enableFlashcardRandomOrder,
           onChanged: (value) =>
-              _handleBlindTasteRandomOrderChange(value, controller),
+              _handleFlashcardRandomOrderChange(value, controller),
         ),
         const SizedBox(height: 8),
         _buildSwitchTile(
           title: '酒样练习随机顺序',
           subtitle: '酒样练习时随机打乱酒样出现顺序',
           icon: Icons.shuffle,
-          value: settings.enableFlashcardRandomOrder,
+          value: settings.enableBlindTasteRandomOrder,
           onChanged: (value) =>
-              _handleFlashcardRandomOrderChange(value, controller),
+              _handleBlindTasteRandomOrderChange(value, controller),
         ),
       ],
+    );
+  }
+
+  // 触感设置区域
+  Widget _buildHapticSection() {
+    final hapticSettings = ref.watch(hapticSettingsProvider);
+    final hapticController = ref.read(hapticSettingsProvider.notifier);
+
+    return _buildSwitchTile(
+      title: '震动反馈',
+      subtitle: '开启后在答题、切题、长按查看答案等操作时提供震动反馈',
+      icon: Icons.vibration,
+      value: hapticSettings.hapticEnabled,
+      onChanged: hapticController.setHapticEnabled,
     );
   }
 
@@ -706,7 +765,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         borderRadius: BorderRadius.circular(8),
       ),
       child: InkWell(
-        onTap: () => _showClearProgressDialog(context),
+        onTap: () {
+          HapticManager.medium();
+          _showClearProgressDialog(context);
+        },
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.all(8),
@@ -780,7 +842,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               ],
             ),
           ),
-          Switch(value: value, onChanged: onChanged),
+          Switch(
+            value: value,
+            onChanged: (newValue) {
+              HapticManager.medium();
+              onChanged(newValue);
+            },
+          ),
         ],
       ),
     );
@@ -794,11 +862,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         content: const Text('确定要重置所有设置为默认值吗？'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              HapticManager.medium();
+              Navigator.of(context).pop();
+            },
             child: const Text('取消'),
           ),
           TextButton(
             onPressed: () {
+              HapticManager.medium();
               controller.resetSettings();
               Navigator.of(context).pop();
               ScaffoldMessenger.of(
@@ -825,11 +897,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              HapticManager.medium();
+              Navigator.of(context).pop();
+            },
             child: const Text('取消'),
           ),
           TextButton(
             onPressed: () async {
+              HapticManager.medium();
               Navigator.of(context).pop();
               try {
                 // 清空品评进度
@@ -881,11 +957,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              HapticManager.medium();
+              Navigator.of(context).pop();
+            },
             child: const Text('取消'),
           ),
           TextButton(
             onPressed: () async {
+              HapticManager.medium();
               Navigator.of(context).pop();
               try {
                 // 清空闪卡记忆进度
@@ -930,11 +1010,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         content: const Text('确定要清除所有已保存的答题和品评进度吗？此操作不可恢复。'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              HapticManager.medium();
+              Navigator.of(context).pop();
+            },
             child: const Text('取消'),
           ),
           TextButton(
             onPressed: () async {
+              HapticManager.medium();
               Navigator.of(context).pop();
               try {
                 final progressService = ProgressService();
@@ -1029,7 +1113,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             return Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: InkWell(
-                onTap: () => _handlePracticeShuffleModeChange(mode, controller),
+                onTap: () {
+                  HapticManager.medium();
+                  _handlePracticeShuffleModeChange(mode, controller);
+                },
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -1144,11 +1231,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              HapticManager.medium();
+              Navigator.of(context).pop();
+            },
             child: const Text('取消'),
           ),
           TextButton(
             onPressed: () async {
+              HapticManager.medium();
               Navigator.of(context).pop();
               try {
                 // 清空练习进度

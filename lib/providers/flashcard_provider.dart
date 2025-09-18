@@ -6,33 +6,38 @@ import '../models/blind_taste_model.dart';
 import '../models/progress_model.dart';
 import '../services/blind_taste_service.dart';
 import '../services/progress_service.dart';
+import 'settings_provider.dart';
 
 /// 闪卡记忆Provider
 final flashcardProvider =
     StateNotifierProvider<FlashcardController, FlashcardState>((ref) {
-      return FlashcardController();
+      return FlashcardController(ref);
     });
 
 /// 闪卡记忆控制器
 class FlashcardController extends StateNotifier<FlashcardState> {
   final BlindTasteService _service = BlindTasteService();
   final ProgressService _progressService = ProgressService();
+  late final Ref _ref;
 
-  FlashcardController() : super(const FlashcardState());
+  FlashcardController(Ref ref) : super(const FlashcardState()) {
+    _ref = ref;
+  }
 
   /// 加载闪卡数据
   Future<void> loadFlashcards({
     String? aromaFilter,
     double? minAlcohol,
     double? maxAlcohol,
-    bool randomOrder = false,
+    bool? randomOrder, // 改为可选参数，如果不提供则从设置中读取
   }) async {
     state = state.copyWith(isLoading: true, error: null);
 
-    // 记录当前的随机顺序设置
-    _currentRandomOrder = randomOrder;
-
     try {
+      // 获取随机顺序设置，优先使用传入参数，否则从设置中读取
+      final settings = _ref.read(settingsProvider);
+      final useRandomOrder = randomOrder ?? settings.enableFlashcardRandomOrder;
+
       // 如果当前有卡片池且未完成一轮，继续当前轮次
       if (state.items.isNotEmpty && !state.isRoundCompleted) {
         state = state.copyWith(isLoading: false); // 确保停止加载状态
@@ -75,7 +80,7 @@ class FlashcardController extends StateNotifier<FlashcardState> {
       }
 
       // 如果启用随机顺序，则打乱列表
-      if (randomOrder) {
+      if (useRandomOrder) {
         filteredItems.shuffle(Random());
       }
 
@@ -219,11 +224,13 @@ class FlashcardController extends StateNotifier<FlashcardState> {
 
   /// 开始新一轮
   Future<void> startNewRound() async {
+    // 从设置中获取最新的随机顺序设置
+    final settings = _ref.read(settingsProvider);
     await loadFlashcards(
       aromaFilter: state.selectedAromaFilter,
       minAlcohol: state.minAlcoholDegree,
       maxAlcohol: state.maxAlcoholDegree,
-      randomOrder: _currentRandomOrder, // 使用当前的随机顺序设置
+      randomOrder: settings.enableFlashcardRandomOrder, // 使用最新的设置
     );
   }
 
@@ -235,16 +242,16 @@ class FlashcardController extends StateNotifier<FlashcardState> {
   /// 自动保存进度
   Future<void> _autoSaveProgress() async {
     if (state.items.isNotEmpty && state.currentCard != null) {
+      // 获取当前设置中的随机顺序
+      final settings = _ref.read(settingsProvider);
       final progress = QuizProgress.fromFlashcardState(
         state,
-        randomOrder: _currentRandomOrder,
+        randomOrder: settings.enableFlashcardRandomOrder,
       );
       await _progressService.saveFlashcardProgress(progress);
     }
   }
 
-  // 当前随机顺序设置
-  bool _currentRandomOrder = false;
 
   /// 检查是否有保存的进度
   Future<bool> hasSavedProgress() async {
@@ -258,14 +265,18 @@ class FlashcardController extends StateNotifier<FlashcardState> {
   }
 
   /// 恢复保存的进度
-  Future<bool> restoreProgress({bool randomOrder = false}) async {
+  Future<bool> restoreProgress({bool? randomOrder}) async {
     final progress = await _progressService.loadFlashcardProgress();
     if (progress == null) return false;
+
+    // 获取当前设置
+    final settings = _ref.read(settingsProvider);
+    final currentRandomOrder = randomOrder ?? settings.enableFlashcardRandomOrder;
 
     try {
       // 检查随机顺序设置是否匹配
       if (progress.flashcardRandomOrder != null &&
-          progress.flashcardRandomOrder != randomOrder) {
+          progress.flashcardRandomOrder != currentRandomOrder) {
         debugPrint(
           'Random order setting changed, clearing progress for consistency',
         );
@@ -323,8 +334,7 @@ class FlashcardController extends StateNotifier<FlashcardState> {
       // 计算当前进度
       final currentProgress = (progress.currentIndex + 1) / filteredItems.length;
 
-      // 设置当前的随机顺序设置
-      _currentRandomOrder = progress.flashcardRandomOrder ?? false;
+      // 注意：随机顺序设置现在直接从settings provider中读取
 
       // 恢复完整状态
       state = state.copyWith(

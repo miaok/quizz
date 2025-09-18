@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(flutter analyze:*)"
+      "Bash(flutter analyze:*)",
+      "Bash(flutter clean:*)",
+      "Bash(flutter pub get)",
+      "Bash(flutter build apk --debug)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

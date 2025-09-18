@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/blind_taste_model.dart';
 import '../providers/blind_taste_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/haptic_settings_provider.dart';
+import '../utils/haptic_manager.dart';
 import '../router/app_router.dart';
 
 class BlindTastePage extends ConsumerStatefulWidget {
@@ -22,14 +24,54 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     });
   }
 
+  // 统一的按钮样式方法
+  ButtonStyle _secondaryButtonStyle(BuildContext context) => OutlinedButton.styleFrom(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    side: BorderSide(
+      color: Theme.of(context).colorScheme.outline,
+    ),
+  );
+
+  // 跳过按钮样式（统一样式）
+  ButtonStyle _skipButtonStyle(BuildContext context) => ElevatedButton.styleFrom(
+    backgroundColor: Theme.of(context).colorScheme.surface,
+    foregroundColor: Theme.of(context).colorScheme.onSurface,
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    elevation: 1,
+    side: BorderSide(
+      color: Theme.of(context).colorScheme.outline,
+      width: 1,
+    ),
+  );
+
+  // 提交按钮样式（统一样式但颜色不同）
+  ButtonStyle _submitButtonStyle(BuildContext context) => ElevatedButton.styleFrom(
+    backgroundColor: Theme.of(context).colorScheme.primary,
+    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    elevation: 2,
+  );
+
   Future<void> _initializeBlindTaste() async {
     final settings = ref.read(settingsProvider);
     final blindTasteController = ref.read(blindTasteProvider.notifier);
     final currentState = ref.read(blindTasteProvider);
 
     // 检查当前状态是否已经有数据（可能已经在首页恢复了进度）
-    if (currentState.questionPool.isNotEmpty && currentState.currentItem != null) {
-      debugPrint('Blind taste state already initialized, skipping re-initialization');
+    if (currentState.questionPool.isNotEmpty &&
+        currentState.currentItem != null) {
+      debugPrint(
+        'Blind taste state already initialized, skipping re-initialization',
+      );
       return;
     }
 
@@ -41,45 +83,102 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
       return;
     }
 
-    // 检查是否有保存的进度
+    // 检查是否有保存的进度 - 使用和理论题库相同的逻辑
     if (settings.enableProgressSave) {
       final hasSavedProgress = await blindTasteController.hasSavedProgress();
       if (hasSavedProgress && mounted) {
-        // 直接恢复进度，不显示弹窗确认
-        debugPrint('Found saved progress, attempting to restore in page');
-        final restored = await blindTasteController.restoreProgress();
-        if (restored) {
-          debugPrint('Progress restored successfully in page');
-          // 成功恢复进度，检查是否需要加载下一题
-          final state = ref.read(blindTasteProvider);
-          if (state.isCompleted && !state.isRoundCompleted) {
-            // 如果当前题已完成但轮次未完成，自动进入下一题
-            await blindTasteController.nextQuestion();
+        final description = await blindTasteController
+            .getSavedProgressDescription();
+        if (!mounted) return;
+
+        // 检查是否是已完成的品鉴练习
+        final isCompleted = currentState.isRoundCompleted;
+
+        bool shouldRestore;
+        bool? dialogResult;
+        if (isCompleted) {
+          // 已完成所有品鉴，询问是否重新开始
+          dialogResult = await _showRestartCompletedBlindTasteDialog(
+            context,
+            description,
+          );
+          if (dialogResult == null) {
+            return; // 用户点击关闭按钮
           }
-          return;
-        } else if (mounted) {
-          debugPrint('Failed to restore progress, starting new session');
-          // 清除旧进度并重新开始
-          await blindTasteController.clearSavedProgress();
-          // 先重置状态再开始新的品鉴
-          blindTasteController.reset();
-          await blindTasteController.startNewTasting();
+          shouldRestore = dialogResult;
+
+          if (shouldRestore) {
+            // 用户选择重新开始，清除旧进度
+            await blindTasteController.clearSavedProgress();
+            shouldRestore = false; // 设置为false以开始新练习
+          } else {
+            // 用户选择查看结果，恢复到已完成状态
+            shouldRestore = true;
+          }
+        } else {
+          // 未完成的品鉴进度
+          if (settings.enableProgressSave &&
+              settings.enableDefaultContinueProgress) {
+            // 启用自动保存且默认继续进度，不显示对话框
+            shouldRestore = true;
+          } else {
+            // 显示确认对话框
+            if (!mounted) return;
+            dialogResult = await _showRestoreBlindTasteProgressDialog(
+              context,
+              description,
+              isAutoSaveDisabled: !settings.enableProgressSave,
+            );
+            if (dialogResult == null) {
+              // 用户点击关闭按钮，取消操作
+              return;
+            }
+            shouldRestore = dialogResult;
+          }
         }
-      } else {
-        // 没有保存的进度，直接开始
-        debugPrint('No saved progress, starting new session');
-        await blindTasteController.startNewTasting();
+
+        if (shouldRestore) {
+          final restored = await blindTasteController.restoreProgress();
+          if (restored) {
+            debugPrint('Progress restored successfully in page');
+            // 成功恢复进度，检查是否需要加载下一题
+            final state = ref.read(blindTasteProvider);
+            if (state.isCompleted && !state.isRoundCompleted) {
+              // 如果当前题已完成但轮次未完成，自动进入下一题
+              await blindTasteController.nextQuestion();
+            }
+            return;
+          } else {
+            // 恢复失败，清除进度并继续重新开始
+            debugPrint('Failed to restore progress, starting new session');
+            await blindTasteController.clearSavedProgress();
+          }
+        } else {
+          // 用户选择不恢复进度
+          if (isCompleted) {
+            // 如果是已完成的进度且用户选择查看结果，不应该清除进度
+            // 这种情况在上面已经处理，不会走到这里
+          } else {
+            // 用户明确选择"重新开始"而不是"继续练习"，才清除进度
+            await blindTasteController.clearSavedProgress();
+          }
+        }
       }
-    } else {
-      // 未启用进度保存，直接开始
-      debugPrint('Progress save disabled, starting new session');
-      await blindTasteController.startNewTasting();
     }
+
+    // 开始新的品鉴练习
+    // 先重置状态再开始新的品鉴
+    blindTasteController.reset();
+    await blindTasteController.startNewTasting();
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(blindTasteProvider);
+    final hapticSettings = ref.watch(hapticSettingsProvider);
+
+    // 更新HapticManager的设置
+    HapticManager.updateSettings(hapticEnabled: hapticSettings.hapticEnabled);
 
     return Scaffold(
       appBar: AppBar(
@@ -249,17 +348,12 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
             children: [
               // 跳过按钮
               Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _skipCurrentItem(),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    side: BorderSide(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                  ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    HapticManager.medium();
+                    _skipCurrentItem();
+                  },
+                  style: _skipButtonStyle(context),
                   child: Text(
                     '跳过',
                     style: TextStyle(
@@ -278,27 +372,18 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                 flex: 2, // 提交按钮占更多空间
                 child: ElevatedButton(
                   onPressed: _canSubmit(state, settings)
-                      ? () => _submitAnswer()
+                      ? () {
+                          HapticManager.submitAnswer();
+                          _submitAnswer();
+                        }
                       : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer,
-                    foregroundColor: Theme.of(
-                      context,
-                    ).colorScheme.onPrimaryContainer,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
+                  style: _submitButtonStyle(context),
                   child: Text(
                     '提交答案',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
                 ),
@@ -373,7 +458,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
         ),
         const SizedBox(height: 4),
         DropdownButtonFormField<String>(
-          value: state.userAnswer.selectedAroma,
+          initialValue: state.userAnswer.selectedAroma,
           decoration: const InputDecoration(
             hintText: '请选择',
             border: OutlineInputBorder(),
@@ -404,6 +489,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
           }).toList(),
           onChanged: (value) {
             if (value != null) {
+              HapticManager.medium();
               ref.read(blindTasteProvider.notifier).selectAroma(value);
             }
           },
@@ -444,7 +530,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
         ),
         const SizedBox(height: 4),
         DropdownButtonFormField<double>(
-          value: state.userAnswer.selectedAlcoholDegree,
+          initialValue: state.userAnswer.selectedAlcoholDegree,
           decoration: const InputDecoration(
             hintText: '请选择',
             border: OutlineInputBorder(),
@@ -475,6 +561,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
           }).toList(),
           onChanged: (value) {
             if (value != null) {
+              HapticManager.medium();
               ref.read(blindTasteProvider.notifier).selectAlcoholDegree(value);
             }
           },
@@ -526,6 +613,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                 IconButton(
                   onPressed: state.userAnswer.selectedTotalScore > 84.0
                       ? () {
+                          HapticManager.medium();
                           final newScore =
                               (state.userAnswer.selectedTotalScore - 0.2).clamp(
                                 84.0,
@@ -565,6 +653,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                     max: 98.0,
                     divisions: 70, // (98-84)/0.2 = 70
                     onChanged: (value) {
+                      HapticManager.selection();
                       ref
                           .read(blindTasteProvider.notifier)
                           .setTotalScore(value);
@@ -576,6 +665,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                 IconButton(
                   onPressed: state.userAnswer.selectedTotalScore < 98.0
                       ? () {
+                          HapticManager.medium();
                           final newScore =
                               (state.userAnswer.selectedTotalScore + 0.2).clamp(
                                 84.0,
@@ -653,6 +743,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   label: Text(equipment),
                   selected: isSelected,
                   onSelected: (_) {
+                    HapticManager.medium();
                     ref
                         .read(blindTasteProvider.notifier)
                         .toggleEquipment(equipment);
@@ -716,6 +807,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   label: Text(agent),
                   selected: isSelected,
                   onSelected: (_) {
+                    HapticManager.medium();
                     ref
                         .read(blindTasteProvider.notifier)
                         .toggleFermentationAgent(agent);
@@ -910,35 +1002,24 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
 
           const SizedBox(height: 16),
 
-          // 操作按钮
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _handleNextQuestion(),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(state.isRoundCompleted ? '开始新一轮' : '下一题'),
+          // 操作按钮 - 只保留下一题按钮
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                HapticManager.medium();
+                _handleNextQuestion();
+              },
+              style: _secondaryButtonStyle(context),
+              child: Text(
+                state.isRoundCompleted ? '开始新一轮' : '下一题',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => appRouter.goToHome(),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('返回首页'),
-                ),
-              ),
-            ],
+            ),
           ),
 
           const SizedBox(height: 16),
@@ -1332,34 +1413,144 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => appRouter.goToHome(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text('返回首页'),
+            // 只保留开始新一轮按钮
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  HapticManager.medium();
+                  _handleNextQuestion();
+                },
+                style: _secondaryButtonStyle(context),
+                child: Text(
+                  '开始新一轮',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _handleNextQuestion(),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text('开始新一轮'),
-                  ),
-                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<bool?> _showRestoreBlindTasteProgressDialog(
+    BuildContext context,
+    String? description, {
+    bool isAutoSaveDisabled = false,
+  }) async {
+    if (!context.mounted) return null;
+
+    return await showDialog<bool?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('恢复酒样练习进度'),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                icon: const Icon(Icons.close),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                iconSize: 20,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (isAutoSaveDisabled) ...[
+                const Text('检测到您已关闭自动保存功能，但仍有之前保存的进度：'),
+                const SizedBox(height: 8),
+              ] else ...[
+                const Text('检测到未完成的酒样练习进度：'),
+                const SizedBox(height: 8),
               ],
+              Text(
+                description ?? '未知进度',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text('是否要继续之前的酒样练习？'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('重新开始'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('继续练习'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<bool?> _showRestartCompletedBlindTasteDialog(
+    BuildContext context,
+    String? description,
+  ) async {
+    if (!context.mounted) return null;
+
+    return await showDialog<bool?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('酒样练习已完成'),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                icon: const Icon(Icons.close),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                iconSize: 20,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('您已完成了所有酒样练习：'),
+              const SizedBox(height: 8),
+              Text(
+                description ?? '练习已完成',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('您希望：'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('查看结果'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('重新开始'),
             ),
           ],
         ),

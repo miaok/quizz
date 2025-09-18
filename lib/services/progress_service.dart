@@ -2,10 +2,13 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/progress_model.dart';
+import '../providers/quiz_provider.dart';
 
 /// 进度保存服务
 class ProgressService {
   static const String _quizProgressKey = 'quiz_progress';
+  static const String _quizPracticeProgressKey = 'quiz_practice_progress'; // 理论练习进度
+  static const String _quizExamProgressKey = 'quiz_exam_progress'; // 理论模拟进度
   static const String _blindTasteProgressKey = 'blind_taste_progress';
   static const String _flashcardProgressKey = 'flashcard_progress';
 
@@ -28,9 +31,24 @@ class ProgressService {
       throw ArgumentError('Progress type must be quiz');
     }
 
+    // 根据模式选择不同的存储键
+    String storageKey;
+    switch (progress.mode) {
+      case QuizMode.practice:
+        storageKey = _quizPracticeProgressKey;
+        break;
+      case QuizMode.exam:
+        storageKey = _quizExamProgressKey;
+        break;
+      default:
+        storageKey = _quizProgressKey; // 兼容性处理
+        break;
+    }
+
     final jsonString = json.encode(progress.toJson());
-    await _prefs!.setString(_quizProgressKey, jsonString);
-    debugPrint('Quiz progress saved: ${progress.description}');
+    await _prefs!.setString(storageKey, jsonString);
+    debugPrint('Quiz progress saved for ${progress.mode?.name ?? 'unknown'} mode: ${progress.description}');
+    debugPrint('Storage key: $storageKey, Data size: ${jsonString.length} chars');
   }
 
   /// 保存品鉴进度
@@ -47,29 +65,73 @@ class ProgressService {
   }
 
   /// 加载答题进度
-  Future<QuizProgress?> loadQuizProgress() async {
+  Future<QuizProgress?> loadQuizProgress([QuizMode? mode]) async {
     await initialize();
 
-    final jsonString = _prefs!.getString(_quizProgressKey);
-    if (jsonString != null) {
-      try {
-        final jsonMap = json.decode(jsonString) as Map<String, dynamic>;
-        final progress = QuizProgress.fromJson(jsonMap);
-
-        if (progress.isValid) {
-          debugPrint('Quiz progress loaded: ${progress.description}');
-          return progress;
-        } else {
-          debugPrint('Invalid quiz progress found, removing...');
-          await clearQuizProgress();
-        }
-      } catch (e) {
-        debugPrint('Error loading quiz progress: $e');
-        await clearQuizProgress();
+    if (mode != null) {
+      // 加载指定模式的进度
+      String storageKey;
+      switch (mode) {
+        case QuizMode.practice:
+          storageKey = _quizPracticeProgressKey;
+          break;
+        case QuizMode.exam:
+          storageKey = _quizExamProgressKey;
+          break;
       }
-    }
 
-    return null;
+      debugPrint('Attempting to load quiz progress for ${mode.name} mode from key: $storageKey');
+      final jsonString = _prefs!.getString(storageKey);
+      if (jsonString != null) {
+        debugPrint('Found saved progress data, size: ${jsonString.length} chars');
+        try {
+          final jsonMap = json.decode(jsonString) as Map<String, dynamic>;
+          final progress = QuizProgress.fromJson(jsonMap);
+
+          if (progress.isValid) {
+            debugPrint('Quiz progress loaded successfully for ${mode.name} mode: ${progress.description}');
+            debugPrint('Progress details: currentIndex=${progress.currentIndex}, questionsCount=${progress.questions.length}, practiceShuffleMode=${progress.practiceShuffleMode}');
+            return progress;
+          } else {
+            debugPrint('Invalid quiz progress found for ${mode.name} mode, removing...');
+            await _clearQuizProgressForMode(mode);
+          }
+        } catch (e) {
+          debugPrint('Error parsing quiz progress for ${mode.name} mode: $e');
+          await _clearQuizProgressForMode(mode);
+        }
+      } else {
+        debugPrint('No saved progress found for ${mode.name} mode');
+      }
+
+      return null;
+    } else {
+      // 兼容性处理：先尝试加载旧的通用进度，然后迁移到新的存储方式
+      debugPrint('Loading progress without specific mode (compatibility mode)');
+      final jsonString = _prefs!.getString(_quizProgressKey);
+      if (jsonString != null) {
+        try {
+          final jsonMap = json.decode(jsonString) as Map<String, dynamic>;
+          final progress = QuizProgress.fromJson(jsonMap);
+
+          if (progress.isValid && progress.mode != null) {
+            // 迁移到新的存储方式
+            debugPrint('Migrating old progress to new storage format for ${progress.mode!.name} mode');
+            await saveQuizProgress(progress);
+            await _prefs!.remove(_quizProgressKey); // 删除旧的存储
+            debugPrint('Migration completed successfully');
+            return progress;
+          } else {
+            debugPrint('Invalid old progress found, removing...');
+            await _prefs!.remove(_quizProgressKey);
+          }
+        } catch (e) {
+          debugPrint('Error loading old quiz progress: $e');
+          await _prefs!.remove(_quizProgressKey);
+        }
+      }
+      return null;
+    }
   }
 
   /// 加载品鉴进度
@@ -99,10 +161,36 @@ class ProgressService {
   }
 
   /// 清除答题进度
-  Future<void> clearQuizProgress() async {
+  Future<void> clearQuizProgress([QuizMode? mode]) async {
     await initialize();
-    await _prefs!.remove(_quizProgressKey);
-    debugPrint('Quiz progress cleared');
+
+    if (mode != null) {
+      await _clearQuizProgressForMode(mode);
+    } else {
+      // 清除所有答题进度
+      await _prefs!.remove(_quizProgressKey); // 兼容性处理
+      await _prefs!.remove(_quizPracticeProgressKey);
+      await _prefs!.remove(_quizExamProgressKey);
+      debugPrint('All quiz progress cleared');
+    }
+  }
+
+  /// 清除指定模式的答题进度
+  Future<void> _clearQuizProgressForMode(QuizMode mode) async {
+    await initialize();
+
+    String storageKey;
+    switch (mode) {
+      case QuizMode.practice:
+        storageKey = _quizPracticeProgressKey;
+        break;
+      case QuizMode.exam:
+        storageKey = _quizExamProgressKey;
+        break;
+    }
+
+    await _prefs!.remove(storageKey);
+    debugPrint('Quiz progress cleared for ${mode.name} mode');
   }
 
   /// 清除品鉴进度
@@ -173,9 +261,17 @@ class ProgressService {
   }
 
   /// 检查是否有答题进度
-  Future<bool> hasQuizProgress() async {
-    final progress = await loadQuizProgress();
-    return progress != null;
+  Future<bool> hasQuizProgress([QuizMode? mode]) async {
+    if (mode != null) {
+      final progress = await loadQuizProgress(mode);
+      return progress != null;
+    } else {
+      // 检查是否有任何答题进度
+      final practiceProgress = await loadQuizProgress(QuizMode.practice);
+      final examProgress = await loadQuizProgress(QuizMode.exam);
+      final oldProgress = await loadQuizProgress(); // 兼容性检查
+      return practiceProgress != null || examProgress != null || oldProgress != null;
+    }
   }
 
   /// 检查是否有品鉴进度

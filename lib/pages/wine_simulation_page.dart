@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/wine_simulation_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/haptic_settings_provider.dart';
+import '../utils/haptic_manager.dart';
 import '../models/blind_taste_model.dart';
 
 class WineSimulationPage extends ConsumerStatefulWidget {
@@ -21,16 +23,38 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
     });
   }
 
+  // 统一的按钮样式方法
+  ButtonStyle _primaryButtonStyle(BuildContext context) => ElevatedButton.styleFrom(
+    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+    foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    elevation: 2,
+  );
+
+  ButtonStyle _secondaryButtonStyle(BuildContext context) => OutlinedButton.styleFrom(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    side: BorderSide(color: Theme.of(context).colorScheme.outline),
+  );
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(wineSimulationProvider);
+    final hapticSettings = ref.watch(hapticSettingsProvider);
+
+    // 更新HapticManager的设置
+    HapticManager.updateSettings(hapticEnabled: hapticSettings.hapticEnabled);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('模拟品评'),
         centerTitle: true,
         leading: IconButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            HapticManager.medium();
+            Navigator.of(context).pop();
+          },
           icon: const Icon(Icons.arrow_back),
           tooltip: '返回',
         ),
@@ -39,6 +63,7 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
           if (state.wineGlasses.isNotEmpty && !state.showResults)
             IconButton(
               onPressed: () {
+                HapticManager.medium();
                 ref.read(wineSimulationProvider.notifier).startNewSimulation();
               },
               icon: const Icon(Icons.refresh),
@@ -95,8 +120,10 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
+                HapticManager.medium();
                 ref.read(wineSimulationProvider.notifier).startNewSimulation();
               },
+              style: _primaryButtonStyle(context),
               child: const Text('再来一次'),
             ),
           ],
@@ -131,17 +158,13 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
             child: ElevatedButton(
               onPressed: state.allCompleted
                   ? () {
+                      HapticManager.submitAnswer();
                       ref
                           .read(wineSimulationProvider.notifier)
                           .submitAllAnswers();
                     }
                   : null,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
+              style: _primaryButtonStyle(context),
               child: Text(
                 state.allCompleted
                     ? '提交答案'
@@ -183,7 +206,10 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
       shadowColor: Colors.black.withValues(alpha: 0.1),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: () => _openWineGlassModal(glass, index),
+        onTap: () {
+          HapticManager.medium();
+          _openWineGlassModal(glass, index);
+        },
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(10.0),
@@ -386,17 +412,23 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
+                    HapticManager.medium();
                     ref
                         .read(wineSimulationProvider.notifier)
                         .startNewSimulation();
                   },
+                  style: _primaryButtonStyle(context),
                   child: const Text('重新开始'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () {
+                    HapticManager.medium();
+                    Navigator.of(context).pop();
+                  },
+                  style: _secondaryButtonStyle(context),
                   child: const Text('返回'),
                 ),
               ),
@@ -714,6 +746,7 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
   }
 
   void _openWineGlassModal(WineGlassState glass, int index) {
+    HapticManager.medium();
     final state = ref.read(wineSimulationProvider);
     final nextGlassIndex = _getNextIncompleteGlassIndex(state, index);
 
@@ -781,6 +814,21 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
     _currentAnswer = widget.initialAnswer ?? BlindTasteAnswer();
   }
 
+  // 统一的按钮样式方法
+  ButtonStyle _primaryButtonStyle(BuildContext context) => ElevatedButton.styleFrom(
+    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+    foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    elevation: 2,
+  );
+
+  ButtonStyle _secondaryButtonStyle(BuildContext context) => OutlinedButton.styleFrom(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    side: BorderSide(color: Theme.of(context).colorScheme.outline),
+  );
+
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
@@ -814,7 +862,10 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      HapticManager.medium();
+                      Navigator.of(context).pop();
+                    },
                     icon: const Icon(Icons.close, size: 20),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
@@ -898,18 +949,43 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: widget.hasNextGlass && widget.onNext != null
-                          ? () => widget.onNext!(_currentAnswer)
+                          ? () {
+                              HapticManager.medium();
+                              widget.onNext!(_currentAnswer);
+                            }
                           : null,
-                      child: Text(widget.hasNextGlass ? '下一杯' : '无下一杯'),
+                      style: _secondaryButtonStyle(context),
+                      child: Text(
+                        widget.hasNextGlass ? '下一杯' : '无下一杯',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Expanded(
+                    flex: 2, // 保存按钮占更多空间
                     child: ElevatedButton(
                       onPressed: _canSubmit(settings)
-                          ? () => widget.onSave(_currentAnswer)
+                          ? () {
+                              HapticManager.submitAnswer();
+                              widget.onSave(_currentAnswer);
+                            }
                           : null,
-                      child: const Text('保存'),
+                      style: _primaryButtonStyle(context),
+                      child: Text(
+                        '保存',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -1013,6 +1089,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
           }).toList(),
           onChanged: (value) {
             if (value != null) {
+              HapticManager.medium();
               setState(() {
                 _currentAnswer = BlindTasteAnswer(
                   selectedAroma: value,
@@ -1095,6 +1172,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
           }).toList(),
           onChanged: (value) {
             if (value != null) {
+              HapticManager.medium();
               setState(() {
                 _currentAnswer = BlindTasteAnswer(
                   selectedAroma: _currentAnswer.selectedAroma,
@@ -1137,6 +1215,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                 IconButton(
                   onPressed: _currentAnswer.selectedTotalScore > 84.0
                       ? () {
+                          HapticManager.medium();
                           final newScore =
                               (_currentAnswer.selectedTotalScore - 0.2).clamp(
                                 84.0,
@@ -1184,6 +1263,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                     max: 98.0,
                     divisions: 70, // (98-84)/0.2 = 70
                     onChanged: (value) {
+                      HapticManager.selection();
                       setState(() {
                         _currentAnswer = BlindTasteAnswer(
                           selectedAroma: _currentAnswer.selectedAroma,
@@ -1206,6 +1286,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                 IconButton(
                   onPressed: _currentAnswer.selectedTotalScore < 98.0
                       ? () {
+                          HapticManager.medium();
                           final newScore =
                               (_currentAnswer.selectedTotalScore + 0.2).clamp(
                                 84.0,
@@ -1272,6 +1353,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                   label: Text(equipment),
                   selected: isSelected,
                   onSelected: (_) {
+                    HapticManager.medium();
                     setState(() {
                       final newEquipment = List<String>.from(
                         _currentAnswer.selectedEquipment,
@@ -1330,6 +1412,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                   label: Text(agent),
                   selected: isSelected,
                   onSelected: (_) {
+                    HapticManager.medium();
                     setState(() {
                       final newAgents = List<String>.from(
                         _currentAnswer.selectedFermentationAgent,

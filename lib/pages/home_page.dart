@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/settings_model.dart';
@@ -162,7 +161,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         isLarge: true,
       ),
       _FeatureCard(
-        title: '理论题库',
+        title: '理论练习',
         subtitle: '巩固基础，提升理论',
         icon: Icons.school,
         color: Colors.blue,
@@ -407,138 +406,186 @@ class _HomePageState extends ConsumerState<HomePage> {
     final settings = ref.read(settingsProvider);
     final quizController = ref.read(quizControllerProvider.notifier);
 
-    // 检查是否有保存的进度，并且是练习模式的进度
-    if (settings.enableProgressSave) {
+    try {
+      // 检查是否有保存的理论练习进度（使用增强的验证逻辑）
       final hasSavedProgress = await quizController.hasSavedProgressForMode(
         QuizMode.practice,
       );
+
       if (hasSavedProgress && context.mounted) {
-        final description = await quizController.getSavedProgressDescription();
+        final description = await quizController.getSavedProgressDescription(
+          QuizMode.practice,
+        );
+        if (!context.mounted) return;
+
+        // 检查是否是已完成的练习
+        final progressService = ref.read(progressServiceProvider);
+        final progress = await progressService.loadQuizProgress(
+          QuizMode.practice,
+        );
+        final isCompleted =
+            progress != null &&
+            progress.mode == QuizMode.practice &&
+            progress.currentIndex >= progress.questions.length - 1;
+
         if (!context.mounted) return;
 
         bool shouldRestore;
-        if (settings.enableDefaultContinueProgress) {
-          // 默认继续进度，不显示对话框
-          shouldRestore = true;
-        } else {
-          // 显示确认对话框
-          shouldRestore = await _showRestoreProgressDialog(
+        if (isCompleted) {
+          // 已完成所有题目，询问是否重新开始
+          final dialogResult = await _showRestartCompletedPracticeDialog(
             context,
             description,
           );
+          if (dialogResult == null) {
+            // 用户点击关闭按钮，取消操作
+            return;
+          }
+
+          if (dialogResult) {
+            // 用户选择重新开始，清除旧进度
+            await quizController.clearSavedProgress(QuizMode.practice);
+            shouldRestore = false; // 设置为false以开始新练习
+          } else {
+            // 用户选择查看结果，恢复到已完成状态
+            shouldRestore = true;
+          }
+        } else {
+          // 未完成的练习进度
+          if (settings.enableProgressSave &&
+              settings.enableDefaultContinueProgress) {
+            // 启用自动保存且默认继续进度，不显示对话框
+            shouldRestore = true;
+          } else {
+            // 显示确认对话框
+            if (!context.mounted) return;
+            final dialogResult = await _showRestoreProgressDialog(
+              context,
+              description,
+              isAutoSaveDisabled: !settings.enableProgressSave,
+            );
+            if (dialogResult == null) {
+              // 用户点击关闭按钮，取消操作
+              return;
+            }
+            shouldRestore = dialogResult;
+          }
         }
 
         if (shouldRestore) {
-          final restored = await quizController.restoreProgress();
+          final restored = await quizController.restoreProgress(
+            QuizMode.practice,
+          );
           if (restored) {
             // 导航到答题页面
             appRouter.goToQuiz();
             return;
           } else {
-            // 恢复失败，清除进度并重新开始
-            await quizController.clearSavedProgress();
+            // 恢复失败，清除进度并继续重新开始
+            debugPrint('Failed to restore progress, starting new quiz');
+            await quizController.clearSavedProgress(QuizMode.practice);
           }
         } else {
-          // 用户选择不恢复，清除保存的进度
-          await quizController.clearSavedProgress();
+          // 用户选择不恢复进度
+          if (isCompleted) {
+            // 如果是已完成的进度且用户选择查看结果，不应该清除进度
+            // 这种情况在上面已经处理，不会走到这里
+          } else {
+            // 用户明确选择"重新开始"而不是"继续答题"，才清除进度
+            await quizController.clearSavedProgress(QuizMode.practice);
+          }
         }
       }
+
+      // 开始全题库答题，使用用户的选项乱序设置
+      await quizController.startAllQuestionsQuiz(
+        shuffleOptions: settings.shuffleOptions,
+        shuffleMode: settings.practiceShuffleMode,
+      );
+
+      // 导航到答题页面
+      appRouter.goToQuiz();
+    } catch (e) {
+      debugPrint('Error starting quiz: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('启动理论练习失败: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     }
-
-    // 开始全题库答题，使用用户的选项乱序设置
-    quizController.startAllQuestionsQuiz(
-      shuffleOptions: settings.shuffleOptions,
-      shuffleMode: settings.practiceShuffleMode,
-    );
-
-    // 导航到答题页面
-    appRouter.goToQuiz();
   }
 
-  Future<bool> _showRestoreProgressDialog(
+  Future<bool?> _showRestoreProgressDialog(
     BuildContext context,
-    String? description,
-  ) async {
-    if (!context.mounted) return false;
+    String? description, {
+    bool isAutoSaveDisabled = false,
+  }) async {
+    if (!context.mounted) return null;
 
     return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('恢复进度'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('检测到未完成的答题进度：'),
-                const SizedBox(height: 8),
-                Text(
-                  description ?? '未知进度',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text('是否要继续之前的答题？'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('重新开始'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('继续答题'),
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('恢复进度'),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                iconSize: 20,
               ),
             ],
           ),
-        ) ??
-        false;
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (isAutoSaveDisabled) ...[
+                const Text('检测到您已关闭自动保存功能，但仍有之前保存的进度：'),
+                const SizedBox(height: 8),
+              ] else ...[
+                const Text('检测到未完成的答题进度：'),
+                const SizedBox(height: 8),
+              ],
+              Text(
+                description ?? '未知进度',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text('是否要继续之前的答题？'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('重新开始'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('继续答题'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _startMockExam(BuildContext context, WidgetRef ref) async {
     final settings = ref.read(settingsProvider);
     final quizController = ref.read(quizControllerProvider.notifier);
 
-    // 检查是否有保存的进度，并且是考试模式的进度
-    if (settings.enableProgressSave) {
-      final hasSavedProgress = await quizController.hasSavedProgressForMode(
-        QuizMode.exam,
-      );
-      if (hasSavedProgress && context.mounted) {
-        final description = await quizController.getSavedProgressDescription();
-        if (!context.mounted) return;
-
-        bool shouldRestore;
-        if (settings.enableDefaultContinueProgress) {
-          // 默认继续进度，不显示对话框
-          shouldRestore = true;
-        } else {
-          // 显示确认对话框
-          shouldRestore = await _showRestoreProgressDialog(
-            context,
-            description,
-          );
-        }
-
-        if (shouldRestore) {
-          final restored = await quizController.restoreProgress();
-          if (restored) {
-            // 导航到答题页面
-            appRouter.goToQuiz();
-            return;
-          } else {
-            // 恢复失败，清除进度并重新开始
-            await quizController.clearSavedProgress();
-          }
-        } else {
-          // 用户选择不恢复，清除保存的进度
-          await quizController.clearSavedProgress();
-        }
-      }
-    }
-
+    // 理论模拟不需要加载任何保存的进度，直接开始新的考试
     // 使用设置中的配置开始模拟考试
     quizController.startQuizWithSettings(
       singleCount: settings.singleChoiceCount,
@@ -563,19 +610,23 @@ class _HomePageState extends ConsumerState<HomePage> {
             .getSavedProgressDescription();
         if (!context.mounted) return;
 
-        bool shouldRestore;
+        bool? shouldRestoreResult;
         if (settings.enableDefaultContinueProgress) {
           // 默认继续进度，不显示对话框
-          shouldRestore = true;
+          shouldRestoreResult = true;
         } else {
           // 显示确认对话框
-          shouldRestore = await _showRestoreBlindTasteProgressDialog(
+          shouldRestoreResult = await _showRestoreBlindTasteProgressDialog(
             context,
             description,
           );
         }
 
-        if (shouldRestore) {
+        if (shouldRestoreResult == null) {
+          return; // 用户点击关闭按钮，取消操作
+        }
+
+        if (shouldRestoreResult) {
           debugPrint('User chose to restore progress, attempting restore...');
           final restored = await blindTasteController.restoreProgress();
           if (restored) {
@@ -600,7 +651,9 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
     }
 
-    debugPrint('Navigating to blind taste page (no saved progress or user chose new session)');
+    debugPrint(
+      'Navigating to blind taste page (no saved progress or user chose new session)',
+    );
     // 导航到品评页面无保存进度或用户选择新开始）
     appRouter.goToBlindTaste();
   }
@@ -623,10 +676,15 @@ class _HomePageState extends ConsumerState<HomePage> {
           shouldRestore = true;
         } else {
           // 显示确认对话框
-          shouldRestore = await _showRestoreFlashcardProgressDialog(
+          final dialogResult = await _showRestoreFlashcardProgressDialog(
             context,
             description,
           );
+          if (dialogResult == null) {
+            // 用户点击关闭按钮，取消操作
+            return;
+          }
+          shouldRestore = dialogResult;
         }
 
         if (shouldRestore) {
@@ -656,88 +714,175 @@ class _HomePageState extends ConsumerState<HomePage> {
     appRouter.goToFlashcard();
   }
 
-  Future<bool> _showRestoreBlindTasteProgressDialog(
+  Future<bool?> _showRestoreBlindTasteProgressDialog(
     BuildContext context,
     String? description,
   ) async {
-    if (!context.mounted) return false;
+    if (!context.mounted) return null;
 
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('恢复品评进度'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('检测到未完成的品评进度：'),
-                const SizedBox(height: 8),
-                Text(
-                  description ?? '未知进度',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text('是否要继续之前的品评？'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('重新开始'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('继续品评'),
+    return await showDialog<bool?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('恢复酒样练习进度'),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                icon: const Icon(Icons.close),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                iconSize: 20,
               ),
             ],
           ),
-        ) ??
-        false;
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('检测到未完成的酒样练习进度：'),
+              const SizedBox(height: 8),
+              Text(
+                description ?? '未知进度',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text('是否要继续之前的酒样练习？'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('重新开始'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('继续练习'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  Future<bool> _showRestoreFlashcardProgressDialog(
+  Future<bool?> _showRestoreFlashcardProgressDialog(
     BuildContext context,
     String? description,
   ) async {
-    if (!context.mounted) return false;
+    if (!context.mounted) return null;
 
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('恢复闪卡进度'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('检测到未完成的闪卡记忆进度：'),
-                const SizedBox(height: 8),
-                Text(
-                  description ?? '未知进度',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text('是否要继续之前的闪卡记忆？'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('重新开始'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('继续记忆'),
+    return await showDialog<bool?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('恢复闪卡进度'),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                iconSize: 20,
               ),
             ],
           ),
-        ) ??
-        false;
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('检测到未完成的闪卡记忆进度：'),
+              const SizedBox(height: 8),
+              Text(
+                description ?? '未知进度',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text('是否要继续之前的闪卡记忆？'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('重新开始'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('继续记忆'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<bool?> _showRestartCompletedPracticeDialog(
+    BuildContext context,
+    String? description,
+  ) async {
+    if (!context.mounted) return null;
+
+    return await showDialog<bool?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('练习已完成'),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                iconSize: 20,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('您已完成了所有练习题目：'),
+              const SizedBox(height: 8),
+              Text(
+                description ?? '练习已完成',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('您希望：'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('查看结果'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('重新开始'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

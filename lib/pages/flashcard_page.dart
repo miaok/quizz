@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/flashcard_provider.dart';
-import '../providers/settings_provider.dart';
+import '../providers/haptic_settings_provider.dart';
 import '../models/flashcard_model.dart';
+import '../utils/haptic_manager.dart';
 
 class FlashcardPage extends ConsumerStatefulWidget {
   const FlashcardPage({super.key});
@@ -88,51 +89,24 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
     _isInitializing = true;
 
     try {
-      final settings = ref.read(settingsProvider);
       final flashcardController = ref.read(flashcardProvider.notifier);
       final currentState = ref.read(flashcardProvider);
 
-      // 检查当前状态是否为空（可能已经被重置）
-      if (currentState.items.isEmpty) {
-        debugPrint('Flashcard state is empty, loading new flashcards');
-        // 状态为空，直接加载新的闪卡
-        await flashcardController.loadFlashcards(
-          randomOrder: settings.enableFlashcardRandomOrder,
+      // 检查当前状态是否已经有数据（可能已经在首页恢复了进度）
+      if (currentState.items.isNotEmpty &&
+          !currentState.isRoundCompleted) {
+        debugPrint(
+          'Flashcard state already initialized, skipping re-initialization',
         );
         _isInitialized = true;
         return;
       }
 
-      // 检查是否有保存的进度
-      if (settings.enableProgressSave) {
-        final hasSavedProgress = await flashcardController.hasSavedProgress();
-        if (hasSavedProgress && mounted) {
-          debugPrint('Found saved progress, attempting to restore');
-          // 直接恢复进度，不显示弹窗确认
-          final restored = await flashcardController.restoreProgress(
-            randomOrder: settings.enableFlashcardRandomOrder,
-          );
-          if (!restored && mounted) {
-            debugPrint('Failed to restore progress, loading new flashcards');
-            // 清除旧进度并重新开始
-            await flashcardController.clearProgress();
-            await flashcardController.loadFlashcards(
-              randomOrder: settings.enableFlashcardRandomOrder,
-            );
-          }
-        } else {
-          debugPrint('No saved progress, loading new flashcards');
-          // 没有保存的进度，直接开始
-          await flashcardController.loadFlashcards(
-            randomOrder: settings.enableFlashcardRandomOrder,
-          );
-        }
-      } else {
-        debugPrint('Progress save disabled, loading new flashcards');
-        // 未启用进度保存，直接开始
-        await flashcardController.loadFlashcards(
-          randomOrder: settings.enableFlashcardRandomOrder,
-        );
+      // 检查当前状态是否为空（需要加载新数据）
+      if (currentState.items.isEmpty) {
+        debugPrint('Flashcard state is empty, loading new flashcards');
+        // 状态为空，加载新的闪卡
+        await flashcardController.loadFlashcards();
       }
 
       _isInitialized = true;
@@ -147,6 +121,19 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
   Widget build(BuildContext context) {
     final flashcardState = ref.watch(flashcardProvider);
     final flashcardController = ref.read(flashcardProvider.notifier);
+
+    // 监听触感设置变化并更新HapticManager
+    ref.listen<HapticSettings>(hapticSettingsProvider, (previous, current) {
+      HapticManager.updateSettings(
+        hapticEnabled: current.hapticEnabled,
+      );
+    });
+
+    // 初始化时也要更新设置
+    final hapticSettings = ref.read(hapticSettingsProvider);
+    HapticManager.updateSettings(
+      hapticEnabled: hapticSettings.hapticEnabled,
+    );
 
     return PopScope(
       canPop: true,
@@ -303,6 +290,9 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
             // 检查组件是否仍然挂载
             if (!mounted) return;
 
+            // 触发闪卡翻转震动反馈
+            HapticManager.flipCard();
+
             controller.flipCard();
             if (state.currentCard?.currentSide == FlashcardSide.front) {
               _flipController.forward();
@@ -337,26 +327,28 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
                   0.1 *
                   _animationDirection; // 方向性轻微旋转
 
-              return Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.identity()
-                  ..translate(shuffleOffset, 0.0, 0.0)
-                  ..scale(scale)
-                  ..rotateZ(rotation),
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.identity()
-                      ..setEntry(3, 2, 0.001)
-                      ..rotateY(_flipAnimation.value * 3.14159),
-                    child: isShowingFront
-                        ? _buildCardFront(state.currentCard!)
-                        : Transform(
-                            alignment: Alignment.center,
-                            transform: Matrix4.identity()..rotateY(3.14159),
-                            child: _buildCardBack(state.currentCard!),
-                          ),
+              return Transform.translate(
+                offset: Offset(shuffleOffset, 0.0),
+                child: Transform.scale(
+                  scale: scale,
+                  child: Transform.rotate(
+                    angle: rotation,
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.identity()
+                          ..setEntry(3, 2, 0.001)
+                          ..rotateY(_flipAnimation.value * 3.14159),
+                        child: isShowingFront
+                            ? _buildCardFront(state.currentCard!)
+                            : Transform(
+                                alignment: Alignment.center,
+                                transform: Matrix4.identity()..rotateY(3.14159),
+                                child: _buildCardBack(state.currentCard!),
+                              ),
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -645,7 +637,10 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
           Expanded(
             child: ElevatedButton.icon(
               onPressed: state.hasPrevious
-                  ? () => _previousCard(controller)
+                  ? () {
+                      HapticManager.medium();
+                      _previousCard(controller);
+                    }
                   : null,
               icon: const Icon(Icons.arrow_back_ios, size: 16),
               label: const Text('上一张'),
@@ -660,6 +655,9 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
           // 翻转按钮
           ElevatedButton(
             onPressed: () {
+              // 触发闪卡翻转震动反馈
+              HapticManager.flipCard();
+
               controller.flipCard();
               if (state.currentCard?.currentSide == FlashcardSide.front) {
                 _flipController.forward();
@@ -679,7 +677,12 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
           // 下一张按钮
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: state.hasNext ? () => _nextCard(controller) : null,
+              onPressed: state.hasNext
+                  ? () {
+                      HapticManager.medium();
+                      _nextCard(controller);
+                    }
+                  : null,
               icon: const Text('下一张'),
               label: const Icon(Icons.arrow_forward_ios, size: 16),
               style: ElevatedButton.styleFrom(
@@ -695,6 +698,9 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
   void _previousCard(FlashcardController controller) async {
     // 检查组件是否仍然挂载
     if (!mounted) return;
+
+    // 触发闪卡切换震动反馈
+    HapticManager.switchQuestion();
 
     // 设置向左动画方向
     _animationDirection = -1;
@@ -719,6 +725,9 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
   void _nextCard(FlashcardController controller) async {
     // 检查组件是否仍然挂载
     if (!mounted) return;
+
+    // 触发闪卡切换震动反馈
+    HapticManager.switchQuestion();
 
     // 设置向右动画方向
     _animationDirection = 1;
@@ -780,6 +789,7 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () async {
+                  HapticManager.medium();
                   await controller.startNewRound();
                 },
                 icon: const Icon(Icons.refresh),
@@ -793,7 +803,10 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () {
+                  HapticManager.medium();
+                  Navigator.of(context).pop();
+                },
                 icon: const Icon(Icons.home),
                 label: const Text('返回首页'),
                 style: OutlinedButton.styleFrom(
