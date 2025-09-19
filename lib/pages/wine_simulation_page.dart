@@ -216,7 +216,6 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
           ),
 
           const SizedBox(height: 8), // 减小间距
-
           // 提示信息
           Card(
             child: Padding(
@@ -304,7 +303,9 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
     return ResponsiveGridView(
       mobileCrossAxisCount: 2,
       tabletCrossAxisCount: 3,
-      tabletLandscapeCrossAxisCount: isLandscape ? getLandscapeColumns() : 4, // 动态列数
+      tabletLandscapeCrossAxisCount: isLandscape
+          ? getLandscapeColumns()
+          : 4, // 动态列数
       desktopCrossAxisCount: isLandscape ? getLandscapeColumns() : 8,
       crossAxisSpacing: ResponsiveLayout.valueWhen(
         context: context,
@@ -380,8 +381,8 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
                   ),
                 ),
 
-              if (glass.wineItem != null) SizedBox(height: isLandscape ? 2 : 4), // 横屏减小间距
-
+              if (glass.wineItem != null)
+                SizedBox(height: isLandscape ? 2 : 4), // 横屏减小间距
               // 酒杯图标带序号
               Stack(
                 alignment: Alignment.center,
@@ -397,8 +398,8 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
                   Positioned(
                     bottom: 0,
                     child: Container(
-                      width: isLandscape ? 20 : 24, // 横屏减小序号圆圈
-                      height: isLandscape ? 20 : 24,
+                      width: isLandscape ? 24 : 26, // 横屏减小序号圆圈
+                      height: isLandscape ? 24 : 26,
                       decoration: BoxDecoration(
                         color: isCompleted
                             ? Theme.of(context).colorScheme.primary
@@ -425,7 +426,6 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
               ),
 
               SizedBox(height: isLandscape ? 3 : 6), // 横屏减小间距
-
               // 用户答案信息
               if (isCompleted && glass.userAnswer != null)
                 _buildAnswerSummary(glass.userAnswer!, settings, isLandscape)
@@ -1296,31 +1296,11 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                const Spacer(),
-                if (_currentAnswer.selectedAlcoholDegree != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '答案: ${_currentAnswer.selectedAlcoholDegree!.toInt()}°',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
               ],
             ),
             const SizedBox(height: 8),
             Wrap(
-              spacing: 8,
+              spacing: 6,
               runSpacing: 6,
               children: BlindTasteOptions.alcoholDegrees.map((degree) {
                 final isSelected =
