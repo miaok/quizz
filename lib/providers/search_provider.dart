@@ -69,9 +69,11 @@ class SearchNotifier extends StateNotifier<SearchState> {
   void switchTab(SearchTab tab) {
     if (state.currentTab != tab) {
       state = state.copyWith(currentTab: tab);
-      // 如果有搜索查询，重新搜索
+      // 如果有搜索查询，重新搜索；如果查询为空，加载所有数据
       if (state.query.isNotEmpty) {
         _performSearch(state.query);
+      } else {
+        _loadAllData();
       }
     }
   }

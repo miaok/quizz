@@ -38,6 +38,9 @@ class BlindTasteState {
   final double? minAlcoholDegree; // 最小酒度
   final double? maxAlcoholDegree; // 最大酒度
 
+  // 用户答案保存 - 按题目ID保存答案
+  final Map<int, BlindTasteAnswer> savedAnswers;
+
   const BlindTasteState({
     this.currentItem,
     required this.userAnswer,
@@ -54,6 +57,7 @@ class BlindTasteState {
     this.selectedAromaFilter,
     this.minAlcoholDegree,
     this.maxAlcoholDegree,
+    this.savedAnswers = const {},
   });
 
   BlindTasteState copyWith({
@@ -72,6 +76,7 @@ class BlindTasteState {
     String? selectedAromaFilter,
     double? minAlcoholDegree,
     double? maxAlcoholDegree,
+    Map<int, BlindTasteAnswer>? savedAnswers,
   }) {
     return BlindTasteState(
       currentItem: currentItem ?? this.currentItem,
@@ -89,6 +94,7 @@ class BlindTasteState {
       selectedAromaFilter: selectedAromaFilter ?? this.selectedAromaFilter,
       minAlcoholDegree: minAlcoholDegree ?? this.minAlcoholDegree,
       maxAlcoholDegree: maxAlcoholDegree ?? this.maxAlcoholDegree,
+      savedAnswers: savedAnswers ?? this.savedAnswers,
     );
   }
 
@@ -118,7 +124,7 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
   final Ref _ref;
 
   BlindTasteNotifier(this._service, this._progressService, this._ref)
-    : super(BlindTasteState(userAnswer: BlindTasteAnswer()));
+    : super(BlindTasteState(userAnswer: BlindTasteAnswer(), savedAnswers: {}));
 
   /// 开始新的品鉴（或继续当前轮次）
   Future<void> startNewTasting({
@@ -186,29 +192,55 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     }
   }
 
-  /// 从题目池加载下一个题目
-  Future<void> _loadNextItemFromPool() async {
-    final nextItem = _service.getNextUncompletedItem(
-      state.questionPool,
-      state.completedItemIds,
-    );
-
-    if (nextItem != null) {
-      state = state.copyWith(
-        currentItem: nextItem,
-        userAnswer: BlindTasteAnswer(),
-        isCompleted: false,
-        finalScore: null,
-        isLoading: false,
-        error: null,
+  /// 保存当前题目的答案
+  void _saveCurrentAnswer() {
+    if (state.currentItem?.id != null) {
+      final newSavedAnswers = Map<int, BlindTasteAnswer>.from(state.savedAnswers);
+      newSavedAnswers[state.currentItem!.id!] = BlindTasteAnswer(
+        selectedAroma: state.userAnswer.selectedAroma,
+        selectedAlcoholDegree: state.userAnswer.selectedAlcoholDegree,
+        selectedTotalScore: state.userAnswer.selectedTotalScore,
+        selectedEquipment: List.from(state.userAnswer.selectedEquipment),
+        selectedFermentationAgent: List.from(state.userAnswer.selectedFermentationAgent),
       );
 
-      // 自动保存进度
-      await _autoSaveProgress();
-    } else {
+      state = state.copyWith(savedAnswers: newSavedAnswers);
+    }
+  }
+
+  /// 从题目池加载下一个题目（按序号顺序）
+  Future<void> _loadNextItemFromPool() async {
+    // 保存当前题目的答案
+    _saveCurrentAnswer();
+
+    // 计算下一个题目的索引（按序号顺序）
+    int nextIndex = state.currentIndex + 1;
+
+    // 检查是否超出题目池范围
+    if (nextIndex >= state.questionPool.length) {
       // 一轮完成
       state = state.copyWith(isRoundCompleted: true, isLoading: false);
+      return;
     }
+
+    // 获取下一个题目
+    final nextItem = state.questionPool[nextIndex];
+
+    // 尝试恢复该题目的已保存答案
+    BlindTasteAnswer restoredAnswer = state.savedAnswers[nextItem.id] ?? BlindTasteAnswer();
+
+    state = state.copyWith(
+      currentItem: nextItem,
+      userAnswer: restoredAnswer,
+      currentIndex: nextIndex,
+      isCompleted: false,
+      finalScore: null,
+      isLoading: false,
+      error: null,
+    );
+
+    // 自动保存进度
+    await _autoSaveProgress();
   }
 
   /// 选择香型
@@ -224,6 +256,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     );
 
     state = state.copyWith(userAnswer: newAnswer);
+
+    // 保存当前题目的答案
+    _saveCurrentAnswer();
 
     // 自动保存进度
     _autoSaveProgress();
@@ -242,6 +277,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     );
 
     state = state.copyWith(userAnswer: newAnswer);
+
+    // 保存当前题目的答案
+    _saveCurrentAnswer();
 
     // 自动保存进度
     _autoSaveProgress();
@@ -266,6 +304,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
 
     state = state.copyWith(userAnswer: newAnswer);
 
+    // 保存当前题目的答案
+    _saveCurrentAnswer();
+
     // 自动保存进度
     _autoSaveProgress();
   }
@@ -285,6 +326,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     );
 
     state = state.copyWith(userAnswer: newAnswer);
+
+    // 保存当前题目的答案
+    _saveCurrentAnswer();
 
     // 自动保存进度
     _autoSaveProgress();
@@ -314,6 +358,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
 
     state = state.copyWith(userAnswer: newAnswer);
 
+    // 保存当前题目的答案
+    _saveCurrentAnswer();
+
     // 自动保存进度
     _autoSaveProgress();
   }
@@ -339,6 +386,34 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     );
 
     state = state.copyWith(userAnswer: newAnswer);
+
+    // 保存当前题目的答案
+    _saveCurrentAnswer();
+
+    // 自动保存进度
+    _autoSaveProgress();
+  }
+
+  /// 重置当前题目的答案到默认状态
+  void resetCurrentAnswer() {
+    // 从保存的答案中移除当前题目
+    if (state.currentItem?.id != null) {
+      final newSavedAnswers = Map<int, BlindTasteAnswer>.from(state.savedAnswers);
+      newSavedAnswers.remove(state.currentItem!.id!);
+
+      state = state.copyWith(
+        userAnswer: BlindTasteAnswer(),
+        isCompleted: false,
+        finalScore: null,
+        savedAnswers: newSavedAnswers,
+      );
+    } else {
+      state = state.copyWith(
+        userAnswer: BlindTasteAnswer(),
+        isCompleted: false,
+        finalScore: null,
+      );
+    }
 
     // 自动保存进度
     _autoSaveProgress();
@@ -392,7 +467,7 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     _autoSaveProgress();
   }
 
-  /// 进入下一题
+  /// 进入下一题（按序号顺序）
   Future<void> nextQuestion() async {
     if (state.currentItem?.id != null) {
       // 确保当前题目已标记为完成
@@ -402,14 +477,7 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
       state = state.copyWith(completedItemIds: newCompletedIds);
     }
 
-    // 检查是否完成一轮
-    if (_service.isRoundCompleted(state.questionPool, state.completedItemIds)) {
-      state = state.copyWith(isRoundCompleted: true);
-      clearSavedProgress(); // 一轮完成后清除进度
-      return;
-    }
-
-    // 加载下一题
+    // 直接加载下一题（按序号顺序）
     await _loadNextItemFromPool();
   }
 
@@ -425,7 +493,38 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
 
   /// 重置状态
   void reset() {
-    state = BlindTasteState(userAnswer: BlindTasteAnswer());
+    state = BlindTasteState(userAnswer: BlindTasteAnswer(), savedAnswers: {});
+  }
+
+  /// 跳转到指定的题目（支持跳转到任意题目的作答页面）
+  void goToQuestion(int index) {
+    if (index < 0 || index >= state.totalItemsInPool || state.questionPool.isEmpty) {
+      debugPrint('Invalid question index: $index or empty question pool');
+      return;
+    }
+
+    // 保存当前题目的答案
+    _saveCurrentAnswer();
+
+    // 直接从题目池中获取目标题目
+    final targetItem = state.questionPool[index];
+
+    // 尝试恢复该题目的已保存答案
+    BlindTasteAnswer userAnswer = state.savedAnswers[targetItem.id] ?? BlindTasteAnswer();
+
+    // 更新状态到作答页面（不是结果页面）
+    state = state.copyWith(
+      currentItem: targetItem,
+      userAnswer: userAnswer,
+      currentIndex: index,
+      isCompleted: false, // 设为false，显示作答页面
+      finalScore: null, // 清除分数，因为要重新作答
+    );
+
+    debugPrint('Jumped to question $index: ${targetItem.name}');
+
+    // 自动保存进度
+    _autoSaveProgress();
   }
 
   /// 自动保存当前进度

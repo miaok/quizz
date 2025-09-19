@@ -131,9 +131,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       padding: const EdgeInsets.all(16.0),
       children: [
         _buildSectionCard(
-          title: '品评项目',
+          title: '基础品评项目',
           icon: Icons.wine_bar,
-          child: _buildBlindTasteSection(settings, controller),
+          child: _buildBasicTastingSection(settings, controller),
+        ),
+        const SizedBox(height: 16),
+        _buildSectionCard(
+          title: '品评模拟设置',
+          icon: Icons.science_outlined,
+          child: _buildWineSimulationSection(settings, controller),
+        ),
+        const SizedBox(height: 16),
+        _buildSectionCard(
+          title: '同酒样系列模式',
+          icon: Icons.numbers,
+          child: _buildSameWineSeriesSection(settings, controller),
         ),
         const SizedBox(height: 16),
         _buildSectionCard(
@@ -354,7 +366,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '品鉴模式杯数设置',
+                  '品评模拟样品数设置',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
                 Text(
@@ -425,8 +437,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   // 品鉴模式重复概率卡片
   Widget _buildWineSimulationProbabilityCard(
     double currentValue,
-    Function(double) onChanged,
-  ) {
+    Function(double) onChanged, {
+    bool isLocked = false,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -443,29 +456,39 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '重复酒样概率',
+                      '品评模拟重复酒样概率',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     Text(
-                      '设置一轮模拟中出现重复酒样的概率',
+                      isLocked ? '同酒样系列模式下，重复概率固定为0%' : '设置一轮模拟中出现重复酒样的概率',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: isLocked
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
-              Text(
-                '${(currentValue * 100).toInt()}%',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.amber,
-                ),
+              Row(
+                children: [
+                  Text(
+                    '${(currentValue * 100).toInt()}%',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber,
+                    ),
+                  ),
+                  if (isLocked) ...[
+                    const SizedBox(width: 4),
+                    const Icon(Icons.lock, size: 16, color: Colors.amber),
+                  ],
+                ],
               ),
             ],
           ),
@@ -475,11 +498,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             min: 0.0,
             max: 1.0,
             divisions: 10,
-            onChanged: (value) {
-              HapticManager.selection();
-              onChanged(value);
-            },
-            activeColor: Colors.amber,
+            onChanged: isLocked
+                ? null
+                : (value) {
+                    HapticManager.selection();
+                    onChanged(value);
+                  },
+            activeColor: isLocked
+                ? Colors.amber.withValues(alpha: 0.5)
+                : Colors.amber,
           ),
         ],
       ),
@@ -489,8 +516,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   // 品评模拟最大重复组数设置卡片
   Widget _buildWineSimulationMaxGroupsCard(
     int currentValue,
-    Function(int) onChanged,
-  ) {
+    Function(int) onChanged, {
+    bool isLocked = false,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -504,21 +532,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '最大重复组数',
+                  '品评模拟最大重复组数',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
                 Text(
-                  '设置一轮模拟中最多允许的重复酒样组数（1-3组）',
+                  isLocked ? '同酒样系列模式下，重复组数固定为0组' : '设置一轮模拟中最多允许的重复酒样组数（1-3组）',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: isLocked
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
           ),
           IconButton(
-            onPressed: currentValue > 1
+            onPressed: !isLocked && currentValue > 1
                 ? () {
                     HapticManager.medium();
                     onChanged(currentValue - 1);
@@ -530,17 +560,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           Container(
             width: 40,
             alignment: Alignment.center,
-            child: Text(
-              '$currentValue',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.amber,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$currentValue',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber,
+                  ),
+                ),
+                if (isLocked)
+                  const Icon(Icons.lock, size: 14, color: Colors.amber),
+              ],
             ),
           ),
           IconButton(
-            onPressed: currentValue < 3
+            onPressed: !isLocked && currentValue < 3
                 ? () {
                     HapticManager.medium();
                     onChanged(currentValue + 1);
@@ -736,21 +773,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     );
   }
 
-  // 品评设置区域
-  Widget _buildBlindTasteSection(
+  // 基础品评项目设置区域
+  Widget _buildBasicTastingSection(
     QuizSettings settings,
     SettingsController controller,
   ) {
     return Column(
       children: [
-        _buildSwitchTile(
-          title: '香型品评',
-          subtitle: '功能已禁用',
-          icon: Icons.local_florist,
-          value: false,
-          onChanged: null, // 禁用开关，不允许用户切换
-        ),
-        const SizedBox(height: 8),
         _buildSwitchTile(
           title: '酒度品评',
           subtitle: '学习酒度',
@@ -782,16 +811,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           value: settings.enableBlindTasteFermentation,
           onChanged: controller.updateEnableBlindTasteFermentation,
         ),
-        const SizedBox(height: 8),
-        _buildSwitchTile(
-          title: '同酒样系列模式',
-          subtitle: '固定5杯，同一酒样以1-5#编号',
-          icon: Icons.numbers,
-          value: settings.enableWineSimulationSameWineSeries,
-          onChanged: (value) =>
-              controller.updateEnableWineSimulationSameWineSeries(value),
-        ),
-        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  // 品评模拟设置区域
+  Widget _buildWineSimulationSection(
+    QuizSettings settings,
+    SettingsController controller,
+  ) {
+    return Column(
+      children: [
         _buildWineSimulationCountCard(
           settings.enableWineSimulationSameWineSeries
               ? 5
@@ -801,17 +831,157 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         ),
         const SizedBox(height: 8),
         _buildWineSimulationProbabilityCard(
-          settings.wineSimulationDuplicateProbability,
+          settings.enableWineSimulationSameWineSeries
+              ? 0.0 // 同酒样系列模式下重复概率为0
+              : settings.wineSimulationDuplicateProbability,
           controller.updateWineSimulationDuplicateProbability,
+          isLocked: settings.enableWineSimulationSameWineSeries,
         ),
         const SizedBox(height: 8),
         _buildWineSimulationMaxGroupsCard(
-          settings.wineSimulationMaxDuplicateGroups,
+          settings.enableWineSimulationSameWineSeries
+              ? 0 // 同酒样系列模式下最大重复组数为0
+              : settings.wineSimulationMaxDuplicateGroups,
           controller.updateWineSimulationMaxDuplicateGroups,
+          isLocked: settings.enableWineSimulationSameWineSeries,
         ),
       ],
     );
   }
+
+  // 同酒样系列模式设置区域
+  Widget _buildSameWineSeriesSection(
+    QuizSettings settings,
+    SettingsController controller,
+  ) {
+    return Column(
+      children: [
+        _buildSwitchTile(
+          title: '启用质量差模式',
+          subtitle: '开启后固定同一厂家，以1-5#编号排列',
+          icon: Icons.numbers,
+          value: settings.enableWineSimulationSameWineSeries,
+          onChanged: (value) =>
+              controller.updateEnableWineSimulationSameWineSeries(value),
+        ),
+        // if (settings.enableWineSimulationSameWineSeries) ...[
+        //   const SizedBox(height: 8),
+        // Container(
+        //   padding: const EdgeInsets.all(12),
+        //   decoration: BoxDecoration(
+        //     color: Theme.of(
+        //       context,
+        //     ).colorScheme.primaryContainer.withValues(alpha: 0.5),
+        //     borderRadius: BorderRadius.circular(8),
+        //     border: Border.all(
+        //       color: Theme.of(
+        //         context,
+        //       ).colorScheme.primary.withValues(alpha: 0.3),
+        //     ),
+        //   ),
+        // child: Row(
+        //   children: [
+        //     Icon(
+        //       Icons.info_outline,
+        //       color: Theme.of(context).colorScheme.primary,
+        //       size: 20,
+        //     ),
+        //     const SizedBox(width: 8),
+        // Expanded(
+        //   child: Text(
+        //     '同酒样系列模式说明：\n• 每轮固定5杯酒样\n以1-5#编号\n• 用于练习同厂家质量差',
+        //     style: TextStyle(
+        //       fontSize: 12,
+        //       color: Theme.of(context).colorScheme.onPrimaryContainer,
+        //       height: 1.3,
+        //     ),
+        //   ),
+        // ),
+        //   ],
+        // ),
+        // ),
+        // ],
+      ],
+    );
+  }
+
+  // 品评设置区域（原函数，已重构为独立组件）
+  // @Deprecated('已重构为 _buildBasicTastingSection, _buildWineSimulationSection, _buildSameWineSeriesSection')
+  // Widget _buildBlindTasteSection(
+  //   QuizSettings settings,
+  //   SettingsController controller,
+  // ) {
+  //   return Column(
+  //     children: [
+  //       _buildSwitchTile(
+  //         title: '香型品评',
+  //         subtitle: '暂不品评',
+  //         icon: Icons.local_florist,
+  //         value: false,
+  //         onChanged: null, // 禁用开关，不允许用户切换
+  //       ),
+  //       const SizedBox(height: 8),
+  //       _buildSwitchTile(
+  //         title: '酒度品评',
+  //         subtitle: '学习酒度',
+  //         icon: Icons.thermostat,
+  //         value: settings.enableBlindTasteAlcohol,
+  //         onChanged: controller.updateEnableBlindTasteAlcohol,
+  //       ),
+  //       const SizedBox(height: 8),
+  //       _buildSwitchTile(
+  //         title: '总分品评',
+  //         subtitle: '学习打分',
+  //         icon: Icons.star,
+  //         value: settings.enableBlindTasteScore,
+  //         onChanged: controller.updateEnableBlindTasteScore,
+  //       ),
+  //       const SizedBox(height: 8),
+  //       _buildSwitchTile(
+  //         title: '设备品评',
+  //         subtitle: '学习设备',
+  //         icon: Icons.build,
+  //         value: settings.enableBlindTasteEquipment,
+  //         onChanged: controller.updateEnableBlindTasteEquipment,
+  //       ),
+  //       const SizedBox(height: 8),
+  //       _buildSwitchTile(
+  //         title: '发酵剂品评',
+  //         subtitle: '学习发酵剂',
+  //         icon: Icons.science,
+  //         value: settings.enableBlindTasteFermentation,
+  //         onChanged: controller.updateEnableBlindTasteFermentation,
+  //       ),
+  //       const SizedBox(height: 8),
+  //       _buildSwitchTile(
+  //         title: '同酒样系列模式',
+  //         subtitle: '固定5杯，同一酒样以1-5#编号',
+  //         icon: Icons.numbers,
+  //         value: settings.enableWineSimulationSameWineSeries,
+  //         onChanged: (value) =>
+  //             controller.updateEnableWineSimulationSameWineSeries(value),
+  //       ),
+  //       const SizedBox(height: 8),
+  //       _buildWineSimulationCountCard(
+  //         settings.enableWineSimulationSameWineSeries
+  //             ? 5
+  //             : settings.wineSimulationSampleCount,
+  //         controller.updateWineSimulationSampleCount,
+  //         isLocked: settings.enableWineSimulationSameWineSeries,
+  //       ),
+  //       const SizedBox(height: 8),
+  //       _buildWineSimulationProbabilityCard(
+  //         settings.wineSimulationDuplicateProbability,
+  //         controller.updateWineSimulationDuplicateProbability,
+  //       ),
+  //       const SizedBox(height: 8),
+  //       _buildWineSimulationMaxGroupsCard(
+  //         settings.wineSimulationMaxDuplicateGroups,
+  //         controller.updateWineSimulationMaxDuplicateGroups,
+  //       ),
+  //     ],
+  //   );
+  // }
 
   // 闪卡记忆设置区域
   Widget _buildFlashcardSection(
@@ -930,6 +1100,66 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       ),
     );
   }
+
+  // 紧凑型开关组件
+  // Widget _buildCompactSwitchTile({
+  //   required String title,
+  //   required IconData icon,
+  //   required bool value,
+  //   required Function(bool)? onChanged,
+  //   bool isDisabled = false,
+  // }) {
+  //   return Container(
+  //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+  //     decoration: BoxDecoration(
+  //       color: isDisabled
+  //           ? Theme.of(
+  //               context,
+  //             ).colorScheme.surfaceContainer.withValues(alpha: 0.5)
+  //           : Theme.of(context).colorScheme.surfaceContainer,
+  //       borderRadius: BorderRadius.circular(8),
+  //     ),
+  //     child: Row(
+  //       children: [
+  //         Icon(
+  //           icon,
+  //           color: isDisabled
+  //               ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
+  //               : Theme.of(context).colorScheme.primary,
+  //           size: 18,
+  //         ),
+  //         const SizedBox(width: 8),
+  //         Expanded(
+  //           child: Text(
+  //             title,
+  //             style: TextStyle(
+  //               fontSize: 13,
+  //               fontWeight: FontWeight.w500,
+  //               color: isDisabled
+  //                   ? Theme.of(
+  //                       context,
+  //                     ).colorScheme.onSurface.withValues(alpha: 0.5)
+  //                   : null,
+  //             ),
+  //           ),
+  //         ),
+  //         const SizedBox(width: 4),
+  //         Transform.scale(
+  //           scale: 0.8,
+  //           child: Switch(
+  //             value: value,
+  //             onChanged: onChanged != null && !isDisabled
+  //                 ? (newValue) {
+  //                     HapticManager.medium();
+  //                     onChanged(newValue);
+  //                   }
+  //                 : null,
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   // 通用开关组件
   Widget _buildSwitchTile({
@@ -1318,24 +1548,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   // 获取练习模式乱序模式的显示名称
   String _getPracticeShuffleModeDisplayName(PracticeShuffleMode mode) {
     switch (mode) {
-      case PracticeShuffleMode.fullRandom:
-        return '完全乱序';
       case PracticeShuffleMode.ordered:
         return '默认顺序';
       case PracticeShuffleMode.typeOrderedQuestionRandom:
         return '题型顺序，题目乱序';
+      case PracticeShuffleMode.fullRandom:
+        return '完全乱序';
     }
   }
 
   // 获取练习模式乱序模式的描述
   String _getPracticeShuffleModeDescription(PracticeShuffleMode mode) {
     switch (mode) {
-      case PracticeShuffleMode.fullRandom:
-        return '题型和题型内部题目顺序均乱序';
       case PracticeShuffleMode.ordered:
-        return '题型不乱序，题目不乱序，使用默认顺序';
+        return '默认题库顺序';
       case PracticeShuffleMode.typeOrderedQuestionRandom:
-        return '题型不乱序，内部题目乱序';
+        return '题型顺序判断、单选、多选，题型内部题目乱序';
+      case PracticeShuffleMode.fullRandom:
+        return '题库完全乱序';
     }
   }
 

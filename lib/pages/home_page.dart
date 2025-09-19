@@ -21,6 +21,16 @@ class _HomePageState extends ConsumerState<HomePage> {
     final questionCountAsync = ref.watch(questionCountProvider);
     final settings = ref.watch(settingsProvider);
 
+    // 获取屏幕信息进行响应式处理
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isLandscape = screenWidth > screenHeight;
+
+    // 横屏模式减小内边距和间距
+    final mainPadding = isLandscape ? 10.0 : 14.0;
+    final mainSpacing = isLandscape ? 8.0 : 14.0;
+    final bottomSpacing = isLandscape ? 8.0 : 12.0;
+
     return ImmersiveScaffold(
       appBar: AppBar(
         title: const Text('酒韵', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -34,7 +44,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         ],
       ),
       body: ImmersivePageWrapper(
-        padding: const EdgeInsets.all(14.0),
+        padding: EdgeInsets.all(mainPadding),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,13 +52,13 @@ class _HomePageState extends ConsumerState<HomePage> {
               // 欢迎区域
               _buildWelcomeSection(questionCountAsync, settings),
 
-              const SizedBox(height: 14),
+              SizedBox(height: mainSpacing),
 
               // 功能卡片网格
               _buildFeatureCards(context),
 
               // 底部额外间距，确保不溢出
-              const SizedBox(height: 12),
+              SizedBox(height: bottomSpacing),
             ],
           ),
         ),
@@ -151,6 +161,16 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   // 构建功能卡片 - 错落有致的布局
   Widget _buildFeatureCards(BuildContext context) {
+    // 获取屏幕信息进行响应式处理
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isLandscape = screenWidth > screenHeight;
+
+    // 横屏模式减小间距
+    final verticalSpacing = isLandscape ? 6.0 : 10.0;
+    final horizontalSpacing = isLandscape ? 8.0 : 10.0;
+    final bottomSpacing = isLandscape ? 8.0 : 12.0;
+
     final features = [
       _FeatureCard(
         title: '理论模拟',
@@ -177,7 +197,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         isLarge: false,
       ),
       _FeatureCard(
-        title: '模拟品评',
+        title: '品评模拟',
         subtitle: '模拟流程，提升经验',
         icon: Icons.local_bar,
         color: Colors.teal,
@@ -185,7 +205,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         isLarge: true,
       ),
       _FeatureCard(
-        title: '酒样练习',
+        title: '品评练习',
         subtitle: '盲品练习，记忆标准',
         icon: Icons.wine_bar,
         color: Colors.red,
@@ -206,27 +226,27 @@ class _HomePageState extends ConsumerState<HomePage> {
       children: [
         // 第一行：大卡片
         _buildFeatureCard(features[0]),
-        const SizedBox(height: 10),
+        SizedBox(height: verticalSpacing),
 
         // 第二行：两个小卡片
         Row(
           children: [
             Expanded(child: _buildFeatureCard(features[1])),
-            const SizedBox(width: 10),
+            SizedBox(width: horizontalSpacing),
             Expanded(child: _buildFeatureCard(features[2])),
           ],
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: verticalSpacing),
 
         // 第三行：大卡片
         _buildFeatureCard(features[3]),
-        const SizedBox(height: 12),
+        SizedBox(height: bottomSpacing),
 
         // 第四行：两个小卡片
         Row(
           children: [
             Expanded(child: _buildFeatureCard(features[4])),
-            const SizedBox(width: 12),
+            SizedBox(width: horizontalSpacing),
             Expanded(child: _buildFeatureCard(features[5])),
           ],
         ),
@@ -245,6 +265,18 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   // 大卡片 - 横向布局
   Widget _buildLargeCard(_FeatureCard feature) {
+    // 获取屏幕信息进行响应式处理
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isLandscape = screenWidth > screenHeight;
+
+    // 横屏模式下减小卡片高度和内边距
+    final cardHeight = isLandscape ? 80.0 : 100.0;
+    final cardPadding = isLandscape ? 16.0 : 20.0;
+    final iconSize = isLandscape ? 52.0 : 64.0;
+    final iconIconSize = isLandscape ? 26.0 : 32.0;
+    final titleFontSize = isLandscape ? 18.0 : null;
+
     return Card(
       elevation: 3,
       shadowColor: feature.color.withValues(alpha: 0.3),
@@ -254,7 +286,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         onTap: feature.onTap,
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          height: 100,
+          height: cardHeight,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             gradient: LinearGradient(
@@ -267,13 +299,13 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(cardPadding),
             child: Row(
               children: [
                 // 图标容器
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: iconSize,
+                  height: iconSize,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
@@ -292,9 +324,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                     ],
                   ),
-                  child: Icon(feature.icon, size: 32, color: Colors.white),
+                  child: Icon(
+                    feature.icon,
+                    size: iconIconSize,
+                    color: Colors.white,
+                  ),
                 ),
-                const SizedBox(width: 20),
+                SizedBox(width: isLandscape ? 16 : 20),
                 // 文本内容
                 Expanded(
                   child: Column(
@@ -306,16 +342,18 @@ class _HomePageState extends ConsumerState<HomePage> {
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: titleFontSize,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: isLandscape ? 2 : 6),
                       Text(
                         feature.subtitle,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                           height: 1.4,
+                          fontSize: isLandscape ? 13 : null, // 横屏模式字体更小
                         ),
-                        maxLines: 2,
+                        maxLines: isLandscape ? 1 : 2, // 横屏模式只显示一行
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -323,15 +361,15 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
                 // 箭头图标
                 Container(
-                  width: 32,
-                  height: 32,
+                  width: isLandscape ? 28 : 32,
+                  height: isLandscape ? 28 : 32,
                   decoration: BoxDecoration(
                     color: feature.color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.arrow_forward_ios,
-                    size: 16,
+                    size: isLandscape ? 14 : 16,
                     color: feature.color,
                   ),
                 ),
@@ -345,6 +383,18 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   // 小卡片 - 简洁的垂直布局
   Widget _buildSmallCard(_FeatureCard feature) {
+    // 获取屏幕信息进行响应式处理
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isLandscape = screenWidth > screenHeight;
+
+    // 横屏模式下减小卡片高度和内边距
+    final cardHeight = isLandscape ? 90.0 : 120.0;
+    final cardPadding = isLandscape ? 12.0 : 18.0;
+    final iconSize = isLandscape ? 40.0 : 52.0;
+    final iconPadding = isLandscape ? 12.0 : 16.0;
+    final textSpacing = isLandscape ? 4.0 : 8.0;
+
     return Card(
       elevation: 2,
       shadowColor: feature.color.withValues(alpha: 0.2),
@@ -354,15 +404,15 @@ class _HomePageState extends ConsumerState<HomePage> {
         onTap: feature.onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          height: 120,
-          padding: const EdgeInsets.all(18),
+          height: cardHeight,
+          padding: EdgeInsets.all(cardPadding),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // 图标容器 - 更大更突出
               Container(
-                width: 52,
-                height: 52,
+                width: iconSize,
+                height: iconSize,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -372,7 +422,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       feature.color.withValues(alpha: 0.6),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(iconPadding),
                   boxShadow: [
                     BoxShadow(
                       color: feature.color.withValues(alpha: 0.3),
@@ -381,15 +431,20 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                   ],
                 ),
-                child: Icon(feature.icon, size: 32, color: Colors.white),
+                child: Icon(
+                  feature.icon,
+                  size: isLandscape ? 24 : 32,
+                  color: Colors.white,
+                ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: textSpacing),
               // 标题 - 居中显示
               Text(
                 feature.title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: isLandscape ? 13 : 16, // 横屏模式字体更小
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 1,

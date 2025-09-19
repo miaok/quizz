@@ -6,6 +6,48 @@ import '../providers/settings_provider.dart';
 import '../providers/haptic_settings_provider.dart';
 import '../utils/haptic_manager.dart';
 import '../router/app_router.dart';
+import '../widgets/answer_card.dart';
+
+/// BlindTaste页面的答题卡项目实现
+class BlindTasteAnswerCardItem implements AnswerCardItem {
+  final int index;
+  final BlindTasteState state;
+
+  BlindTasteAnswerCardItem(this.index, this.state);
+
+  @override
+  String get id => state.questionPool.isNotEmpty && index < state.questionPool.length
+      ? state.questionPool[index].id.toString()
+      : index.toString();
+
+  @override
+  int get displayNumber => index + 1;
+
+  @override
+  bool get isCurrent => index == state.currentIndex;
+
+  @override
+  bool get isCompleted => state.completedItemIds.contains(
+    state.questionPool.isNotEmpty && index < state.questionPool.length
+        ? state.questionPool[index].id
+        : -1,
+  );
+
+  @override
+  bool get hasAnswer {
+    if (state.questionPool.isEmpty || index >= state.questionPool.length) return false;
+    final itemId = state.questionPool[index].id;
+    final answer = state.savedAnswers[itemId];
+    if (answer == null) return false;
+
+    final defaultAnswer = BlindTasteAnswer();
+    return answer.selectedAroma != defaultAnswer.selectedAroma ||
+           answer.selectedAlcoholDegree != defaultAnswer.selectedAlcoholDegree ||
+           answer.selectedTotalScore != defaultAnswer.selectedTotalScore ||
+           answer.selectedEquipment.isNotEmpty ||
+           answer.selectedFermentationAgent.isNotEmpty;
+  }
+}
 
 class BlindTastePage extends ConsumerStatefulWidget {
   const BlindTastePage({super.key});
@@ -15,13 +57,32 @@ class BlindTastePage extends ConsumerStatefulWidget {
 }
 
 class _BlindTastePageState extends ConsumerState<BlindTastePage> {
+  late ScrollController _blindTasteSummaryScrollController;
+
+  // 答案检查状态
+  bool _isChecked = false;
+  bool _isCorrect = false;
+
+  // 各个组件的检查结果（保持到下次检查）
+  bool? _lastAlcoholResult;
+  bool? _lastTotalScoreResult;
+  bool? _lastEquipmentResult;
+  bool? _lastFermentationResult;
+
   @override
   void initState() {
     super.initState();
+    _blindTasteSummaryScrollController = ScrollController();
     // 初始化品鉴
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeBlindTaste();
     });
+  }
+
+  @override
+  void dispose() {
+    _blindTasteSummaryScrollController.dispose();
+    super.dispose();
   }
 
   // 统一的按钮样式方法
@@ -32,8 +93,8 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
         side: BorderSide(color: Theme.of(context).colorScheme.outline),
       );
 
-  // 跳过按钮样式（统一样式）
-  ButtonStyle _skipButtonStyle(BuildContext context) =>
+  // 重置按钮样式（统一样式）
+  ButtonStyle _resetButtonStyle(BuildContext context) =>
       ElevatedButton.styleFrom(
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
@@ -189,11 +250,17 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
           if (state.questionPool.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: 16.0),
-              child: Center(
-                child: Text(
-                  '${state.completedItemIds.length + 1}/${state.totalItemsInPool}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
+              child: GestureDetector(
+                onTap: () {
+                  HapticManager.medium();
+                  _showBlindTasteSummary(context, state);
+                },
+                child: Center(
+                  child: Text(
+                    '${state.currentIndex + 1}/${state.totalItemsInPool}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
@@ -251,10 +318,6 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
 
     if (state.currentItem == null) {
       return const Center(child: Text('没有可用的品鉴数据'));
-    }
-
-    if (state.isCompleted) {
-      return _buildResultView(state);
     }
 
     return _buildTastingView(state);
@@ -321,37 +384,37 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
           // 总分调整（根据设置显示）
           if (settings.enableBlindTasteScore) _buildTotalScoreSection(state),
 
-          if (settings.enableBlindTasteScore) const SizedBox(height: 8),
+          if (settings.enableBlindTasteScore) const SizedBox(height: 6),
 
           // 酒度选择（根据设置显示，放在总分下方）
           if (settings.enableBlindTasteAlcohol) _buildAlcoholSection(state),
 
-          if (settings.enableBlindTasteAlcohol) const SizedBox(height: 8),
+          if (settings.enableBlindTasteAlcohol) const SizedBox(height: 6),
 
           // 设备选择（根据设置显示）
           if (settings.enableBlindTasteEquipment) _buildEquipmentSection(state),
 
-          if (settings.enableBlindTasteEquipment) const SizedBox(height: 8),
+          if (settings.enableBlindTasteEquipment) const SizedBox(height: 6),
 
           // 发酵剂选择（根据设置显示）
           if (settings.enableBlindTasteFermentation)
             _buildFermentationAgentSection(state),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // 操作按钮行
           Row(
             children: [
-              // 跳过按钮
+              // 重置按钮
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
                     HapticManager.medium();
-                    _skipCurrentItem();
+                    _resetCurrentAnswer();
                   },
-                  style: _skipButtonStyle(context),
+                  style: _resetButtonStyle(context),
                   child: Text(
-                    '跳过',
+                    '重置',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -363,19 +426,19 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
 
               const SizedBox(width: 12),
 
-              // 提交按钮
+              // 检查答案按钮
               Expanded(
-                flex: 2, // 提交按钮占更多空间
+                flex: 2, // 检查按钮占更多空间
                 child: ElevatedButton(
                   onPressed: _canSubmit(state, settings)
                       ? () {
                           HapticManager.submitAnswer();
-                          _submitAnswer();
+                          _checkAnswer();
                         }
                       : null,
                   style: _submitButtonStyle(context),
                   child: Text(
-                    '提交答案',
+                    _isChecked && _isCorrect ? '下一题' : '检查答案',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -387,7 +450,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
             ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
         ],
       ),
     );
@@ -497,27 +560,30 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
-                if (state.userAnswer.selectedAlcoholDegree != null)
+                if (_lastAlcoholResult != null)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 4,
+                      horizontal: 6,
+                      vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
+                      color: _lastAlcoholResult!
+                          ? Colors.green.withValues(alpha: 0.8)
+                          : Colors.red.withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '答案: ${state.userAnswer.selectedAlcoholDegree!.toInt()}°',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      _lastAlcoholResult! ? '正确' : '错误',
+                      style: const TextStyle(
+                        color: Colors.white,
                         fontSize: 10,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Wrap(
               spacing: 8,
               runSpacing: 6,
@@ -561,23 +627,27 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 2,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '答案: ${state.userAnswer.selectedTotalScore.toStringAsFixed(1)}',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      fontSize: 10,
+                if (_lastTotalScoreResult != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _lastTotalScoreResult!
+                          ? Colors.green.withValues(alpha: 0.8)
+                          : Colors.red.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _lastTotalScoreResult! ? '正确' : '错误',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 2),
@@ -685,27 +755,30 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
-                if (state.userAnswer.selectedEquipment.isNotEmpty)
+                if (_lastEquipmentResult != null)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 4,
+                      horizontal: 6,
+                      vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
+                      color: _lastEquipmentResult!
+                          ? Colors.green.withValues(alpha: 0.8)
+                          : Colors.red.withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '答案: ${state.userAnswer.selectedEquipment.join(', ')}',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      _lastEquipmentResult! ? '正确' : '错误',
+                      style: const TextStyle(
+                        color: Colors.white,
                         fontSize: 10,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Wrap(
               spacing: 8,
               runSpacing: 6,
@@ -750,27 +823,30 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
-                if (state.userAnswer.selectedFermentationAgent.isNotEmpty)
+                if (_lastFermentationResult != null)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 6,
-                      vertical: 2,
+                      vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
+                      color: _lastFermentationResult!
+                          ? Colors.green.withValues(alpha: 0.8)
+                          : Colors.red.withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '答案: ${state.userAnswer.selectedFermentationAgent.join(', ')}',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      _lastFermentationResult! ? '正确' : '错误',
+                      style: const TextStyle(
+                        color: Colors.white,
                         fontSize: 10,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -797,519 +873,8 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     );
   }
 
-  Widget _buildResultView(BlindTasteState state) {
-    final item = state.currentItem!;
-    final score = state.finalScore!;
-    final settings = ref.watch(settingsProvider);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(8.0),
-      child: Column(
-        children: [
-          // 得分卡片 - 更小更紧凑
-          Card(
-            elevation: 1,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 12.0,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    score >= 80
-                        ? Icons.emoji_events
-                        : score >= 60
-                        ? Icons.thumb_up
-                        : Icons.sentiment_neutral,
-                    size: 32,
-                    color: score >= 80
-                        ? Theme.of(context).colorScheme.tertiary
-                        : score >= 60
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.outline,
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${score.toStringAsFixed(1)}分',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: score >= 80
-                                  ? Theme.of(context).colorScheme.tertiary
-                                  : score >= 60
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.outline,
-                            ),
-                      ),
-                      Text(
-                        score >= 80
-                            ? '盲评大师！'
-                            : score >= 60
-                            ? '盲评达人！'
-                            : '继续努力！',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          //酒样信息
-          Card(
-            elevation: 1,
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.wine_bar,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.name,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
 
-          const SizedBox(height: 8),
-
-          // 答案对比 - 更清晰的布局
-          Card(
-            elevation: 1,
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.compare_arrows,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '答案对比',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // 根据设置显示对比结果
-                  // if (settings.enableBlindTasteAromaForced)
-                  //   _buildComparisonRow(
-                  //     '香型',
-                  //     state.userAnswer.selectedAroma ?? '未选择',
-                  //     item.aroma,
-                  //   ),
-                  if (settings.enableBlindTasteAlcohol)
-                    _buildComparisonRow(
-                      '酒度',
-                      state.userAnswer.selectedAlcoholDegree != null
-                          ? '${state.userAnswer.selectedAlcoholDegree!.toInt()}°'
-                          : '未选择',
-                      '${item.alcoholDegree.toInt()}°',
-                    ),
-                  if (settings.enableBlindTasteScore)
-                    _buildComparisonRow(
-                      '总分',
-                      state.userAnswer.selectedTotalScore.toStringAsFixed(1),
-                      item.totalScore.toStringAsFixed(1),
-                    ),
-                  if (settings.enableBlindTasteEquipment)
-                    _buildComparisonRowForList(
-                      '设备',
-                      state.userAnswer.selectedEquipment,
-                      item.equipment,
-                    ),
-                  if (settings.enableBlindTasteFermentation)
-                    _buildComparisonRowForList(
-                      '发酵剂',
-                      state.userAnswer.selectedFermentationAgent,
-                      item.fermentationAgent,
-                    ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // 操作按钮 - 只保留下一题按钮
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                HapticManager.medium();
-                _handleNextQuestion();
-              },
-              style: _secondaryButtonStyle(context),
-              child: Text(
-                state.isRoundCompleted ? '开始新一轮' : '下一题',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildComparisonRow(
-    String label,
-    String userAnswer,
-    String correctAnswer,
-  ) {
-    final isCorrect = userAnswer == correctAnswer;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8.0),
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      decoration: BoxDecoration(
-        color: isCorrect
-            ? Theme.of(
-                context,
-              ).colorScheme.primaryContainer.withValues(alpha: 0.2)
-            : Theme.of(
-                context,
-              ).colorScheme.errorContainer.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: isCorrect
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
-              : Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          // 状态图标和标签
-          Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: isCorrect
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.error,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              isCorrect ? Icons.check : Icons.close,
-              size: 10,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 40,
-            child: Text(
-              label,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(width: 8),
-
-          // 用户答案
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: isCorrect
-                      ? Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.4)
-                      : Theme.of(
-                          context,
-                        ).colorScheme.error.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Text(
-                userAnswer.isEmpty ? '未选择' : userAnswer,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: isCorrect
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.error,
-                  fontWeight: FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 8),
-          Icon(
-            Icons.arrow_forward,
-            size: 12,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 8),
-
-          // 正确答案
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primaryContainer.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Text(
-                correctAnswer,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildComparisonRowForList(
-    String label,
-    List<String> userAnswer,
-    List<String> correctAnswer,
-  ) {
-    // 使用Set比较，忽略顺序
-    final userSet = userAnswer.toSet();
-    final correctSet = correctAnswer.toSet();
-    final isCorrect =
-        userSet.length == correctSet.length && userSet.containsAll(correctSet);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8.0),
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      decoration: BoxDecoration(
-        color: isCorrect
-            ? Theme.of(
-                context,
-              ).colorScheme.primaryContainer.withValues(alpha: 0.2)
-            : Theme.of(
-                context,
-              ).colorScheme.errorContainer.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: isCorrect
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
-              : Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          // 状态图标和标签
-          Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: isCorrect
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.error,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              isCorrect ? Icons.check : Icons.close,
-              size: 10,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 40,
-            child: Text(
-              label,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(width: 8),
-
-          // 用户答案
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: isCorrect
-                      ? Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.4)
-                      : Theme.of(
-                          context,
-                        ).colorScheme.error.withValues(alpha: 0.4),
-                ),
-              ),
-              child: userAnswer.isEmpty
-                  ? Text(
-                      '未选择',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    )
-                  : Wrap(
-                      spacing: 2,
-                      runSpacing: 2,
-                      children: userAnswer
-                          .map(
-                            (item) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isCorrect
-                                    ? Theme.of(
-                                        context,
-                                      ).colorScheme.primaryContainer
-                                    : Theme.of(
-                                        context,
-                                      ).colorScheme.errorContainer,
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                              child: Text(
-                                item,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: isCorrect
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.onPrimaryContainer
-                                          : Theme.of(
-                                              context,
-                                            ).colorScheme.onErrorContainer,
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 10,
-                                    ),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-            ),
-          ),
-
-          const SizedBox(width: 8),
-          Icon(
-            Icons.arrow_forward,
-            size: 12,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 8),
-
-          // 正确答案
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primaryContainer.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Wrap(
-                spacing: 2,
-                runSpacing: 2,
-                children: correctAnswer
-                    .map(
-                      (item) => Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: Text(
-                          item,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 10,
-                              ),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   bool _canSubmit(BlindTasteState state, settings) {
     // 检查启用的品鉴项目是否都已选择
@@ -1328,12 +893,130 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     return canSubmit;
   }
 
-  void _submitAnswer() {
-    ref.read(blindTasteProvider.notifier).submitAnswer();
+  void _checkAnswer() {
+    if (!_isChecked) {
+      // 第一次检查或重新检查，计算正确性
+      _performAnswerCheck();
+    } else {
+      // 已检查过
+      if (_isCorrect) {
+        // 答对了，进入下一题
+        _nextQuestion();
+      } else {
+        // 答错了，重新检查当前答案
+        _performAnswerCheck();
+      }
+    }
   }
 
-  void _skipCurrentItem() {
+  void _performAnswerCheck() {
+    final state = ref.read(blindTasteProvider);
+    final settings = ref.read(settingsProvider);
+
+    if (state.currentItem == null) return;
+
+    bool isCorrect = true;
+
+    // 检查酒度
+    if (settings.enableBlindTasteAlcohol) {
+      isCorrect = isCorrect && _isCorrectAlcohol(state);
+    }
+
+    // 检查总分
+    if (settings.enableBlindTasteScore) {
+      isCorrect = isCorrect && _isCorrectTotalScore(state);
+    }
+
+    // 检查设备
+    if (settings.enableBlindTasteEquipment && state.userAnswer.selectedEquipment.isNotEmpty) {
+      isCorrect = isCorrect && _isCorrectEquipment(state);
+    }
+
+    // 检查发酵剂
+    if (settings.enableBlindTasteFermentation && state.userAnswer.selectedFermentationAgent.isNotEmpty) {
+      isCorrect = isCorrect && _isCorrectFermentation(state);
+    }
+
+    // 保存各个组件的检查结果
+    if (settings.enableBlindTasteAlcohol) {
+      _lastAlcoholResult = _isCorrectAlcohol(state);
+    }
+    if (settings.enableBlindTasteScore) {
+      _lastTotalScoreResult = _isCorrectTotalScore(state);
+    }
+    if (settings.enableBlindTasteEquipment && state.userAnswer.selectedEquipment.isNotEmpty) {
+      _lastEquipmentResult = _isCorrectEquipment(state);
+    }
+    if (settings.enableBlindTasteFermentation && state.userAnswer.selectedFermentationAgent.isNotEmpty) {
+      _lastFermentationResult = _isCorrectFermentation(state);
+    }
+
+    setState(() {
+      _isChecked = true;
+      _isCorrect = isCorrect;
+    });
+  }
+
+  bool _isCorrectAlcohol(BlindTasteState state) {
+    if (state.currentItem == null || state.userAnswer.selectedAlcoholDegree == null) {
+      return false;
+    }
+    return (state.userAnswer.selectedAlcoholDegree! - state.currentItem!.alcoholDegree).abs() <= 1.0;
+  }
+
+  bool _isCorrectTotalScore(BlindTasteState state) {
+    if (state.currentItem == null) {
+      return false;
+    }
+    return state.userAnswer.selectedTotalScore == state.currentItem!.totalScore;
+  }
+
+  bool _isCorrectEquipment(BlindTasteState state) {
+    if (state.currentItem == null) {
+      return false;
+    }
+    final userSet = state.userAnswer.selectedEquipment.toSet();
+    final correctSet = state.currentItem!.equipment.toSet();
+    return userSet.length == correctSet.length && userSet.containsAll(correctSet);
+  }
+
+  bool _isCorrectFermentation(BlindTasteState state) {
+    if (state.currentItem == null) {
+      return false;
+    }
+    final userSet = state.userAnswer.selectedFermentationAgent.toSet();
+    final correctSet = state.currentItem!.fermentationAgent.toSet();
+    return userSet.length == correctSet.length && userSet.containsAll(correctSet);
+  }
+
+  void _nextQuestion() {
+    setState(() {
+      _isChecked = false;
+      _isCorrect = false;
+      // 重置所有检查结果
+      _lastAlcoholResult = null;
+      _lastTotalScoreResult = null;
+      _lastEquipmentResult = null;
+      _lastFermentationResult = null;
+    });
+
     ref.read(blindTasteProvider.notifier).skipCurrentItem();
+    ref.read(blindTasteProvider.notifier).nextQuestion();
+  }
+
+
+  void _resetCurrentAnswer() {
+    setState(() {
+      _isChecked = false;
+      _isCorrect = false;
+      // 重置所有检查结果
+      _lastAlcoholResult = null;
+      _lastTotalScoreResult = null;
+      _lastEquipmentResult = null;
+      _lastFermentationResult = null;
+    });
+    // 重置用户答案到默认状态
+    ref.read(blindTasteProvider.notifier).resetCurrentAnswer();
   }
 
   void _handleNextQuestion() {
@@ -1524,5 +1207,75 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
         ),
       ),
     );
+  }
+
+  // 显示酒样练习答题卡
+  void _showBlindTasteSummary(BuildContext context, BlindTasteState state) {
+    final items = List.generate(
+      state.totalItemsInPool,
+      (index) => BlindTasteAnswerCardItem(index, state),
+    );
+
+    final answeredCount = state.savedAnswers.values
+        .where((answer) => _hasNonDefaultAnswer(answer))
+        .length;
+
+    final config = AnswerCardConfig(
+      title: '酒样练习答题卡',
+      icon: Icons.wine_bar,
+      progressTextBuilder: (completedCount, totalCount) =>
+          '${state.completedItemIds.length}/$totalCount',
+      stats: [
+        AnswerCardStats(
+          label: '当前',
+          count: state.currentIndex + 1,
+          color: Theme.of(context).colorScheme.secondary,
+        ),
+        AnswerCardStats(
+          label: '已完成',
+          count: state.completedItemIds.length,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        AnswerCardStats(
+          label: '已作答',
+          count: answeredCount,
+          color: Theme.of(context).colorScheme.tertiary,
+        ),
+        AnswerCardStats(
+          label: '总题数',
+          count: state.totalItemsInPool,
+          color: Theme.of(context).colorScheme.outline,
+        ),
+      ],
+      onItemTapped: (index) {
+        final controller = ref.read(blindTasteProvider.notifier);
+        controller.goToQuestion(index);
+      },
+      scrollController: _blindTasteSummaryScrollController,
+    );
+
+    AnswerCardHelper.showAnswerCard(context, items, config);
+
+    // 答题卡展开时，延迟滚动到当前题目位置
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        AnswerCardHelper.scrollToCurrentItem(
+          _blindTasteSummaryScrollController,
+          state.currentIndex,
+          context: this.context,
+        );
+      }
+    });
+  }
+
+  // 检查答案是否不是默认状态（即用户有过选择）
+  bool _hasNonDefaultAnswer(BlindTasteAnswer answer) {
+    final defaultAnswer = BlindTasteAnswer();
+
+    return answer.selectedAroma != defaultAnswer.selectedAroma ||
+           answer.selectedAlcoholDegree != defaultAnswer.selectedAlcoholDegree ||
+           answer.selectedTotalScore != defaultAnswer.selectedTotalScore ||
+           answer.selectedEquipment.isNotEmpty ||
+           answer.selectedFermentationAgent.isNotEmpty;
   }
 }

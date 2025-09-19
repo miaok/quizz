@@ -8,6 +8,30 @@ import '../providers/haptic_settings_provider.dart';
 import '../router/app_router.dart';
 import '../utils/memory_manager.dart';
 import '../utils/haptic_manager.dart';
+import '../widgets/answer_card.dart';
+
+/// Quiz页面的答题卡项目实现
+class QuizAnswerCardItem implements AnswerCardItem {
+  final int index;
+  final QuizState state;
+
+  QuizAnswerCardItem(this.index, this.state);
+
+  @override
+  String get id => index.toString();
+
+  @override
+  int get displayNumber => index + 1;
+
+  @override
+  bool get isCurrent => index == state.currentQuestionIndex;
+
+  @override
+  bool get isCompleted => state.userAnswers.containsKey(index);
+
+  @override
+  bool get hasAnswer => isCompleted;
+}
 
 class QuizPage extends ConsumerStatefulWidget {
   const QuizPage({super.key});
@@ -58,9 +82,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   // UI样式常量
   static const double _optionCardRadius = 12.0;
   static const double _buttonRadius = 10.0;
+  static const double _optionButtonSize = 24.0; // 统一选项按钮大小
   static const EdgeInsets _optionPadding = EdgeInsets.symmetric(
-    horizontal: 12, // 减小水平内边距
-    vertical: 4, // 大幅减小垂直内边距
+    horizontal: 16, // 统一水平内边距
+    vertical: 2, // 统一垂直内边距
   );
   static const EdgeInsets _buttonPadding = EdgeInsets.symmetric(
     vertical: 12,
@@ -807,41 +832,71 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     return Theme.of(context).cardColor;
   }
 
-  Color _getOptionBorderColor(
+  // 获取选项阴影颜色（针对深色模式优化）
+  Color _getOptionShadowColor(
     BuildContext context,
-    bool isSelected,
-    bool isAutoSwitching, {
-    bool isWrongAnswer = false,
+    bool isSelected, {
     bool isCorrectAnswer = false,
+    bool isWrongAnswer = false,
     bool isHintAnswer = false,
-    bool isDisabled = false,
+    bool isAutoSwitching = false,
+    bool isProcessingAnswer = false,
   }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // 禁用状态下，只有未选择的选项边框轻微变灰
-    if (isDisabled && !isSelected) {
-      return Theme.of(context).colorScheme.outline.withValues(alpha: 0.2);
+    // 深色模式下使用更强的阴影，浅色模式使用标准阴影
+    final double baseAlpha = isDarkMode ? 0.4 : 0.2;
+    final double selectedAlpha = isDarkMode ? 0.6 : 0.3;
+    final double strongAlpha = isDarkMode ? 0.7 : 0.4;
+
+    if (isProcessingAnswer && !isSelected) {
+      return isDarkMode
+          ? Colors.white.withValues(alpha: 0.1)
+          : Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1);
     }
 
-    if (isCorrectAnswer && isSelected) {
-      return Theme.of(context).colorScheme.primary;
-    }
-    if (isWrongAnswer && isSelected) {
-      return Theme.of(context).colorScheme.error;
-    }
-    if (isHintAnswer) {
-      return Colors.orange;
-    }
-    if (isAutoSwitching) {
-      return Theme.of(context).colorScheme.primary;
-    }
-    if (isSelected) {
-      // 在深色模式下使用更明显的边框
+    if (isCorrectAnswer) {
       return isDarkMode
-          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)
-          : Theme.of(context).colorScheme.primary.withValues(alpha: 0.4);
+          ? Colors.green.withValues(alpha: strongAlpha)
+          : Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: strongAlpha);
     }
-    return Theme.of(context).colorScheme.outline.withValues(alpha: 0.3);
+
+    if (isWrongAnswer) {
+      return isDarkMode
+          ? Colors.red.withValues(alpha: strongAlpha)
+          : Theme.of(
+              context,
+            ).colorScheme.error.withValues(alpha: selectedAlpha);
+    }
+
+    if (isHintAnswer) {
+      return Colors.orange.withValues(alpha: strongAlpha);
+    }
+
+    if (isAutoSwitching) {
+      return isDarkMode
+          ? Colors.green.withValues(alpha: selectedAlpha)
+          : Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: selectedAlpha);
+    }
+
+    if (isSelected) {
+      return isDarkMode
+          ? Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: selectedAlpha)
+          : Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: selectedAlpha);
+    }
+
+    // 默认阴影 - 深色模式使用白色半透明阴影，浅色模式使用主题阴影
+    return isDarkMode
+        ? Colors.white.withValues(alpha: 0.15)
+        : Theme.of(context).colorScheme.shadow.withValues(alpha: baseAlpha);
   }
 
   Color _getOptionTextColor(
@@ -950,17 +1005,15 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             ? 0.5
             : (isSelected ? 3 : 1),
         borderRadius: BorderRadius.circular(_optionCardRadius),
-        shadowColor: (_isProcessingAnswer && !isSelected)
-            ? Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1)
-            : isCorrectAnswer
-            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)
-            : isWrongAnswer
-            ? Theme.of(context).colorScheme.error.withValues(alpha: 0.3)
-            : isHintAnswer
-            ? Colors.orange.withValues(alpha: 0.4)
-            : isAutoSwitching
-            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
-            : Theme.of(context).colorScheme.shadow.withValues(alpha: 0.2),
+        shadowColor: _getOptionShadowColor(
+          context,
+          isSelected,
+          isCorrectAnswer: isCorrectAnswer,
+          isWrongAnswer: isWrongAnswer,
+          isHintAnswer: isHintAnswer,
+          isAutoSwitching: isAutoSwitching,
+          isProcessingAnswer: _isProcessingAnswer,
+        ),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
@@ -975,18 +1028,6 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               isDisabled: _isProcessingAnswer,
             ),
             borderRadius: BorderRadius.circular(_optionCardRadius),
-            border: Border.all(
-              color: _getOptionBorderColor(
-                context,
-                isSelected,
-                isAutoSwitching,
-                isWrongAnswer: isWrongAnswer,
-                isCorrectAnswer: isCorrectAnswer,
-                isHintAnswer: isHintAnswer,
-                isDisabled: _isProcessingAnswer,
-              ),
-              width: isSelected ? 2 : 1,
-            ),
           ),
           child: ListTile(
             contentPadding: _optionPadding,
@@ -997,8 +1038,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       _handleSingleChoiceSelection(option, controller);
                     },
               child: Container(
-                width: 24,
-                height: 24,
+                width: _optionButtonSize,
+                height: _optionButtonSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
@@ -1032,7 +1073,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       : Colors.transparent,
                 ),
                 child: isSelected
-                    ? Icon(Icons.circle, size: 14, color: Colors.white)
+                    ? Icon(Icons.circle, size: 12, color: Colors.white)
                     : null,
               ),
             ),
@@ -1122,6 +1163,39 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _startOptionLockTimer();
   }
 
+  void _handleMultipleChoiceSelection(
+    String option,
+    QuizController controller,
+  ) {
+    if (_isProcessingAnswer) return;
+
+    // 取消自动切题定时器
+    _autoNextTimer?.cancel();
+    setState(() {
+      _isAutoSwitching = false;
+      if (multipleAnswers.contains(option)) {
+        multipleAnswers.remove(option);
+      } else {
+        multipleAnswers.add(option);
+      }
+    });
+    controller.submitAnswer(multipleAnswers.toList());
+
+    // 根据模式处理延迟逻辑
+    final quizState = ref.read(quizControllerProvider);
+    if (quizState.mode == QuizMode.practice) {
+      // 练习模式：立即触发点击震动反馈
+      HapticManager.submitAnswer();
+      // 练习模式下，延迟判断答案（给用户时间选择多个选项）
+      _scheduleMultipleChoiceCheck(controller);
+    } else if (quizState.mode == QuizMode.exam) {
+      // 考试模式：立即触发点击震动反馈
+      HapticManager.submitAnswer();
+      // 考试模式下，延迟自动切题（给用户时间选择多个选项）
+      _scheduleExamModeMultipleChoiceAutoNext(controller);
+    }
+  }
+
   // 启动选项锁定定时器，防止快速点击
   void _startOptionLockTimer() {
     _optionLockTimer?.cancel();
@@ -1147,15 +1221,15 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       child: Material(
         elevation: isSelected ? 2.5 : 1,
         borderRadius: BorderRadius.circular(_optionCardRadius),
-        shadowColor: isCorrectAnswer
-            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
-            : isWrongAnswer
-            ? Theme.of(context).colorScheme.error.withValues(alpha: 0.25)
-            : isHintAnswer
-            ? Colors.orange.withValues(alpha: 0.3)
-            : isSelected
-            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)
-            : Theme.of(context).colorScheme.shadow.withValues(alpha: 0.15),
+        shadowColor: _getOptionShadowColor(
+          context,
+          isSelected,
+          isCorrectAnswer: isCorrectAnswer,
+          isWrongAnswer: isWrongAnswer,
+          isHintAnswer: isHintAnswer,
+          isAutoSwitching: false,
+          isProcessingAnswer: false,
+        ),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeInOut,
@@ -1169,21 +1243,51 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               isHintAnswer: isHintAnswer,
             ),
             borderRadius: BorderRadius.circular(_optionCardRadius),
-            border: Border.all(
-              color: _getOptionBorderColor(
-                context,
-                isSelected,
-                false,
-                isWrongAnswer: isWrongAnswer,
-                isCorrectAnswer: isCorrectAnswer,
-                isHintAnswer: isHintAnswer,
-              ),
-              width: isSelected ? 2 : 1,
-            ),
           ),
-          child: CheckboxListTile(
+          child: ListTile(
             contentPadding: _optionPadding,
-            controlAffinity: ListTileControlAffinity.leading,
+            leading: GestureDetector(
+              onTap: _isProcessingAnswer
+                  ? null
+                  : () {
+                      _handleMultipleChoiceSelection(option, controller);
+                    },
+              child: Container(
+                width: _optionButtonSize,
+                height: _optionButtonSize,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: (_isProcessingAnswer && !isSelected)
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.outline.withValues(alpha: 0.3)
+                        : isSelected
+                        ? (isCorrectAnswer
+                              ? Colors.green.shade700
+                              : isWrongAnswer
+                              ? Colors.red.shade600
+                              : isHintAnswer
+                              ? Colors.orange.shade600
+                              : _getPrimaryColor(context))
+                        : Theme.of(context).colorScheme.outline,
+                    width: 2,
+                  ),
+                  color: isSelected
+                      ? (isCorrectAnswer
+                            ? Colors.green.shade700
+                            : isWrongAnswer
+                            ? Colors.red.shade600
+                            : isHintAnswer
+                            ? Colors.orange.shade600
+                            : _getPrimaryColor(context))
+                      : Colors.transparent,
+                ),
+                child: isSelected
+                    ? Icon(Icons.check, size: 14, color: Colors.white)
+                    : null,
+              ),
+            ),
             title: AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 180),
               style: TextStyle(
@@ -1195,50 +1299,18 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   isWrongAnswer: isWrongAnswer,
                   isCorrectAnswer: isCorrectAnswer,
                   isHintAnswer: isHintAnswer,
+                  isDisabled: _isProcessingAnswer,
                 ),
                 fontSize: 18, // 增大多选题字体大小
                 height: 1.4,
               ),
               child: Text(option),
             ),
-            value: isSelected,
-            onChanged: _isProcessingAnswer
+            onTap: _isProcessingAnswer
                 ? null
-                : (value) {
-                    // 取消自动切题定时器
-                    _autoNextTimer?.cancel();
-                    setState(() {
-                      _isAutoSwitching = false;
-                      if (value == true) {
-                        multipleAnswers.add(option);
-                      } else {
-                        multipleAnswers.remove(option);
-                      }
-                    });
-                    controller.submitAnswer(multipleAnswers.toList());
-
-                    // 根据模式处理延迟逻辑
-                    final quizState = ref.read(quizControllerProvider);
-                    if (quizState.mode == QuizMode.practice) {
-                      // 练习模式：立即触发点击震动反馈
-                      HapticManager.submitAnswer();
-                      // 练习模式下，延迟判断答案（给用户时间选择多个选项）
-                      _scheduleMultipleChoiceCheck(controller);
-                    } else if (quizState.mode == QuizMode.exam) {
-                      // 考试模式：立即触发点击震动反馈
-                      HapticManager.submitAnswer();
-                      // 考试模式下，延迟自动切题（给用户时间选择多个选项）
-                      _scheduleExamModeMultipleChoiceAutoNext(controller);
-                    }
+                : () {
+                    _handleMultipleChoiceSelection(option, controller);
                   },
-            activeColor: isCorrectAnswer
-                ? Colors.green.shade700
-                : isWrongAnswer
-                ? Colors.red.shade600
-                : isHintAnswer
-                ? Colors.orange.shade600
-                : _getPrimaryColor(context),
-            checkColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(_optionCardRadius),
             ),
@@ -1462,248 +1534,52 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   }
 
   void _showQuestionCard(BuildContext context, QuizState state) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildQuestionCard(state),
+    final items = List.generate(
+      state.questions.length,
+      (index) => QuizAnswerCardItem(index, state),
     );
+
+    final config = AnswerCardConfig(
+      title: '答题卡',
+      icon: Icons.quiz,
+      progressTextBuilder: (completedCount, totalCount) =>
+          '$completedCount/$totalCount',
+      stats: [
+        AnswerCardStats(
+          label: '已答',
+          count: state.answeredCount,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        AnswerCardStats(
+          label: '未答',
+          count: state.questions.length - state.answeredCount,
+          color: Theme.of(context).colorScheme.outline,
+        ),
+        AnswerCardStats(
+          label: '当前',
+          count: state.currentQuestionIndex + 1,
+          color: Theme.of(context).colorScheme.secondary,
+        ),
+      ],
+      onItemTapped: (index) {
+        final controller = ref.read(quizControllerProvider.notifier);
+        _goToQuestionByIndex(index, controller);
+      },
+      scrollController: _questionCardScrollController,
+    );
+
+    AnswerCardHelper.showAnswerCard(context, items, config);
 
     // 答题卡展开时，延迟滚动到当前题目位置
-    // 使用更长的延迟确保答题卡完全展开后再滚动
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) {
-        _scrollToCurrentQuestion(state.currentQuestionIndex);
+        AnswerCardHelper.scrollToCurrentItem(
+          _questionCardScrollController,
+          state.currentQuestionIndex,
+          context: this.context,
+        );
       }
     });
-  }
-
-  // 滚动到指定题目位置
-  void _scrollToCurrentQuestion(int currentIndex) {
-    if (!_questionCardScrollController.hasClients) return;
-
-    // 计算网格参数（与GridView.builder中的参数保持一致）
-    const int crossAxisCount = 5; // 每行5个题目
-    const double crossAxisSpacing = 12.0; // 横轴间距
-    const double mainAxisSpacing = 12.0; // 主轴间距
-    const double childAspectRatio = 1.0; // 宽高比
-    const double padding = 16.0; // 容器内边距
-
-    // 计算当前题目所在的行
-    final int row = currentIndex ~/ crossAxisCount;
-
-    // 获取GridView的可用宽度
-    final double availableWidth =
-        MediaQuery.of(context).size.width - (padding * 2);
-
-    // 计算每个item的实际尺寸
-    final double itemWidth =
-        (availableWidth - (crossAxisSpacing * (crossAxisCount - 1))) /
-        crossAxisCount;
-    final double itemHeight = itemWidth / childAspectRatio;
-
-    // 计算目标滚动位置，让当前题目所在行居中显示
-    final double targetOffset =
-        (row * (itemHeight + mainAxisSpacing)) - (itemHeight + mainAxisSpacing);
-
-    // 确保滚动位置在有效范围内
-    final double maxScrollExtent =
-        _questionCardScrollController.position.maxScrollExtent;
-    final double clampedOffset = targetOffset.clamp(0.0, maxScrollExtent);
-
-    // 执行滚动动画
-    _questionCardScrollController.animateTo(
-      clampedOffset,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOutCubic,
-    );
-  }
-
-  Widget _buildQuestionCard(QuizState state) {
-    final controller = ref.read(quizControllerProvider.notifier);
-
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: Column(
-        children: [
-          // 顶部拖拽指示器
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-
-          // 标题栏
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Icon(Icons.quiz, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 6),
-                const Text(
-                  '答题卡',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                Text(
-                  '${state.answeredCount}/${state.questions.length}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const Divider(height: 1),
-
-          // 题目网格
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: GridView.builder(
-                controller: _questionCardScrollController,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1,
-                ),
-                itemCount: state.questions.length,
-                itemBuilder: (context, index) {
-                  return _buildQuestionItem(index, state, controller);
-                },
-              ),
-            ),
-          ),
-
-          // 底部统计信息
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              border: Border(top: BorderSide(color: Colors.grey[200]!)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem(
-                  '已答',
-                  state.answeredCount,
-                  Theme.of(context).colorScheme.primary,
-                ),
-                _buildStatItem(
-                  '未答',
-                  state.questions.length - state.answeredCount,
-                  Theme.of(context).colorScheme.outline,
-                ),
-                _buildStatItem(
-                  '当前',
-                  state.currentQuestionIndex + 1,
-                  Theme.of(context).colorScheme.secondary,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestionItem(
-    int index,
-    QuizState state,
-    QuizController controller,
-  ) {
-    final isAnswered = state.userAnswers.containsKey(index);
-    final isCurrent = index == state.currentQuestionIndex;
-
-    Color backgroundColor;
-    Color textColor;
-
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    if (isCurrent) {
-      backgroundColor = Theme.of(context).colorScheme.secondary;
-      textColor = Theme.of(context).colorScheme.onSecondary;
-    } else if (isAnswered) {
-      backgroundColor = Theme.of(context).colorScheme.primary;
-      textColor = Theme.of(context).colorScheme.onPrimary;
-    } else {
-      // 未答题的按钮在深色模式下使用更明显的对比色
-      backgroundColor = isDarkMode
-          ? Theme.of(context).colorScheme.surfaceContainerHighest
-          : Theme.of(context).colorScheme.surfaceContainer;
-      textColor = Theme.of(context).colorScheme.onSurface;
-    }
-
-    return GestureDetector(
-      onTap: () {
-        HapticManager.selectQuestion();
-        _goToQuestionByIndex(index, controller);
-        Navigator.of(context).pop(); // 关闭答题卡
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(8),
-          border: isCurrent
-              ? Border.all(
-                  color: Theme.of(context).colorScheme.secondary,
-                  width: 2,
-                )
-              : null,
-        ),
-        child: Center(
-          child: Text(
-            '${index + 1}',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, int count, Color color) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          child: Center(
-            child: Text(
-              '$count',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-      ],
-    );
   }
 
   void _handleBackPressed(BuildContext context) {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'router/app_router.dart';
 import 'services/database_service.dart';
@@ -7,6 +6,7 @@ import 'services/settings_service.dart';
 import 'services/blind_taste_service.dart';
 import 'utils/system_ui_manager.dart';
 import 'utils/memory_manager.dart';
+import 'utils/device_orientation_manager.dart';
 
 void main() async {
   // 确保Flutter绑定初始化
@@ -18,11 +18,8 @@ void main() async {
   // 初始化内存管理器
   MemoryManager.initialize();
 
-  // 设置屏幕方向为竖屏
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  // 初始化屏幕方向（将在第一个页面构建后根据设备类型调整）
+  await DeviceOrientationManager.initializeOrientations();
 
   // 初始化服务
   await DatabaseService().initialize();
@@ -42,6 +39,7 @@ class MyQuizApp extends StatefulWidget {
 
 class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
   bool _hasInitializedUI = false;
+  bool _hasInitializedOrientation = false;
   Brightness? _lastBrightness;
 
   @override
@@ -102,6 +100,19 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
         final isDark = brightness == Brightness.dark;
         SystemUIManager.setImmersiveUI(isDark: isDark);
         _hasInitializedUI = true;
+      }
+    });
+  }
+
+  void _initializeOrientation({bool force = false}) {
+    if (!force && _hasInitializedOrientation) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (mounted) {
+        await DeviceOrientationManager.initializeOrientations(context);
+        _hasInitializedOrientation = true;
       }
     });
   }
@@ -285,10 +296,16 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    // 只在首次构建时更新系统UI
+    // 只在首次构建时更新系统UI和初始化方向
     if (!_hasInitializedUI) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _updateSystemUI();
+      });
+    }
+
+    if (!_hasInitializedOrientation) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _initializeOrientation();
       });
     }
 

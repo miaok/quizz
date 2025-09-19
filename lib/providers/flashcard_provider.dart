@@ -149,7 +149,7 @@ class FlashcardController extends StateNotifier<FlashcardState> {
         viewedCardIds: updatedViewedIds,
         progress: progress,
         isCompleted: nextIndex == state.items.length - 1,
-        isRoundCompleted: nextIndex == state.items.length - 1,
+        isRoundCompleted: updatedViewedIds.length == state.items.length,
       );
 
       // 自动保存进度
@@ -252,7 +252,6 @@ class FlashcardController extends StateNotifier<FlashcardState> {
     }
   }
 
-
   /// 检查是否有保存的进度
   Future<bool> hasSavedProgress() async {
     return await _progressService.hasFlashcardProgress();
@@ -271,7 +270,8 @@ class FlashcardController extends StateNotifier<FlashcardState> {
 
     // 获取当前设置
     final settings = _ref.read(settingsProvider);
-    final currentRandomOrder = randomOrder ?? settings.enableFlashcardRandomOrder;
+    final currentRandomOrder =
+        randomOrder ?? settings.enableFlashcardRandomOrder;
 
     try {
       // 检查随机顺序设置是否匹配
@@ -291,7 +291,8 @@ class FlashcardController extends StateNotifier<FlashcardState> {
       // 应用筛选条件
       List<BlindTasteItemModel> filteredItems = allItems;
 
-      if (progress.flashcardAromaFilter != null && progress.flashcardAromaFilter!.isNotEmpty) {
+      if (progress.flashcardAromaFilter != null &&
+          progress.flashcardAromaFilter!.isNotEmpty) {
         filteredItems = filteredItems
             .where((item) => item.aroma == progress.flashcardAromaFilter!)
             .toList();
@@ -299,13 +300,17 @@ class FlashcardController extends StateNotifier<FlashcardState> {
 
       if (progress.flashcardMinAlcohol != null) {
         filteredItems = filteredItems
-            .where((item) => item.alcoholDegree >= progress.flashcardMinAlcohol!)
+            .where(
+              (item) => item.alcoholDegree >= progress.flashcardMinAlcohol!,
+            )
             .toList();
       }
 
       if (progress.flashcardMaxAlcohol != null) {
         filteredItems = filteredItems
-            .where((item) => item.alcoholDegree <= progress.flashcardMaxAlcohol!)
+            .where(
+              (item) => item.alcoholDegree <= progress.flashcardMaxAlcohol!,
+            )
             .toList();
       }
 
@@ -332,7 +337,8 @@ class FlashcardController extends StateNotifier<FlashcardState> {
       final currentCard = FlashcardModel(item: currentItem);
 
       // 计算当前进度
-      final currentProgress = (progress.currentIndex + 1) / filteredItems.length;
+      final currentProgress =
+          (progress.currentIndex + 1) / filteredItems.length;
 
       // 注意：随机顺序设置现在直接从settings provider中读取
 

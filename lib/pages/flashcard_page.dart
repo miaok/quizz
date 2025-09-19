@@ -4,6 +4,36 @@ import '../providers/flashcard_provider.dart';
 import '../providers/haptic_settings_provider.dart';
 import '../models/flashcard_model.dart';
 import '../utils/haptic_manager.dart';
+import '../widgets/answer_card.dart';
+
+/// Flashcard页面的答题卡项目实现
+class FlashcardAnswerCardItem implements AnswerCardItem {
+  final int index;
+  final FlashcardState state;
+
+  FlashcardAnswerCardItem(this.index, this.state);
+
+  @override
+  String get id => state.items.isNotEmpty && index < state.items.length
+      ? state.items[index].id.toString()
+      : index.toString();
+
+  @override
+  int get displayNumber => index + 1;
+
+  @override
+  bool get isCurrent => index == state.currentIndex;
+
+  @override
+  bool get isCompleted => state.viewedCardIds.contains(
+    state.items.isNotEmpty && index < state.items.length
+        ? state.items[index].id
+        : -1,
+  );
+
+  @override
+  bool get hasAnswer => isCompleted;
+}
 
 class FlashcardPage extends ConsumerStatefulWidget {
   const FlashcardPage({super.key});
@@ -21,6 +51,7 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
   late Animation<double> _fadeAnimation;
   late AnimationController _shuffleController;
   late Animation<double> _shuffleAnimation;
+  late ScrollController _flashcardSummaryScrollController;
   late Animation<double> _scaleAnimation;
 
   // 动画方向：-1表示向左，1表示向右，0表示无方向
@@ -62,6 +93,9 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
       CurvedAnimation(parent: _shuffleController, curve: Curves.easeInOut),
     );
 
+    // 初始化闪卡答题卡滚动控制器
+    _flashcardSummaryScrollController = ScrollController();
+
     // 初始化闪卡数据
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeFlashcards();
@@ -74,6 +108,7 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
     _flipController.dispose();
     _slideController.dispose();
     _shuffleController.dispose();
+    _flashcardSummaryScrollController.dispose();
     _isInitialized = false; // 重置初始化标志
     _isInitializing = false;
     super.dispose();
@@ -149,11 +184,18 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
             if (flashcardState.items.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(right: 16),
-                child: Center(
-                  child: Text(
-                    flashcardState.progressDescription,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                child: GestureDetector(
+                  onTap: () {
+                    HapticManager.openQuestionCard();
+                    // 显示答题卡组件
+                    _showFlashcardSummary(context, flashcardState);
+                  },
+                  child: Center(
+                    child: Text(
+                      flashcardState.progressDescription,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -815,5 +857,54 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
         ),
       ),
     );
+  }
+
+  void _showFlashcardSummary(BuildContext context, FlashcardState state) {
+    final items = List.generate(
+      state.items.length,
+      (index) => FlashcardAnswerCardItem(index, state),
+    );
+
+    final config = AnswerCardConfig(
+      title: '闪卡答题卡',
+      icon: Icons.card_membership,
+      progressTextBuilder: (completedCount, totalCount) =>
+          '${state.viewedCardIds.length}/$totalCount',
+      stats: [
+        AnswerCardStats(
+          label: '当前',
+          count: state.currentIndex + 1,
+          color: Theme.of(context).colorScheme.secondary,
+        ),
+        AnswerCardStats(
+          label: '已学',
+          count: state.viewedCardIds.length,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        AnswerCardStats(
+          label: '未学',
+          count: state.items.length - state.viewedCardIds.length,
+          color: Theme.of(context).colorScheme.outline,
+        ),
+      ],
+      onItemTapped: (index) {
+        final controller = ref.read(flashcardProvider.notifier);
+        controller.goToCard(index);
+      },
+      scrollController: _flashcardSummaryScrollController,
+    );
+
+    AnswerCardHelper.showAnswerCard(context, items, config);
+
+    // 答题卡展开时，延迟滚动到当前题目位置
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        AnswerCardHelper.scrollToCurrentItem(
+          _flashcardSummaryScrollController,
+          state.currentIndex,
+          context: this.context,
+        );
+      }
+    });
   }
 }

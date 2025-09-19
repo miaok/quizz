@@ -127,13 +127,10 @@ class BlindTasteAnswer {
       }
     }
 
-    // 总分匹配 - 允许±0.4分误差
+    // 总分匹配 - 必须完全匹配
     if (enableScore) {
-      double scoreDiff = (selectedTotalScore - correctAnswer.totalScore).abs();
-      if (scoreDiff <= 0.2) {
+      if (selectedTotalScore == correctAnswer.totalScore) {
         score += baseScore;
-      } else if (scoreDiff <= 0.4) {
-        score += baseScore * 0.5; // 部分分数
       }
     }
 

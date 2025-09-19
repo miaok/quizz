@@ -515,21 +515,13 @@ class _SearchPageState extends ConsumerState<SearchPage>
             ),
             const SizedBox(height: 10),
 
-            // 基本信息网格 - 三列布局更紧凑
+            // 基本信息
             Row(
               children: [
                 Expanded(
                   child: _buildCompactInfoItem(
-                    '香型',
-                    item.aroma,
-                    Icons.local_florist,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildCompactInfoItem(
                     '酒度',
-                    '${item.alcoholDegree}°',
+                    '${item.alcoholDegree.round()}°',
                     Icons.thermostat,
                   ),
                 ),
@@ -544,11 +536,22 @@ class _SearchPageState extends ConsumerState<SearchPage>
               ],
             ),
 
-            // 设备和发酵剂信息 - 合并显示
-            if (item.equipment.isNotEmpty ||
-                item.fermentationAgent.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              _buildCompactListInfo(item.equipment, item.fermentationAgent),
+            // 设备和发酵剂信息
+            if (item.equipment.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _buildCompactInfoItem(
+                '设备',
+                item.equipment.join('、'),
+                Icons.build,
+              ),
+            ],
+            if (item.fermentationAgent.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _buildCompactInfoItem(
+                '发酵剂',
+                item.fermentationAgent.join('、'),
+                Icons.science,
+              ),
             ],
           ],
         ),
@@ -563,29 +566,18 @@ class _SearchPageState extends ConsumerState<SearchPage>
         color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(
-                icon,
-                size: 14,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 3),
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ],
+          Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 11,
+            ),
           ),
-          const SizedBox(height: 3),
+          const Spacer(),
           Text(
             value,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -594,56 +586,6 @@ class _SearchPageState extends ConsumerState<SearchPage>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCompactListInfo(
-    List<String> equipment,
-    List<String> fermentationAgent,
-  ) {
-    final allItems = <String>[];
-
-    // 添加设备信息（带前缀）
-    if (equipment.isNotEmpty) {
-      allItems.addAll(equipment.map((item) => '设备:$item'));
-    }
-
-    // 添加发酵剂信息（带前缀）
-    if (fermentationAgent.isNotEmpty) {
-      allItems.addAll(fermentationAgent.map((item) => '发酵剂:$item'));
-    }
-
-    if (allItems.isEmpty) return Container();
-
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: allItems
-            .map(
-              (item) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  item,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-            )
-            .toList(),
       ),
     );
   }
