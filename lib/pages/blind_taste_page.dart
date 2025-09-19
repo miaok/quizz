@@ -16,7 +16,8 @@ class BlindTasteAnswerCardItem implements AnswerCardItem {
   BlindTasteAnswerCardItem(this.index, this.state);
 
   @override
-  String get id => state.questionPool.isNotEmpty && index < state.questionPool.length
+  String get id =>
+      state.questionPool.isNotEmpty && index < state.questionPool.length
       ? state.questionPool[index].id.toString()
       : index.toString();
 
@@ -35,17 +36,18 @@ class BlindTasteAnswerCardItem implements AnswerCardItem {
 
   @override
   bool get hasAnswer {
-    if (state.questionPool.isEmpty || index >= state.questionPool.length) return false;
+    if (state.questionPool.isEmpty || index >= state.questionPool.length)
+      return false;
     final itemId = state.questionPool[index].id;
     final answer = state.savedAnswers[itemId];
     if (answer == null) return false;
 
     final defaultAnswer = BlindTasteAnswer();
     return answer.selectedAroma != defaultAnswer.selectedAroma ||
-           answer.selectedAlcoholDegree != defaultAnswer.selectedAlcoholDegree ||
-           answer.selectedTotalScore != defaultAnswer.selectedTotalScore ||
-           answer.selectedEquipment.isNotEmpty ||
-           answer.selectedFermentationAgent.isNotEmpty;
+        answer.selectedAlcoholDegree != defaultAnswer.selectedAlcoholDegree ||
+        answer.selectedTotalScore != defaultAnswer.selectedTotalScore ||
+        answer.selectedEquipment.isNotEmpty ||
+        answer.selectedFermentationAgent.isNotEmpty;
   }
 }
 
@@ -415,11 +417,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   style: _resetButtonStyle(context),
                   child: Text(
                     '重置',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -439,11 +437,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   style: _submitButtonStyle(context),
                   child: Text(
                     _isChecked && _isCorrect ? '下一题' : '检查答案',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -563,7 +557,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                 if (_lastAlcoholResult != null)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
+                      horizontal: 3,
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
@@ -583,10 +577,10 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 0),
             Wrap(
-              spacing: 8,
-              runSpacing: 6,
+              spacing: 6,
+              runSpacing: -6, // 减小行间距
               children: BlindTasteOptions.alcoholDegrees.map((degree) {
                 final isSelected =
                     state.userAnswer.selectedAlcoholDegree == degree;
@@ -650,7 +644,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   ),
               ],
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 0),
             Row(
               children: [
                 // 减分按钮
@@ -778,10 +772,10 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 0),
             Wrap(
-              spacing: 8,
-              runSpacing: 6,
+              spacing: 6,
+              runSpacing: -6, // 减小行间距
               children: BlindTasteOptions.equipmentTypes.map((equipment) {
                 final isSelected = state.userAnswer.selectedEquipment.contains(
                   equipment,
@@ -846,10 +840,10 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
                   ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 0),
             Wrap(
               spacing: 8,
-              runSpacing: 8,
+              runSpacing: 4, // 减小行间距
               children: BlindTasteOptions.fermentationAgents.map((agent) {
                 final isSelected = state.userAnswer.selectedFermentationAgent
                     .contains(agent);
@@ -872,9 +866,6 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
       ),
     );
   }
-
-
-
 
   bool _canSubmit(BlindTasteState state, settings) {
     // 检查启用的品鉴项目是否都已选择
@@ -928,12 +919,14 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     }
 
     // 检查设备
-    if (settings.enableBlindTasteEquipment && state.userAnswer.selectedEquipment.isNotEmpty) {
+    if (settings.enableBlindTasteEquipment &&
+        state.userAnswer.selectedEquipment.isNotEmpty) {
       isCorrect = isCorrect && _isCorrectEquipment(state);
     }
 
     // 检查发酵剂
-    if (settings.enableBlindTasteFermentation && state.userAnswer.selectedFermentationAgent.isNotEmpty) {
+    if (settings.enableBlindTasteFermentation &&
+        state.userAnswer.selectedFermentationAgent.isNotEmpty) {
       isCorrect = isCorrect && _isCorrectFermentation(state);
     }
 
@@ -944,10 +937,12 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     if (settings.enableBlindTasteScore) {
       _lastTotalScoreResult = _isCorrectTotalScore(state);
     }
-    if (settings.enableBlindTasteEquipment && state.userAnswer.selectedEquipment.isNotEmpty) {
+    if (settings.enableBlindTasteEquipment &&
+        state.userAnswer.selectedEquipment.isNotEmpty) {
       _lastEquipmentResult = _isCorrectEquipment(state);
     }
-    if (settings.enableBlindTasteFermentation && state.userAnswer.selectedFermentationAgent.isNotEmpty) {
+    if (settings.enableBlindTasteFermentation &&
+        state.userAnswer.selectedFermentationAgent.isNotEmpty) {
       _lastFermentationResult = _isCorrectFermentation(state);
     }
 
@@ -958,10 +953,14 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
   }
 
   bool _isCorrectAlcohol(BlindTasteState state) {
-    if (state.currentItem == null || state.userAnswer.selectedAlcoholDegree == null) {
+    if (state.currentItem == null ||
+        state.userAnswer.selectedAlcoholDegree == null) {
       return false;
     }
-    return (state.userAnswer.selectedAlcoholDegree! - state.currentItem!.alcoholDegree).abs() <= 1.0;
+    return (state.userAnswer.selectedAlcoholDegree! -
+                state.currentItem!.alcoholDegree)
+            .abs() <=
+        1.0;
   }
 
   bool _isCorrectTotalScore(BlindTasteState state) {
@@ -977,7 +976,8 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     }
     final userSet = state.userAnswer.selectedEquipment.toSet();
     final correctSet = state.currentItem!.equipment.toSet();
-    return userSet.length == correctSet.length && userSet.containsAll(correctSet);
+    return userSet.length == correctSet.length &&
+        userSet.containsAll(correctSet);
   }
 
   bool _isCorrectFermentation(BlindTasteState state) {
@@ -986,7 +986,8 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     }
     final userSet = state.userAnswer.selectedFermentationAgent.toSet();
     final correctSet = state.currentItem!.fermentationAgent.toSet();
-    return userSet.length == correctSet.length && userSet.containsAll(correctSet);
+    return userSet.length == correctSet.length &&
+        userSet.containsAll(correctSet);
   }
 
   void _nextQuestion() {
@@ -1003,7 +1004,6 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     ref.read(blindTasteProvider.notifier).skipCurrentItem();
     ref.read(blindTasteProvider.notifier).nextQuestion();
   }
-
 
   void _resetCurrentAnswer() {
     setState(() {
@@ -1273,9 +1273,9 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     final defaultAnswer = BlindTasteAnswer();
 
     return answer.selectedAroma != defaultAnswer.selectedAroma ||
-           answer.selectedAlcoholDegree != defaultAnswer.selectedAlcoholDegree ||
-           answer.selectedTotalScore != defaultAnswer.selectedTotalScore ||
-           answer.selectedEquipment.isNotEmpty ||
-           answer.selectedFermentationAgent.isNotEmpty;
+        answer.selectedAlcoholDegree != defaultAnswer.selectedAlcoholDegree ||
+        answer.selectedTotalScore != defaultAnswer.selectedTotalScore ||
+        answer.selectedEquipment.isNotEmpty ||
+        answer.selectedFermentationAgent.isNotEmpty;
   }
 }

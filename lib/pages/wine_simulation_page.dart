@@ -323,10 +323,10 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
       ),
       childAspectRatio: ResponsiveLayout.valueWhen(
         context: context,
-        mobile: 0.85,
-        tablet: 0.9,
-        tabletLandscape: 0.8, // 横屏进一步减小宽高比，增加垂直空间防止溢出
-        desktop: 0.9,
+        mobile: 0.75, // 减小宽高比以增加高度
+        tablet: 0.8, // 减小宽高比以增加高度
+        tabletLandscape: 0.6, // 横屏进一步减小宽高比，以容纳更多标签
+        desktop: 0.7, // 减小宽高比以增加高度
       ),
       children: state.wineGlasses.asMap().entries.map((entry) {
         final index = entry.key;
@@ -356,7 +356,7 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
         },
         borderRadius: BorderRadius.circular(isLandscape ? 16 : 16),
         child: Padding(
-          padding: EdgeInsets.all(isLandscape ? 6.0 : 10.0), // 横屏进一步减小内边距
+          padding: EdgeInsets.all(isLandscape ? 8.0 : 10.0), // 横屏稍微增加内边距给标签更多空间
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -510,7 +510,7 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
     // 直接显示所有答案芯片
     return Wrap(
       spacing: isLandscape ? 2 : 3, // 横屏减小间距
-      runSpacing: isLandscape ? 1 : 3, // 横屏减小行间距
+      runSpacing: isLandscape ? 2 : 3, // 横屏保持合适的行间距
       children: allChips,
     );
   }
@@ -518,18 +518,18 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
   Widget _buildAnswerChip(String text, Color color, bool isLandscape) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isLandscape ? 2 : 2,
-        vertical: isLandscape ? 1 : 1.5, // 横屏减小垂直内边距
+        horizontal: isLandscape ? 3 : 2, // 横屏稍微增加水平内边距以提高可读性
+        vertical: isLandscape ? 1.5 : 1.5, // 保持合适的垂直内边距
       ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(isLandscape ? 4 : 6), // 横屏减小圆角
+        borderRadius: BorderRadius.circular(isLandscape ? 5 : 6), // 横屏稍微增大圆角
         border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
       ),
       child: Text(
         text,
         style: TextStyle(
-          fontSize: isLandscape ? 9 : 11, // 横屏减小字体以节省空间
+          fontSize: isLandscape ? 10 : 11, // 横屏保持可读的字体大小
           fontWeight: FontWeight.w600,
           color: color.withValues(alpha: 0.9),
         ),
@@ -1002,9 +1002,9 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
     final isLandscape = screenWidth > screenHeight;
 
     // 横屏模式调整尺寸
-    final dialogHeight = isLandscape ? 0.85 : 0.88; // 横屏模式稍微减小高度
-    final dialogPadding = isLandscape ? 6.0 : 8.0;
-    final insetPadding = isLandscape ? 8.0 : 12.0;
+    final dialogHeight = isLandscape ? 0.80 : 0.85; // 进一步减小对话框高度
+    final dialogPadding = isLandscape ? 4.0 : 6.0; // 减小内边距
+    final insetPadding = isLandscape ? 6.0 : 10.0; // 减小外边距
 
     return Dialog(
       insetPadding: EdgeInsets.all(insetPadding),
@@ -1086,28 +1086,24 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                       ),
                     ),
 
-                    SizedBox(height: isLandscape ? 6 : 8),
-
+                    SizedBox(height: isLandscape ? 4 : 6), // 减小间距
                     // 总分选择（移到酒度之前）
                     if (settings.enableBlindTasteScore) _buildScoreSection(),
 
                     if (settings.enableBlindTasteScore)
-                      SizedBox(height: isLandscape ? 4 : 6),
-
+                      SizedBox(height: isLandscape ? 3 : 4), // 减小间距
                     // 酒度选择（移到总分之后）
                     if (settings.enableBlindTasteAlcohol)
                       _buildAlcoholSection(),
 
                     if (settings.enableBlindTasteAlcohol)
-                      SizedBox(height: isLandscape ? 4 : 6),
-
+                      SizedBox(height: isLandscape ? 3 : 4), // 减小间距
                     // 设备选择
                     if (settings.enableBlindTasteEquipment)
                       _buildEquipmentSection(),
 
                     if (settings.enableBlindTasteEquipment)
-                      SizedBox(height: isLandscape ? 4 : 6),
-
+                      SizedBox(height: isLandscape ? 3 : 4), // 减小间距
                     // 发酵剂选择
                     if (settings.enableBlindTasteFermentation)
                       _buildFermentationSection(),
@@ -1131,39 +1127,42 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                           : null,
                       style: _secondaryButtonStyle(context).copyWith(
                         padding: WidgetStateProperty.all(
-                          EdgeInsets.symmetric(vertical: isLandscape ? 12 : 16),
+                          EdgeInsets.symmetric(
+                            vertical: isLandscape ? 8 : 12,
+                          ), // 减小按钮高度
                         ),
                       ),
                       child: Text(
                         widget.hasNextGlass ? '下一杯' : '无下一杯',
                         style: TextStyle(
-                          fontSize: isLandscape ? 14 : 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: isLandscape ? 12 : 14, // 减小字体
+                          fontWeight: FontWeight.w500, // 减轻字重
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ),
                   ),
-                  SizedBox(width: isLandscape ? 8 : 12),
+                  SizedBox(width: isLandscape ? 6 : 8), // 减小间距
                   Expanded(
                     flex: 2, // 保存按钮占更多空间
                     child: ElevatedButton(
-                      onPressed: _canSubmit(settings)
-                          ? () {
-                              HapticManager.submitAnswer();
-                              widget.onSave(_currentAnswer);
-                            }
-                          : null,
+                      onPressed: () {
+                        // 移除禁用逻辑，保存按钮始终可点击
+                        HapticManager.submitAnswer();
+                        widget.onSave(_currentAnswer);
+                      },
                       style: _primaryButtonStyle(context).copyWith(
                         padding: WidgetStateProperty.all(
-                          EdgeInsets.symmetric(vertical: isLandscape ? 12 : 16),
+                          EdgeInsets.symmetric(
+                            vertical: isLandscape ? 8 : 12,
+                          ), // 减小按钮高度
                         ),
                       ),
                       child: Text(
                         '保存',
                         style: TextStyle(
-                          fontSize: isLandscape ? 14 : 16,
-                          fontWeight: FontWeight.bold,
+                          fontSize: isLandscape ? 12 : 14, // 减小字体
+                          fontWeight: FontWeight.w600, // 减轻字重
                           color: Theme.of(
                             context,
                           ).colorScheme.onPrimaryContainer,
@@ -1180,111 +1179,12 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
     );
   }
 
-  // Widget _buildAromaSection() {
-  //   return Card(
-  //     elevation: 1,
-  //     margin: EdgeInsets.zero,
-  //     child: Padding(
-  //       padding: const EdgeInsets.all(6.0),
-  //       child: Column(
-  //         crossAxisAlignment: CrossAxisAlignment.start,
-  //         children: [
-  //           Row(
-  //             children: [
-  //               Text(
-  //                 '香型',
-  //                 style: Theme.of(
-  //                   context,
-  //                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-  //               ),
-  //               const Spacer(),
-  //               if (_currentAnswer.selectedAroma != null)
-  //                 Container(
-  //                   padding: const EdgeInsets.symmetric(
-  //                     horizontal: 6,
-  //                     vertical: 2,
-  //                   ),
-  //                   decoration: BoxDecoration(
-  //                     color: Theme.of(context).colorScheme.primaryContainer,
-  //                     borderRadius: BorderRadius.circular(6),
-  //                   ),
-  //                   child: Text(
-  //                     _currentAnswer.selectedAroma!,
-  //                     style: TextStyle(
-  //                       fontSize: 11,
-  //                       fontWeight: FontWeight.w500,
-  //                       color: Theme.of(context).colorScheme.onPrimaryContainer,
-  //                     ),
-  //                   ),
-  //                 ),
-  //             ],
-  //           ),
-  //           const SizedBox(height: 6),
-  //           DropdownButtonFormField<String>(
-  //             initialValue: _currentAnswer.selectedAroma,
-  //             decoration: InputDecoration(
-  //               hintText: '选择香型',
-  //               border: OutlineInputBorder(
-  //                 borderRadius: BorderRadius.circular(6),
-  //               ),
-  //               contentPadding: const EdgeInsets.symmetric(
-  //                 horizontal: 8,
-  //                 vertical: 6,
-  //               ),
-  //             ),
-  //             dropdownColor: Theme.of(context).colorScheme.surface,
-  //             menuMaxHeight: 300,
-  //             items: BlindTasteOptions.aromaTypes.map((aroma) {
-  //               return DropdownMenuItem(
-  //                 value: aroma,
-  //                 child: Padding(
-  //                   padding: const EdgeInsets.symmetric(
-  //                     vertical: 4,
-  //                     horizontal: 4,
-  //                   ),
-  //                   child: Text(
-  //                     aroma,
-  //                     style: TextStyle(
-  //                       fontSize: 14,
-  //                       fontWeight: FontWeight.w500,
-  //                       color: Theme.of(context).colorScheme.onSurface,
-  //                     ),
-  //                   ),
-  //                 ),
-  //               );
-  //             }).toList(),
-  //             onChanged: (value) {
-  //               if (value != null) {
-  //                 HapticManager.medium();
-  //                 setState(() {
-  //                   _currentAnswer = BlindTasteAnswer(
-  //                     selectedAroma: value,
-  //                     selectedAlcoholDegree:
-  //                         _currentAnswer.selectedAlcoholDegree,
-  //                     selectedTotalScore: _currentAnswer.selectedTotalScore,
-  //                     selectedEquipment: List.from(
-  //                       _currentAnswer.selectedEquipment,
-  //                     ),
-  //                     selectedFermentationAgent: List.from(
-  //                       _currentAnswer.selectedFermentationAgent,
-  //                     ),
-  //                   );
-  //                 });
-  //               }
-  //             },
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
-
   Widget _buildAlcoholSection() {
     return Card(
       elevation: 1,
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(6.0),
+        padding: const EdgeInsets.all(4.0), // 减小内边距
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1298,10 +1198,10 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6), // 减小间距
             Wrap(
               spacing: 6,
-              runSpacing: 6,
+              runSpacing: -6,
               children: BlindTasteOptions.alcoholDegrees.map((degree) {
                 final isSelected =
                     _currentAnswer.selectedAlcoholDegree == degree;
@@ -1340,7 +1240,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
       elevation: 1,
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(10.0),
+        padding: const EdgeInsets.all(6.0), // 减小内边距
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1350,7 +1250,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                 context,
               ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6), // 减小间距
             Row(
               children: [
                 // 减分按钮
@@ -1473,7 +1373,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
       elevation: 1,
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(4.0), // 减小内边距
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1485,8 +1385,8 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
             ),
             const SizedBox(height: 2),
             Wrap(
-              spacing: 18,
-              runSpacing: 2,
+              spacing: 24,
+              runSpacing: -6,
               children: BlindTasteOptions.equipmentTypes.map((equipment) {
                 final isSelected = _currentAnswer.selectedEquipment.contains(
                   equipment,
@@ -1533,7 +1433,7 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
       elevation: 1,
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(10.0),
+        padding: const EdgeInsets.all(4.0), // 减小内边距
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1543,10 +1443,10 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                 context,
               ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4), // 减小间距
             Wrap(
-              spacing: 17,
-              runSpacing: 4,
+              spacing: 24,
+              runSpacing: -6,
               children: BlindTasteOptions.fermentationAgents.map((agent) {
                 final isSelected = _currentAnswer.selectedFermentationAgent
                     .contains(agent);
@@ -1585,19 +1485,5 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
         ),
       ),
     );
-  }
-
-  bool _canSubmit(dynamic settings) {
-    bool canSubmit = true;
-
-    if (settings.enableBlindTasteAromaForced) {
-      canSubmit = canSubmit && _currentAnswer.selectedAroma != null;
-    }
-
-    if (settings.enableBlindTasteAlcohol) {
-      canSubmit = canSubmit && _currentAnswer.selectedAlcoholDegree != null;
-    }
-
-    return canSubmit;
   }
 }
