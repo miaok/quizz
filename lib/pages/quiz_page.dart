@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/question_model.dart';
@@ -71,6 +72,11 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   static const Duration _optionLockDuration = Duration(
     milliseconds: 800,
   ); // 选项锁定时长
+
+  // 鼠标拖拽相关变量（仅在Windows平台使用）
+  bool _isDragging = false;
+  double? _dragStartX;
+  static const double _dragThreshold = 50.0; // 拖拽阈值
 
   // 动画参数常量
   static const Duration _buttonSwitchDuration = Duration(milliseconds: 250);
@@ -171,6 +177,53 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _countdownTimer?.cancel(); // 确保倒计时器被停止
     final controller = ref.read(quizControllerProvider.notifier);
     controller.nextQuestion(); // 强制结束答题，进入结果页面
+  }
+
+  // 处理鼠标拖拽开始（仅在Windows平台使用）
+  void _handleMouseDragStart(PointerDownEvent event) {
+    if (Platform.isWindows && event.buttons == 1) { // 仅响应鼠标左键
+      _isDragging = true;
+      _dragStartX = event.position.dx;
+    }
+  }
+
+  // 处理鼠标拖拽结束（仅在Windows平台使用）
+  void _handleMouseDragEnd(PointerUpEvent event) {
+    if (Platform.isWindows && _isDragging && _dragStartX != null) {
+      final dragDistance = event.position.dx - _dragStartX!;
+      final quizState = ref.read(quizControllerProvider);
+      final controller = ref.read(quizControllerProvider.notifier);
+
+      // 如果拖拽距离超过阈值，则切换题目
+      if (dragDistance.abs() > _dragThreshold) {
+        if (dragDistance > 0) {
+          // 向右拖拽，切换到上一题
+          if (quizState.currentQuestionIndex > 0) {
+            _goToPreviousQuestion(controller);
+          }
+        } else {
+          // 向左拖拽，切换到下一题
+          if (!quizState.isLastQuestion) {
+            _goToNextQuestion(controller, quizState);
+          } else {
+            // 最后一题，完成答题
+            _countdownTimer?.cancel();
+            controller.nextQuestion();
+          }
+        }
+      }
+
+      _isDragging = false;
+      _dragStartX = null;
+    }
+  }
+
+  // 处理鼠标拖拽取消（仅在Windows平台使用）
+  void _handleMouseDragCancel(PointerCancelEvent event) {
+    if (Platform.isWindows) {
+      _isDragging = false;
+      _dragStartX = null;
+    }
   }
 
   // 显示提示答案
@@ -463,29 +516,58 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
         // 题目内容 - 使用PageView实现滑动切换
         Expanded(
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: state.questions.length,
-            physics: const BouncingScrollPhysics(), // 使用弹性滚动物理效果
-            onPageChanged: (index) {
-              // 滑动切换题目时更新状态
-              controller.goToQuestion(index);
-              // 取消自动切题状态和错误状态，重置选项锁定状态
-              setState(() {
-                _isAutoSwitching = false;
-                _showingWrongAnswer = false;
-                _showingCorrectAnswer = false;
-                _isProcessingAnswer = false; // 重置选项锁定状态
-              });
+          child: Platform.isWindows
+              ? Listener(
+                  onPointerDown: _handleMouseDragStart,
+                  onPointerUp: _handleMouseDragEnd,
+                  onPointerCancel: _handleMouseDragCancel,
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: state.questions.length,
+                    physics: const BouncingScrollPhysics(), // 使用弹性滚动物理效果
+                    onPageChanged: (index) {
+                      // 滑动切换题目时更新状态
+                      controller.goToQuestion(index);
+                      // 取消自动切题状态和错误状态，重置选项锁定状态
+                      setState(() {
+                        _isAutoSwitching = false;
+                        _showingWrongAnswer = false;
+                        _showingCorrectAnswer = false;
+                        _isProcessingAnswer = false; // 重置选项锁定状态
+                      });
 
-              // 页面切换时进行内存优化
-              MemoryManager.onPageTransition();
-            },
-            itemBuilder: (context, index) {
-              final question = state.questions[index];
-              return _buildQuestionPage(index, question, state, controller);
-            },
-          ),
+                      // 页面切换时进行内存优化
+                      MemoryManager.onPageTransition();
+                    },
+                    itemBuilder: (context, index) {
+                      final question = state.questions[index];
+                      return _buildQuestionPage(index, question, state, controller);
+                    },
+                  ),
+                )
+              : PageView.builder(
+                  controller: _pageController,
+                  itemCount: state.questions.length,
+                  physics: const BouncingScrollPhysics(), // 使用弹性滚动物理效果
+                  onPageChanged: (index) {
+                    // 滑动切换题目时更新状态
+                    controller.goToQuestion(index);
+                    // 取消自动切题状态和错误状态，重置选项锁定状态
+                    setState(() {
+                      _isAutoSwitching = false;
+                      _showingWrongAnswer = false;
+                      _showingCorrectAnswer = false;
+                      _isProcessingAnswer = false; // 重置选项锁定状态
+                    });
+
+                    // 页面切换时进行内存优化
+                    MemoryManager.onPageTransition();
+                  },
+                  itemBuilder: (context, index) {
+                    final question = state.questions[index];
+                    return _buildQuestionPage(index, question, state, controller);
+                  },
+                ),
         ),
       ],
     );

@@ -53,21 +53,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             Navigator.of(context).pop();
           },
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              HapticManager.medium();
-              _showResetDialog(context, settingsController);
-            },
-            child: Text(
-              '重置',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -169,7 +154,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       padding: const EdgeInsets.all(16.0),
       children: [
         _buildSectionCard(
-          title: '触感管理',
+          title: '震动管理',
           icon: Icons.vibration,
           child: _buildHapticSection(),
         ),
@@ -368,11 +353,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '品评模拟样品数设置',
+                  '样品数设置',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
                 Text(
-                  '酒样模拟的基础数量范围为2-6杯',
+                  '品评模拟的基础数量范围为2-6杯',
                   style: TextStyle(
                     fontSize: 12,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -458,7 +443,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '品评模拟重复酒样概率',
+                      '重复酒样概率',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -534,7 +519,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '品评模拟最大重复组数',
+                  '最大重复组数',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
                 Text(
@@ -994,7 +979,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       children: [
         _buildSwitchTile(
           title: '酒样闪卡随机顺序',
-          subtitle: '酒样闪卡时随机打乱酒样出现顺序',
+          subtitle: '酒样闪卡模式随机打乱酒样出现顺序',
           icon: Icons.shuffle,
           value: settings.enableFlashcardRandomOrder,
           onChanged: (value) =>
@@ -1002,8 +987,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         ),
         const SizedBox(height: 8),
         _buildSwitchTile(
-          title: '酒样练习随机顺序',
-          subtitle: '酒样练习时随机打乱酒样出现顺序',
+          title: '品评练习随机顺序',
+          subtitle: '品评练习时随机打乱酒样出现顺序',
           icon: Icons.shuffle,
           value: settings.enableBlindTasteRandomOrder,
           onChanged: (value) =>
@@ -1020,7 +1005,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
 
     return _buildSwitchTile(
       title: '震动反馈',
-      subtitle: '开启后在答题、切题、长按查看答案等操作时提供震动反馈',
+      subtitle: '开启后提供震动反馈',
       icon: Icons.vibration,
       value: hapticSettings.hapticEnabled,
       onChanged: hapticController.setHapticEnabled,
@@ -1063,7 +1048,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           title: '清除理论练习进度',
           subtitle: '删除所有理论练习的答题进度',
           icon: Icons.quiz_outlined,
-          onTap: () => _showClearSpecificProgressDialog(context, ProgressType.quiz),
+          onTap: () =>
+              _showClearSpecificProgressDialog(context, ProgressType.quiz),
         ),
         const SizedBox(height: 8),
         _buildProgressClearItem(
@@ -1071,7 +1057,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           title: '清除酒样闪卡进度',
           subtitle: '删除所有闪卡学习进度',
           icon: Icons.style_outlined,
-          onTap: () => _showClearSpecificProgressDialog(context, ProgressType.flashcard),
+          onTap: () =>
+              _showClearSpecificProgressDialog(context, ProgressType.flashcard),
         ),
         const SizedBox(height: 8),
         _buildProgressClearItem(
@@ -1079,7 +1066,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           title: '清除品评练习进度',
           subtitle: '删除所有品评练习进度',
           icon: Icons.wine_bar_outlined,
-          onTap: () => _showClearSpecificProgressDialog(context, ProgressType.blindTaste),
+          onTap: () => _showClearSpecificProgressDialog(
+            context,
+            ProgressType.blindTaste,
+          ),
         ),
         const SizedBox(height: 16),
         // 清除所有进度
@@ -1091,12 +1081,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           isDestructive: true,
           onTap: () => _showClearProgressDialog(context),
         ),
+        const SizedBox(height: 8),
+        // 恢复默认设置
+        _buildProgressClearItem(
+          context,
+          title: '恢复默认设置',
+          subtitle: '将所有设置恢复为默认值',
+          icon: Icons.settings_backup_restore,
+          onTap: () => _showResetDialog(context, ref.read(settingsProvider.notifier)),
+        ),
         const SizedBox(height: 16),
         // 重新加载数据
         _buildProgressClearItem(
           context,
           title: '重新加载数据',
-          subtitle: '清除所有本地数据并重新初始化数据库',
+          subtitle: '恢复应用到初始状态，重新加载数据库',
           icon: Icons.refresh,
           isDestructive: true,
           onTap: () => _showReloadDataDialog(context),
@@ -1151,7 +1150,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     ),
                     Text(
                       subtitle,
-                      style: TextStyle(fontSize: 12, color: Colors.grey, fontFamily: null),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        fontFamily: null,
+                      ),
                     ),
                   ],
                 ),
@@ -1485,7 +1488,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     );
   }
 
-  void _showClearSpecificProgressDialog(BuildContext context, ProgressType type) {
+  void _showClearSpecificProgressDialog(
+    BuildContext context,
+    ProgressType type,
+  ) {
     String title;
     String content;
     String action;
@@ -1545,15 +1551,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 }
 
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(action)),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(action)));
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('清除进度失败: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('清除进度失败: $e')));
                 }
               }
             },
@@ -1626,9 +1632,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 // 关闭加载对话框
                 if (context.mounted) {
                   Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('重新加载数据失败: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('重新加载数据失败: $e')));
                 }
               }
             },
