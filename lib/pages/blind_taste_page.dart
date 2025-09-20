@@ -7,6 +7,7 @@ import '../providers/haptic_settings_provider.dart';
 import '../utils/haptic_manager.dart';
 import '../router/app_router.dart';
 import '../widgets/answer_card.dart';
+import '../widgets/wine_tasting_components.dart';
 
 /// BlindTaste页面的答题卡项目实现
 class BlindTasteAnswerCardItem implements AnswerCardItem {
@@ -36,8 +37,9 @@ class BlindTasteAnswerCardItem implements AnswerCardItem {
 
   @override
   bool get hasAnswer {
-    if (state.questionPool.isEmpty || index >= state.questionPool.length)
+    if (state.questionPool.isEmpty || index >= state.questionPool.length) {
       return false;
+    }
     final itemId = state.questionPool[index].id;
     final answer = state.savedAnswers[itemId];
     if (answer == null) return false;
@@ -384,23 +386,51 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
           // if (settings.enableBlindTasteAromaForced) const SizedBox(height: 8),
 
           // 总分调整（根据设置显示）
-          if (settings.enableBlindTasteScore) _buildTotalScoreSection(state),
+          if (settings.enableBlindTasteScore)
+            TotalScoreSectionWidget(
+              selectedTotalScore: state.userAnswer.selectedTotalScore,
+              onScoreChanged: (score) => ref
+                  .read(blindTasteProvider.notifier)
+                  .setTotalScore(score),
+              lastResult: _lastTotalScoreResult,
+            ),
 
           if (settings.enableBlindTasteScore) const SizedBox(height: 6),
 
           // 酒度选择（根据设置显示，放在总分下方）
-          if (settings.enableBlindTasteAlcohol) _buildAlcoholSection(state),
+          if (settings.enableBlindTasteAlcohol)
+            AlcoholSectionWidget(
+              selectedAlcoholDegree: state.userAnswer.selectedAlcoholDegree,
+              onAlcoholChanged: (degree) => ref
+                  .read(blindTasteProvider.notifier)
+                  .selectAlcoholDegree(degree),
+              lastResult: _lastAlcoholResult,
+            ),
 
           if (settings.enableBlindTasteAlcohol) const SizedBox(height: 6),
 
           // 设备选择（根据设置显示）
-          if (settings.enableBlindTasteEquipment) _buildEquipmentSection(state),
+          if (settings.enableBlindTasteEquipment)
+            EquipmentSectionWidget(
+              selectedEquipment: state.userAnswer.selectedEquipment,
+              onEquipmentToggled: (equipment) => ref
+                  .read(blindTasteProvider.notifier)
+                  .toggleEquipment(equipment),
+              lastResult: _lastEquipmentResult,
+            ),
 
           if (settings.enableBlindTasteEquipment) const SizedBox(height: 6),
 
           // 发酵剂选择（根据设置显示）
           if (settings.enableBlindTasteFermentation)
-            _buildFermentationAgentSection(state),
+            FermentationAgentSectionWidget(
+              selectedFermentationAgent:
+                  state.userAnswer.selectedFermentationAgent,
+              onFermentationAgentToggled: (agent) => ref
+                  .read(blindTasteProvider.notifier)
+                  .toggleFermentationAgent(agent),
+              lastResult: _lastFermentationResult,
+            ),
 
           const SizedBox(height: 12),
 
@@ -537,335 +567,9 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
   //   );
   // }
 
-  Widget _buildAlcoholSection(BlindTasteState state) {
-    return Card(
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  '酒度',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                if (_lastAlcoholResult != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 3,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _lastAlcoholResult!
-                          ? Colors.green.withValues(alpha: 0.8)
-                          : Colors.red.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      _lastAlcoholResult! ? '正确' : '错误',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 0),
-            Wrap(
-              spacing: 6,
-              runSpacing: -6, // 减小行间距
-              children: BlindTasteOptions.alcoholDegrees.map((degree) {
-                final isSelected =
-                    state.userAnswer.selectedAlcoholDegree == degree;
-                return FilterChip(
-                  label: Text('${degree.toInt()}°'),
-                  selected: isSelected,
-                  onSelected: (_) {
-                    HapticManager.medium();
-                    ref
-                        .read(blindTasteProvider.notifier)
-                        .selectAlcoholDegree(degree);
-                  },
-                  selectedColor: Theme.of(context).colorScheme.primaryContainer,
-                  showCheckmark: false, // 隐藏对勾
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildTotalScoreSection(BlindTasteState state) {
-    return Card(
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  '总分',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                if (_lastTotalScoreResult != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _lastTotalScoreResult!
-                          ? Colors.green.withValues(alpha: 0.8)
-                          : Colors.red.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      _lastTotalScoreResult! ? '正确' : '错误',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 0),
-            Row(
-              children: [
-                // 减分按钮
-                IconButton(
-                  onPressed: state.userAnswer.selectedTotalScore > 84.0
-                      ? () {
-                          HapticManager.medium();
-                          final newScore =
-                              (state.userAnswer.selectedTotalScore - 0.2).clamp(
-                                84.0,
-                                98.0,
-                              );
-                          ref
-                              .read(blindTasteProvider.notifier)
-                              .setTotalScore(newScore);
-                        }
-                      : null,
-                  icon: const Icon(Icons.remove),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    foregroundColor: Theme.of(context).colorScheme.onSurface,
-                    padding: const EdgeInsets.all(8),
-                    minimumSize: const Size(36, 36),
-                  ),
-                ),
-                const SizedBox(width: 2),
-                Text(
-                  state.userAnswer.selectedTotalScore.toStringAsFixed(1),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 2),
-                Expanded(
-                  child: Slider(
-                    value: state.userAnswer.selectedTotalScore.clamp(
-                      84.0,
-                      98.0,
-                    ),
-                    min: 84.0,
-                    max: 98.0,
-                    divisions: 70, // (98-84)/0.2 = 70
-                    onChanged: (value) {
-                      HapticManager.selection();
-                      ref
-                          .read(blindTasteProvider.notifier)
-                          .setTotalScore(value);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 2),
-                // 加分按钮
-                IconButton(
-                  onPressed: state.userAnswer.selectedTotalScore < 98.0
-                      ? () {
-                          HapticManager.medium();
-                          final newScore =
-                              (state.userAnswer.selectedTotalScore + 0.2).clamp(
-                                84.0,
-                                98.0,
-                              );
-                          ref
-                              .read(blindTasteProvider.notifier)
-                              .setTotalScore(newScore);
-                        }
-                      : null,
-                  icon: const Icon(Icons.add),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    foregroundColor: Theme.of(context).colorScheme.onSurface,
-                    padding: const EdgeInsets.all(8),
-                    minimumSize: const Size(36, 36),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildEquipmentSection(BlindTasteState state) {
-    return Card(
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  '设备',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                if (_lastEquipmentResult != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _lastEquipmentResult!
-                          ? Colors.green.withValues(alpha: 0.8)
-                          : Colors.red.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      _lastEquipmentResult! ? '正确' : '错误',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 0),
-            Wrap(
-              spacing: 6,
-              runSpacing: -6, // 减小行间距
-              children: BlindTasteOptions.equipmentTypes.map((equipment) {
-                final isSelected = state.userAnswer.selectedEquipment.contains(
-                  equipment,
-                );
-                return FilterChip(
-                  label: Text(equipment),
-                  selected: isSelected,
-                  onSelected: (_) {
-                    HapticManager.medium();
-                    ref
-                        .read(blindTasteProvider.notifier)
-                        .toggleEquipment(equipment);
-                  },
-                  selectedColor: Theme.of(context).colorScheme.primaryContainer,
-                  showCheckmark: false, // 隐藏对勾
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildFermentationAgentSection(BlindTasteState state) {
-    return Card(
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  '发酵剂',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                if (_lastFermentationResult != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _lastFermentationResult!
-                          ? Colors.green.withValues(alpha: 0.8)
-                          : Colors.red.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      _lastFermentationResult! ? '正确' : '错误',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 0),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4, // 减小行间距
-              children: BlindTasteOptions.fermentationAgents.map((agent) {
-                final isSelected = state.userAnswer.selectedFermentationAgent
-                    .contains(agent);
-                return FilterChip(
-                  label: Text(agent),
-                  selected: isSelected,
-                  onSelected: (_) {
-                    HapticManager.medium();
-                    ref
-                        .read(blindTasteProvider.notifier)
-                        .toggleFermentationAgent(agent);
-                  },
-                  selectedColor: Theme.of(context).colorScheme.primaryContainer,
-                  showCheckmark: false,
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   bool _canSubmit(BlindTasteState state, settings) {
     // 检查启用的品鉴项目是否都已选择

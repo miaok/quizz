@@ -7,7 +7,9 @@ import '../providers/quiz_provider.dart';
 import '../providers/haptic_settings_provider.dart';
 import '../utils/haptic_manager.dart';
 import '../models/settings_model.dart';
+import '../models/progress_model.dart';
 import '../services/progress_service.dart';
+import '../services/database_service.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -1053,8 +1055,66 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
 
   // 系统操作区域
   Widget _buildSystemActionsSection(BuildContext context) {
+    return Column(
+      children: [
+        // 单项进度清除
+        _buildProgressClearItem(
+          context,
+          title: '清除理论练习进度',
+          subtitle: '删除所有理论练习的答题进度',
+          icon: Icons.quiz_outlined,
+          onTap: () => _showClearSpecificProgressDialog(context, ProgressType.quiz),
+        ),
+        const SizedBox(height: 8),
+        _buildProgressClearItem(
+          context,
+          title: '清除酒样闪卡进度',
+          subtitle: '删除所有闪卡学习进度',
+          icon: Icons.style_outlined,
+          onTap: () => _showClearSpecificProgressDialog(context, ProgressType.flashcard),
+        ),
+        const SizedBox(height: 8),
+        _buildProgressClearItem(
+          context,
+          title: '清除品评练习进度',
+          subtitle: '删除所有品评练习进度',
+          icon: Icons.wine_bar_outlined,
+          onTap: () => _showClearSpecificProgressDialog(context, ProgressType.blindTaste),
+        ),
+        const SizedBox(height: 16),
+        // 清除所有进度
+        _buildProgressClearItem(
+          context,
+          title: '清除所有进度',
+          subtitle: '删除所有已保存的答题和品评进度',
+          icon: Icons.delete_sweep,
+          isDestructive: true,
+          onTap: () => _showClearProgressDialog(context),
+        ),
+        const SizedBox(height: 16),
+        // 重新加载数据
+        _buildProgressClearItem(
+          context,
+          title: '重新加载数据',
+          subtitle: '清除所有本地数据并重新初始化数据库',
+          icon: Icons.refresh,
+          isDestructive: true,
+          onTap: () => _showReloadDataDialog(context),
+        ),
+      ],
+    );
+  }
+
+  // 构建进度清除项目
+  Widget _buildProgressClearItem(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(8),
@@ -1062,38 +1122,40 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       child: InkWell(
         onTap: () {
           HapticManager.medium();
-          _showClearProgressDialog(context);
+          onTap();
         },
         borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
               Icon(
-                Icons.delete_sweep,
-                color: Theme.of(context).colorScheme.error,
+                icon,
+                color: isDestructive
+                    ? Theme.of(context).colorScheme.error
+                    : Theme.of(context).colorScheme.primary,
                 size: 20,
               ),
-              const SizedBox(width: 8),
-              const Expanded(
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '清除所有进度',
+                      title,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
+                        fontFamily: null,
                       ),
                     ),
                     Text(
-                      '删除所有已保存的答题和品评进度',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      subtitle,
+                      style: TextStyle(fontSize: 12, color: Colors.grey, fontFamily: null),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right),
             ],
           ),
         ),
@@ -1413,6 +1475,160 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text('清除进度失败: $e')));
+                }
+              }
+            },
+            child: const Text('确定', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showClearSpecificProgressDialog(BuildContext context, ProgressType type) {
+    String title;
+    String content;
+    String action;
+
+    switch (type) {
+      case ProgressType.quiz:
+        title = '清除理论练习进度';
+        content = '确定要清除所有理论练习的答题进度吗？此操作不可恢复。';
+        action = '理论练习进度已清除';
+        break;
+      case ProgressType.flashcard:
+        title = '清除酒样闪卡进度';
+        content = '确定要清除所有闪卡学习进度吗？此操作不可恢复。';
+        action = '闪卡学习进度已清除';
+        break;
+      case ProgressType.blindTaste:
+        title = '清除品评练习进度';
+        content = '确定要清除所有品评练习进度吗？此操作不可恢复。';
+        action = '品评练习进度已清除';
+        break;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () {
+              HapticManager.medium();
+              Navigator.of(context).pop();
+            },
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              HapticManager.medium();
+              Navigator.of(context).pop();
+              try {
+                final progressService = ProgressService();
+                await progressService.initialize();
+
+                switch (type) {
+                  case ProgressType.quiz:
+                    await progressService.clearQuizProgress();
+                    ref.read(quizControllerProvider.notifier).reset();
+                    break;
+                  case ProgressType.flashcard:
+                    await progressService.clearFlashcardProgress();
+                    ref.read(flashcardProvider.notifier).reset();
+                    break;
+                  case ProgressType.blindTaste:
+                    await progressService.clearBlindTasteProgress();
+                    ref.read(blindTasteProvider.notifier).reset();
+                    break;
+                }
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(action)),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('清除进度失败: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('确定', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReloadDataDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('重新加载数据'),
+        content: const Text(
+          '此操作将：\n'
+          '• 清除所有已保存的进度\n'
+          '• 删除所有本地数据\n'
+          '• 重新初始化数据库\n'
+          '• 应用将恢复到初始状态\n\n'
+          '确定要继续吗？此操作不可恢复。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              HapticManager.medium();
+              Navigator.of(context).pop();
+            },
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              HapticManager.medium();
+              Navigator.of(context).pop();
+
+              // 显示加载对话框
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const AlertDialog(
+                  content: Row(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(width: 16),
+                      Text('正在重新加载数据...'),
+                    ],
+                  ),
+                ),
+              );
+
+              try {
+                // 清除所有provider状态
+                ref.read(blindTasteProvider.notifier).reset();
+                ref.read(flashcardProvider.notifier).reset();
+                ref.read(quizControllerProvider.notifier).reset();
+
+                // 重新初始化数据库
+                final databaseService = DatabaseService();
+                await databaseService.resetDatabase();
+
+                // 关闭加载对话框
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('数据重新加载完成，应用已恢复到初始状态')),
+                  );
+                }
+              } catch (e) {
+                // 关闭加载对话框
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('重新加载数据失败: $e')),
+                  );
                 }
               }
             },

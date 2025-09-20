@@ -431,6 +431,25 @@ class DatabaseService {
     await _loadBlindTasteDataFromAssets(forceReload: true);
   }
 
+  // 重置数据库（清除所有数据并重新初始化）
+  Future<void> resetDatabase() async {
+    if (!_isInitialized) {
+      throw StateError('Database not initialized. Call initialize() first.');
+    }
+
+    try {
+      // 清除所有数据
+      await _database.clearAllQuestions();
+      await _database.clearAllBlindTasteItems();
+
+      // 重新加载数据
+      await _loadQuestionsFromAssets(forceReload: true);
+      await _loadBlindTasteDataFromAssets(forceReload: true);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // 关闭数据库
   Future<void> close() async {
     if (_isInitialized) {
