@@ -28,10 +28,9 @@ class AlcoholSectionWidget extends StatelessWidget {
               children: [
                 Text(
                   '酒度',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
                 if (lastResult != null)
@@ -108,10 +107,9 @@ class TotalScoreSectionWidget extends StatelessWidget {
               children: [
                 Text(
                   '总分',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
                 if (lastResult != null)
@@ -154,8 +152,9 @@ class TotalScoreSectionWidget extends StatelessWidget {
                       : null,
                   icon: const Icon(Icons.remove),
                   style: IconButton.styleFrom(
-                    backgroundColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     foregroundColor: Theme.of(context).colorScheme.onSurface,
                     padding: const EdgeInsets.all(8),
                     minimumSize: const Size(36, 36),
@@ -165,9 +164,9 @@ class TotalScoreSectionWidget extends StatelessWidget {
                 Text(
                   selectedTotalScore.toStringAsFixed(1),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
                 const SizedBox(width: 2),
                 Expanded(
@@ -197,8 +196,9 @@ class TotalScoreSectionWidget extends StatelessWidget {
                       : null,
                   icon: const Icon(Icons.add),
                   style: IconButton.styleFrom(
-                    backgroundColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     foregroundColor: Theme.of(context).colorScheme.onSurface,
                     padding: const EdgeInsets.all(8),
                     minimumSize: const Size(36, 36),
@@ -239,10 +239,9 @@ class EquipmentSectionWidget extends StatelessWidget {
               children: [
                 Text(
                   '设备',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
                 if (lastResult != null)
@@ -319,10 +318,9 @@ class FermentationAgentSectionWidget extends StatelessWidget {
               children: [
                 Text(
                   '发酵剂',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
                 if (lastResult != null)
