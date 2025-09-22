@@ -81,7 +81,8 @@ class FlashcardController extends StateNotifier<FlashcardState> {
 
       // 如果启用随机顺序，则打乱列表
       if (useRandomOrder) {
-        filteredItems.shuffle(Random());
+        // 使用固定种子确保每次的随机顺序一致，避免进度恢复时顺序不匹配
+        filteredItems.shuffle(Random(42));
       }
 
       // 创建第一张闪卡
@@ -149,14 +150,14 @@ class FlashcardController extends StateNotifier<FlashcardState> {
         viewedCardIds: updatedViewedIds,
         progress: progress,
         isCompleted: nextIndex == state.items.length - 1,
-        isRoundCompleted: updatedViewedIds.length == state.items.length,
+        isRoundCompleted: nextIndex >= state.items.length - 1,
       );
 
-      // 自动保存进度
-      await _autoSaveProgress();
-
-      // 如果到达最后一张，清除进度
-      if (nextIndex == state.items.length - 1) {
+      // 自动保存进度，但如果已完成一轮则不保存
+      if (!state.isRoundCompleted) {
+        await _autoSaveProgress();
+      } else {
+        // 如果完成了一轮，清除保存的进度
         await clearProgress();
       }
     } catch (e) {
@@ -318,10 +319,10 @@ class FlashcardController extends StateNotifier<FlashcardState> {
         return false;
       }
 
-      // 如果启用随机顺序，则打乱列表（但要保持与保存时一致的顺序）
+      // 如果启用随机顺序，则打乱列表（使用与新开始时相同的固定种子）
       if (progress.flashcardRandomOrder == true) {
         // 使用固定种子确保与保存时的顺序一致
-        final random = Random(42); // 使用固定种子
+        final random = Random(42); // 与loadFlashcards中使用的种子一致
         filteredItems.shuffle(random);
       }
 

@@ -389,9 +389,8 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
           if (settings.enableBlindTasteScore)
             TotalScoreSectionWidget(
               selectedTotalScore: state.userAnswer.selectedTotalScore,
-              onScoreChanged: (score) => ref
-                  .read(blindTasteProvider.notifier)
-                  .setTotalScore(score),
+              onScoreChanged: (score) =>
+                  ref.read(blindTasteProvider.notifier).setTotalScore(score),
               lastResult: _lastTotalScoreResult,
             ),
 
@@ -567,10 +566,6 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
   //   );
   // }
 
-
-
-
-
   bool _canSubmit(BlindTasteState state, settings) {
     // 检查启用的品鉴项目是否都已选择
     bool canSubmit = true;
@@ -605,50 +600,94 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
   }
 
   void _performAnswerCheck() {
+    // 强制刷新状态，确保获取最新的用户答案
     final state = ref.read(blindTasteProvider);
     final settings = ref.read(settingsProvider);
 
     if (state.currentItem == null) return;
 
+    // 添加调试输出，帮助诊断问题
+    debugPrint('Checking answer for item ${state.currentItem!.id}');
+    debugPrint('User total score: ${state.userAnswer.selectedTotalScore}');
+    debugPrint('User total score (rounded): ${(state.userAnswer.selectedTotalScore * 10).round() / 10}');
+    debugPrint('Correct total score: ${state.currentItem!.totalScore}');
+
+    // 首先检查是否有未作答的项目
+    List<String> unansweredItems = [];
+
+    if (settings.enableBlindTasteAlcohol &&
+        state.userAnswer.selectedAlcoholDegree == null) {
+      unansweredItems.add('酒度');
+    }
+
+    if (settings.enableBlindTasteScore &&
+        state.userAnswer.selectedTotalScore == 91.0) {
+      unansweredItems.add('总分');
+    }
+
+    if (settings.enableBlindTasteEquipment &&
+        state.userAnswer.selectedEquipment.isEmpty) {
+      unansweredItems.add('设备');
+    }
+
+    if (settings.enableBlindTasteFermentation &&
+        state.userAnswer.selectedFermentationAgent.isEmpty) {
+      unansweredItems.add('发酵剂');
+    }
+
+    // 如果有未作答项目，提示用户
+    if (unansweredItems.isNotEmpty) {
+      final message = '请完成以下项目的作答：${unansweredItems.join('、')}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
+
     bool isCorrect = true;
+
+    // 重新计算各个组件的检查结果，确保使用最新状态
+    bool? currentAlcoholResult;
+    bool? currentTotalScoreResult;
+    bool? currentEquipmentResult;
+    bool? currentFermentationResult;
 
     // 检查酒度
     if (settings.enableBlindTasteAlcohol) {
-      isCorrect = isCorrect && _isCorrectAlcohol(state);
+      currentAlcoholResult = _isCorrectAlcohol(state);
+      isCorrect = isCorrect && currentAlcoholResult;
     }
 
     // 检查总分
     if (settings.enableBlindTasteScore) {
-      isCorrect = isCorrect && _isCorrectTotalScore(state);
+      currentTotalScoreResult = _isCorrectTotalScore(state);
+      isCorrect = isCorrect && currentTotalScoreResult;
+      debugPrint('Total score check result: $currentTotalScoreResult');
     }
 
     // 检查设备
     if (settings.enableBlindTasteEquipment &&
         state.userAnswer.selectedEquipment.isNotEmpty) {
-      isCorrect = isCorrect && _isCorrectEquipment(state);
+      currentEquipmentResult = _isCorrectEquipment(state);
+      isCorrect = isCorrect && currentEquipmentResult;
     }
 
     // 检查发酵剂
     if (settings.enableBlindTasteFermentation &&
         state.userAnswer.selectedFermentationAgent.isNotEmpty) {
-      isCorrect = isCorrect && _isCorrectFermentation(state);
+      currentFermentationResult = _isCorrectFermentation(state);
+      isCorrect = isCorrect && currentFermentationResult;
     }
 
-    // 保存各个组件的检查结果
-    if (settings.enableBlindTasteAlcohol) {
-      _lastAlcoholResult = _isCorrectAlcohol(state);
-    }
-    if (settings.enableBlindTasteScore) {
-      _lastTotalScoreResult = _isCorrectTotalScore(state);
-    }
-    if (settings.enableBlindTasteEquipment &&
-        state.userAnswer.selectedEquipment.isNotEmpty) {
-      _lastEquipmentResult = _isCorrectEquipment(state);
-    }
-    if (settings.enableBlindTasteFermentation &&
-        state.userAnswer.selectedFermentationAgent.isNotEmpty) {
-      _lastFermentationResult = _isCorrectFermentation(state);
-    }
+    // 保存检查结果
+    _lastAlcoholResult = currentAlcoholResult;
+    _lastTotalScoreResult = currentTotalScoreResult;
+    _lastEquipmentResult = currentEquipmentResult;
+    _lastFermentationResult = currentFermentationResult;
 
     setState(() {
       _isChecked = true;
@@ -661,17 +700,19 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
         state.userAnswer.selectedAlcoholDegree == null) {
       return false;
     }
-    return (state.userAnswer.selectedAlcoholDegree! -
-                state.currentItem!.alcoholDegree)
-            .abs() <=
-        1.0;
+    // 酒度必须完全相等才算正确
+    return state.userAnswer.selectedAlcoholDegree! ==
+        state.currentItem!.alcoholDegree;
   }
 
   bool _isCorrectTotalScore(BlindTasteState state) {
     if (state.currentItem == null) {
       return false;
     }
-    return state.userAnswer.selectedTotalScore == state.currentItem!.totalScore;
+    // 使用一位小数精度比较，避免浮点数精度问题
+    final userScore = (state.userAnswer.selectedTotalScore * 10).round() / 10;
+    final correctScore = (state.currentItem!.totalScore * 10).round() / 10;
+    return userScore == correctScore;
   }
 
   bool _isCorrectEquipment(BlindTasteState state) {

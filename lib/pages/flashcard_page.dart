@@ -25,11 +25,16 @@ class FlashcardAnswerCardItem implements AnswerCardItem {
   bool get isCurrent => index == state.currentIndex;
 
   @override
-  bool get isCompleted => state.viewedCardIds.contains(
-    state.items.isNotEmpty && index < state.items.length
-        ? state.items[index].id
-        : -1,
-  );
+  bool get isCompleted {
+    if (state.items.isEmpty || index >= state.items.length) return false;
+
+    final item = state.items[index];
+    final itemId = item.id;
+    if (itemId == null) return false;
+
+    // 只有真正在已查看列表中的卡片才认为已完成
+    return state.viewedCardIds.contains(itemId);
+  }
 
   @override
   bool get hasAnswer => isCompleted;

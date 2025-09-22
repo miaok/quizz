@@ -323,15 +323,10 @@ class _HomePageState extends ConsumerState<HomePage>
           progressText = '进行中';
         }
       } else if (progress.type == ProgressType.flashcard) {
-        final viewedCount = progress.flashcardViewedIds?.length ?? 0;
         final currentCard = progress.currentIndex + 1;
 
-        // 对于闪卡，我们使用已查看的张数作为进度指示
-        if (viewedCount > 0) {
-          progressText = '已查看 $viewedCount 张';
-        } else {
-          progressText = '第 $currentCard 张';
-        }
+        // 对于闪卡，显示当前位置而不是已查看数量
+        progressText = '第 $currentCard 张';
       } else {
         progressText = '进行中';
       }
@@ -980,14 +975,11 @@ class _HomePageState extends ConsumerState<HomePage>
           } else {
             // 恢复失败（可能是设置不匹配），清除进度并重新开始
             await flashcardController.clearProgress();
-            // 重置状态，确保从头开始
-            flashcardController.reset();
+            // 重置状态后不需要再导航，因为会重新开始新的闪卡
           }
         } else {
           // 用户选择不恢复，清除保存的进度
           await flashcardController.clearProgress();
-          // 重置状态，确保从头开始
-          flashcardController.reset();
         }
       }
     }
