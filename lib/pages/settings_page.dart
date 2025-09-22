@@ -1089,7 +1089,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           title: '恢复默认设置',
           subtitle: '将所有设置恢复为默认值',
           icon: Icons.settings_backup_restore,
-          onTap: () => _showResetDialog(context, ref.read(settingsProvider.notifier)),
+          onTap: () =>
+              _showResetDialog(context, ref.read(settingsProvider.notifier)),
         ),
         const SizedBox(height: 16),
         // 重新加载数据
@@ -1607,9 +1608,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     children: [
                       CircularProgressIndicator(),
                       SizedBox(width: 16),
-                      Expanded(
-                        child: Text('正在彻底重置应用数据，请稍候...'),
-                      ),
+                      Expanded(child: Text('正在彻底重置应用数据，请稍候...')),
                     ],
                   ),
                 ),
@@ -1650,9 +1649,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 // 关闭加载对话框
                 if (context.mounted) {
                   Navigator.of(context).pop();
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(
+                  ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('重置失败: $e'),
                       backgroundColor: Colors.red,

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/question_model.dart';
+import '../models/score_record_model.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
+import '../services/score_record_service.dart';
 
 class ResultPage extends ConsumerStatefulWidget {
   const ResultPage({super.key});
@@ -15,6 +17,49 @@ class ResultPage extends ConsumerStatefulWidget {
 class _ResultPageState extends ConsumerState<ResultPage> {
   bool _isRetrying = false; // 标志是否正在重新答题
   bool _showOnlyWrongAnswers = false; // 是否只显示错题
+  final ScoreRecordService _scoreRecordService = ScoreRecordService();
+  bool _hasRecordSaved = false; // 防止重复保存记录
+
+  @override
+  void initState() {
+    super.initState();
+    _saveScoreRecordIfNeeded();
+  }
+
+  /// 如果是理论模拟，保存得分记录
+  Future<void> _saveScoreRecordIfNeeded() async {
+    if (_hasRecordSaved) return;
+
+    final quizState = ref.read(quizControllerProvider);
+    final quizController = ref.read(quizControllerProvider.notifier);
+
+    // 只在理论模拟（考试模式）完成时保存记录
+    if (quizState.status == QuizStatus.completed &&
+        quizState.mode == QuizMode.exam) {
+      try {
+        final result = quizController.getResult();
+        final settings = ref.read(settingsProvider);
+
+        // 创建得分记录
+        final scoreRecord = ScoreRecord.fromQuizResult(
+          result: result,
+          singleChoiceCount: settings.singleChoiceCount,
+          multipleChoiceCount: settings.multipleChoiceCount,
+          booleanCount: settings.booleanCount,
+        );
+
+        // 保存记录
+        await _scoreRecordService.saveScoreRecord(scoreRecord);
+        _hasRecordSaved = true;
+
+        debugPrint(
+          '理论模拟得分记录已保存: ${scoreRecord.scoreText} (${scoreRecord.examTimeText})',
+        );
+      } catch (e) {
+        debugPrint('保存得分记录失败: $e');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,79 +115,70 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     final scoreColor = _getScoreColor(result.score);
 
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // 减小垂直边距
       child: Card(
-        elevation: 4,
+        elevation: 2, // 减小阴影
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+          padding: const EdgeInsets.all(12), // 减小内边距
+          child: Row(
+            // 改为水平布局，更紧凑
             children: [
-              // 分数圆环
+              // 分数圆环 - 大幅减小
               Container(
-                width: 80,
-                height: 80,
+                width: 50, // 从80减小到50
+                height: 50, // 从80减小到50
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: scoreColor, width: 8),
+                  border: Border.all(color: scoreColor, width: 4), // 减小边框宽度
                 ),
                 child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        result.scoreText,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: scoreColor,
-                        ),
-                      ),
-                      // Text(
-                      //   _getScoreLevel(result.score),
-                      //   style: TextStyle(fontSize: 14, color: scoreColor),
-                      // ),
-                    ],
+                  child: Text(
+                    result.scoreText,
+                    style: TextStyle(
+                      fontSize: 14, // 从20减小到14
+                      fontWeight: FontWeight.bold,
+                      color: scoreColor,
+                    ),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(width: 16),
 
-              // 统计信息 - 使用两行布局
-              Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatItem(
-                        '总题数',
-                        '${result.totalQuestions}',
-                        Colors.blue,
-                      ),
-                      _buildStatItem(
-                        '正确',
-                        '${result.correctAnswers}',
-                        Colors.green,
-                      ),
-                      _buildStatItem(
-                        '错误',
-                        '${result.totalQuestions - result.correctAnswers}',
-                        Colors.red,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildStatItem(
-                        '答题用时',
-                        result.totalTimeText,
-                        Colors.orange,
-                      ),
-                    ],
-                  ),
-                ],
+              // 统计信息 - 紧凑布局
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _buildCompactStatItem(
+                          '总题数',
+                          '${result.totalQuestions}',
+                          Colors.blue,
+                        ),
+                        const SizedBox(width: 16),
+                        _buildCompactStatItem(
+                          '正确',
+                          '${result.correctAnswers}',
+                          Colors.green,
+                        ),
+                        const SizedBox(width: 16),
+                        _buildCompactStatItem(
+                          '错误',
+                          '${result.totalQuestions - result.correctAnswers}',
+                          Colors.red,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _buildCompactStatItem(
+                      '答题用时',
+                      result.totalTimeText,
+                      Colors.orange,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -151,21 +187,46 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
+  Widget _buildCompactStatItem(String label, String value, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 4),
         Text(
           value,
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 14,
             fontWeight: FontWeight.bold,
             color: color,
           ),
         ),
-        Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
       ],
     );
   }
+
+  // Widget _buildStatItem(String label, String value, Color color) {
+  //   return Column(
+  //     children: [
+  //       Text(
+  //         value,
+  //         style: TextStyle(
+  //           fontSize: 20,
+  //           fontWeight: FontWeight.bold,
+  //           color: color,
+  //         ),
+  //       ),
+  //       Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+  //     ],
+  //   );
+  // }
 
   Widget _buildQuestionDetails(QuizResult result) {
     // 根据筛选条件过滤题目
@@ -182,20 +243,23 @@ class _ResultPageState extends ConsumerState<ResultPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 标题和筛选按钮
+          // 标题和筛选按钮 - 减小间距
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 4), // 从8减小到4
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   '题目详情',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ), // 从18减小到16
                 ),
-                // 筛选按钮
+                // 筛选按钮 - 稍微减小
                 Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16), // 从20减小到16
                     border: Border.all(
                       color: Theme.of(context).colorScheme.outline,
                       width: 1,
@@ -222,7 +286,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
               ],
             ),
           ),
-          // 题目列表
+          // 题目列表 - 现在占用更多空间
           Expanded(
             child: filteredResults.isEmpty
                 ? Center(
@@ -231,14 +295,14 @@ class _ResultPageState extends ConsumerState<ResultPage> {
                       children: [
                         Icon(
                           Icons.check_circle_outline,
-                          size: 64,
+                          size: 56, // 从64减小到56
                           color: Colors.green[300],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12), // 从16减小到12
                         Text(
                           '恭喜！没有错题',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16, // 从18减小到16
                             color: Colors.grey[600],
                             fontWeight: FontWeight.w500,
                           ),
@@ -247,6 +311,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
                     ),
                   )
                 : ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 8), // 添加底部padding
                     itemCount: filteredResults.length,
                     itemBuilder: (context, index) {
                       final questionResult = filteredResults[index];
@@ -271,29 +336,70 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     final statusIcon = isCorrect ? Icons.check_circle : Icons.cancel;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 6), // 从8减小到6
+      elevation: 1, // 减小阴影
       child: ExpansionTile(
-        leading: Icon(statusIcon, color: statusColor),
+        leading: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: statusColor.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(statusIcon, color: statusColor, size: 20),
+        ),
         title: Text(
           '第 $questionNumber 题',
-          style: const TextStyle(fontWeight: FontWeight.w500),
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
         ),
         subtitle: Text(
-          isCorrect ? '回答正确' : '回答错误',
-          style: TextStyle(color: statusColor),
+          isCorrect ? '✓ 回答正确' : '✗ 回答错误',
+          style: TextStyle(
+            color: statusColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
         ),
+        tilePadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 4,
+        ), // 减小padding
+        childrenPadding: EdgeInsets.zero, // 移除children的默认padding
         children: [
-          Padding(
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16), // 自定义margin
             padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.2),
+              ),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 题目
-                Text(
-                  result.question.question,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outline.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Text(
+                    result.question.question,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      height: 1.4,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -315,7 +421,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
 
                 // 解析
                 if (result.question.explanation != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
@@ -327,15 +433,33 @@ class _ResultPageState extends ConsumerState<ResultPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          '解析',
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.lightbulb_outline,
+                              size: 16,
+                              color: Colors.blue[700],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '解析',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[700],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          result.question.explanation!,
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+                            fontSize: 14,
+                            height: 1.4,
+                            color: Colors.blue[800],
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(result.question.explanation!),
                       ],
                     ),
                   ),
@@ -349,25 +473,37 @@ class _ResultPageState extends ConsumerState<ResultPage> {
   }
 
   Widget _buildAnswerRow(String label, String answer, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 80,
+            width: 72,
             child: Text(
               '$label:',
               style: TextStyle(
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
                 color: Colors.grey[700],
+                fontSize: 13,
               ),
             ),
           ),
           Expanded(
             child: Text(
               answer,
-              style: TextStyle(color: color, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                height: 1.3,
+              ),
             ),
           ),
         ],
@@ -379,12 +515,15 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 6,
+        ), // 减小padding
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).colorScheme.primary
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
           text,
@@ -397,7 +536,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
                     context,
                   ).colorScheme.onSurface.withValues(alpha: 0.5),
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            fontSize: 14,
+            fontSize: 12, // 从14减小到12
           ),
         ),
       ),
@@ -442,8 +581,8 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     });
 
     try {
-      // 清除任何保存的进度（确保是全新开始）
-      await controller.clearSavedProgress();
+      // 清除当前模式的保存进度（不影响其他模式）
+      await controller.clearSavedProgress(currentMode);
 
       // 重置当前控制器状态
       controller.reset();

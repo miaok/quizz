@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/progress_model.dart';
 import '../models/settings_model.dart';
 import '../providers/blind_taste_provider.dart';
 import '../providers/flashcard_provider.dart';
@@ -7,6 +8,7 @@ import '../providers/quiz_provider.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
 import '../widgets/immersive_scaffold.dart';
+import 'score_records_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -15,9 +17,39 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends ConsumerState<HomePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => false; // 不保持页面状态，确保每次都重建
+
+  // 用于强制更新进度的键
+  final ValueNotifier<int> _progressUpdateKey = ValueNotifier<int>(0);
+
+  @override
+  void initState() {
+    super.initState();
+    // 页面初始化时更新进度
+    _updateProgress();
+  }
+
+  // 手动刷新进度数据
+  void _updateProgress() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _progressUpdateKey.value++;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _progressUpdateKey.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context); // 必须调用super.build
     final questionCountAsync = ref.watch(questionCountProvider);
     final settings = ref.watch(settingsProvider);
 
@@ -25,17 +57,25 @@ class _HomePageState extends ConsumerState<HomePage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isLandscape = screenWidth > screenHeight;
+    final isSmallScreen = screenHeight < 700; // 小屏幕设备
 
-    // 横屏模式减小内边距和间距
-    final mainPadding = isLandscape ? 10.0 : 14.0;
-    final mainSpacing = isLandscape ? 8.0 : 14.0;
-    final bottomSpacing = isLandscape ? 8.0 : 12.0;
+    // 横屏模式和小屏幕减小内边距和间距
+    final mainPadding = isLandscape || isSmallScreen ? 8.0 : 14.0;
+    final mainSpacing = isLandscape || isSmallScreen ? 6.0 : 14.0;
+    final bottomSpacing = isLandscape || isSmallScreen ? 6.0 : 12.0;
 
     return ImmersiveScaffold(
       appBar: AppBar(
         title: const Text('酒韵', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
+          IconButton(
+            onPressed: () {
+              _updateProgress();
+            },
+            icon: const Icon(Icons.refresh),
+            tooltip: '刷新进度',
+          ),
           IconButton(
             onPressed: () => appRouter.goToSettings(),
             icon: const Icon(Icons.settings),
@@ -49,8 +89,8 @@ class _HomePageState extends ConsumerState<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 欢迎区域
-              _buildWelcomeSection(questionCountAsync, settings),
+              // 欢迎区域 - 小屏幕时缩小高度
+              _buildWelcomeSection(questionCountAsync, settings, isSmallScreen),
 
               SizedBox(height: mainSpacing),
 
@@ -66,311 +106,485 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  // 构建欢迎区域 - 优雅的渐变设计
+  // 构建现代化Hero欢迎区域
   Widget _buildWelcomeSection(
     AsyncValue<int> questionCountAsync,
     QuizSettings settings,
+    bool isSmallScreen,
   ) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Theme.of(context).colorScheme.primaryContainer,
-            Theme.of(
-              context,
-            ).colorScheme.primaryContainer.withValues(alpha: 0.7),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    // 响应式高度调整 - 进一步减小
+    final welcomeHeight = isSmallScreen ? 50.0 : 110.0;
+    final welcomePadding = isSmallScreen ? 4.0 : 10.0;
+
+    return GestureDetector(
+      onTap: () => _navigateToScoreRecords(),
+      child: Container(
+        width: double.infinity,
+        height: welcomeHeight,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+              Theme.of(context).colorScheme.secondary.withValues(alpha: 0.08),
+              Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.06),
+            ],
+            stops: const [0.0, 0.5, 1.0],
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.wine_bar,
-                    size: 40,
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '欢迎来到酒韵',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onPrimaryContainer,
-                            ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '专业的白酒品鉴学习平台',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onPrimaryContainer
-                              .withValues(alpha: 0.8),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+          borderRadius: BorderRadius.circular(24), // 减小圆角
+          border: Border.all(
+            color: Theme.of(
+              context,
+            ).colorScheme.outline.withValues(alpha: 0.08),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.08), // 减小阴影
+              blurRadius: 16, // 减小模糊半径
+              offset: const Offset(0, 4), // 减小偏移
+              spreadRadius: 0,
             ),
           ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(welcomePadding),
+          child: Row(
+            // 改为Row布局，在右侧添加箭头提示
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center, // 改为居中显示
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // 主标题
+                    Text(
+                      '开始学习吧！',
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                            height: 1.1, // 减小行高
+                            fontSize: isSmallScreen ? 16 : 20, // 调整字体大小
+                          ),
+                    ),
+                    SizedBox(height: isSmallScreen ? 1 : 4), // 进一步减小间距
+                    // 进度信息
+                    _buildProgressInfo(questionCountAsync, isSmallScreen),
+                  ],
+                ),
+              ),
+              // 点击提示箭头
+              // Container(
+              //   padding: const EdgeInsets.all(8),
+              //   decoration: BoxDecoration(
+              //     color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              //     shape: BoxShape.circle,
+              //   ),
+              //   child: Icon(
+              //     Icons.arrow_forward_ios,
+              //     size: isSmallScreen ? 12 : 16,
+              //     color: Theme.of(context).colorScheme.primary,
+              //   ),
+              // ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // 构建功能卡片 - 错落有致的布局
+  // 构建进度信息
+  Widget _buildProgressInfo(
+    AsyncValue<int> questionCountAsync,
+    bool isSmallScreen,
+  ) {
+    return ValueListenableBuilder<int>(
+      valueListenable: _progressUpdateKey,
+      builder: (context, key, child) {
+        return Consumer(
+          builder: (context, ref, child) {
+            // 获取理论练习进度
+            final progressService = ref.read(progressServiceProvider);
+
+            return FutureBuilder<List<QuizProgress?>>(
+              // 使用key确保每次都重新加载数据
+              key: ValueKey('progress_$key'),
+              future: Future.wait([
+                progressService.loadQuizProgress(QuizMode.practice),
+                progressService.loadBlindTasteProgress(),
+                progressService.loadFlashcardProgress(),
+              ]),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Text(
+                    '加载进度中...',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: isSmallScreen ? 11 : 13,
+                    ),
+                    textAlign: TextAlign.center,
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Text(
+                    '进度加载失败',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: isSmallScreen ? 11 : 13,
+                    ),
+                    textAlign: TextAlign.center,
+                  );
+                }
+
+                final progressList = snapshot.data ?? [];
+                final theoryProgress = progressList.isNotEmpty
+                    ? progressList[0]
+                    : null;
+                final tasteProgress = progressList.length > 1
+                    ? progressList[1]
+                    : null;
+                final flashcardProgress = progressList.length > 2
+                    ? progressList[2]
+                    : null;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.center, // 居中对齐
+                  children: [
+                    // 理论练习进度
+                    _buildProgressRow(
+                      icon: Icons.school_outlined,
+                      title: '理论练习',
+                      progress: theoryProgress,
+                      isSmallScreen: isSmallScreen,
+                      isCentered: true, // 添加居中参数
+                    ),
+                    SizedBox(height: isSmallScreen ? 1 : 2), // 进一步减小间距
+                    // 品评练习进度
+                    _buildProgressRow(
+                      icon: Icons.wine_bar_outlined,
+                      title: '品评练习',
+                      progress: tasteProgress,
+                      isSmallScreen: isSmallScreen,
+                      isCentered: true, // 添加居中参数
+                    ),
+                    SizedBox(height: isSmallScreen ? 1 : 2), // 进一步减小间距
+                    // 酒样闪卡进度
+                    _buildProgressRow(
+                      icon: Icons.style_outlined,
+                      title: '酒样闪卡',
+                      progress: flashcardProgress,
+                      isSmallScreen: isSmallScreen,
+                      isCentered: true, // 添加居中参数
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // 构建单个进度行
+  Widget _buildProgressRow({
+    required IconData icon,
+    required String title,
+    required QuizProgress? progress,
+    required bool isSmallScreen,
+    bool isCentered = false, // 添加居中参数
+  }) {
+    String progressText;
+    Color textColor;
+
+    if (progress != null && progress.isValid) {
+      // 有有效进度
+      if (progress.type == ProgressType.quiz) {
+        final current = progress.currentIndex + 1;
+        final total = progress.questions.length;
+        progressText = '第 $current/$total 题';
+      } else if (progress.type == ProgressType.blindTaste) {
+        final completedCount = progress.blindTasteCompletedIds?.length ?? 0;
+        final totalFromPool = progress.blindTasteQuestionPool?.length ?? 0;
+        final totalFromSetting = progress.blindTasteMaxItems ?? 0;
+        final totalItems = totalFromPool > 0 ? totalFromPool : totalFromSetting;
+
+        if (totalItems > 0) {
+          final currentCup = completedCount >= totalItems
+              ? totalItems
+              : completedCount + 1;
+          progressText = '第 $currentCup/$totalItems 杯';
+        } else {
+          progressText = '进行中';
+        }
+      } else if (progress.type == ProgressType.flashcard) {
+        final viewedCount = progress.flashcardViewedIds?.length ?? 0;
+        final currentCard = progress.currentIndex + 1;
+
+        // 对于闪卡，我们使用已查看的张数作为进度指示
+        if (viewedCount > 0) {
+          progressText = '已查看 $viewedCount 张';
+        } else {
+          progressText = '第 $currentCard 张';
+        }
+      } else {
+        progressText = '进行中';
+      }
+      textColor = Theme.of(context).colorScheme.primary;
+    } else {
+      // 无进度
+      progressText = '未开始';
+      textColor = Theme.of(context).colorScheme.onSurfaceVariant;
+    }
+
+    Widget content = Row(
+      mainAxisSize: isCentered ? MainAxisSize.min : MainAxisSize.max,
+      children: [
+        Icon(icon, size: isSmallScreen ? 12 : 14, color: textColor),
+        SizedBox(width: isSmallScreen ? 4 : 6),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontWeight: FontWeight.w500,
+            fontSize: isSmallScreen ? 11 : 13,
+          ),
+        ),
+        SizedBox(width: isSmallScreen ? 4 : 6),
+        Text(
+          progressText,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: textColor,
+            fontSize: isSmallScreen ? 10 : 12,
+          ),
+        ),
+      ],
+    );
+
+    return isCentered ? Center(child: content) : content;
+  }
+
+  // 构建现代化功能卡片布局
   Widget _buildFeatureCards(BuildContext context) {
     // 获取屏幕信息进行响应式处理
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isLandscape = screenWidth > screenHeight;
+    final isSmallScreen = screenHeight < 700;
 
-    // 横屏模式减小间距
-    final verticalSpacing = isLandscape ? 6.0 : 10.0;
-    final horizontalSpacing = isLandscape ? 8.0 : 10.0;
-    final bottomSpacing = isLandscape ? 8.0 : 12.0;
-
-    final features = [
-      _FeatureCard(
-        title: '理论模拟',
-        subtitle: '模拟考试，检验能力',
-        icon: Icons.assignment,
-        color: Colors.orange,
-        onTap: () => _startMockExam(context, ref),
-        isLarge: true,
-      ),
-      _FeatureCard(
-        title: '理论练习',
-        subtitle: '巩固基础，提升理论',
-        icon: Icons.school,
-        color: Colors.blue,
-        onTap: () => _startQuiz(context, ref),
-        isLarge: false,
-      ),
-      _FeatureCard(
-        title: '酒样闪卡',
-        subtitle: '记忆酒样特征，提升识别能力',
-        icon: Icons.card_membership,
-        color: Colors.purple,
-        onTap: () => _startFlashcard(context, ref),
-        isLarge: false,
-      ),
-      _FeatureCard(
-        title: '品评模拟',
-        subtitle: '模拟流程，提升经验',
-        icon: Icons.local_bar,
-        color: Colors.teal,
-        onTap: () => appRouter.goToWineSimulation(),
-        isLarge: true,
-      ),
-      _FeatureCard(
-        title: '品评练习',
-        subtitle: '盲品练习，记忆标准',
-        icon: Icons.wine_bar,
-        color: Colors.red,
-        onTap: () => _startBlindTaste(context, ref),
-        isLarge: false,
-      ),
-      _FeatureCard(
-        title: '题库搜索',
-        subtitle: '快速查找题目，精准学习',
-        icon: Icons.search,
-        color: Colors.green,
-        onTap: () => appRouter.goToSearch(),
-        isLarge: false,
-      ),
-    ];
+    // 响应式间距 - 小屏幕进一步缩小
+    final verticalSpacing = isLandscape || isSmallScreen ? 8.0 : 16.0;
+    final horizontalSpacing = isLandscape || isSmallScreen ? 8.0 : 16.0;
+    final sectionSpacing = isLandscape || isSmallScreen ? 12.0 : 24.0;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 第一行：大卡片
-        _buildFeatureCard(features[0]),
-        SizedBox(height: verticalSpacing),
-
-        // 第二行：两个小卡片
-        Row(
-          children: [
-            Expanded(child: _buildFeatureCard(features[1])),
-            SizedBox(width: horizontalSpacing),
-            Expanded(child: _buildFeatureCard(features[2])),
-          ],
+        // 主要功能区 - 两个大卡片
+        Text(
+          '模拟考试',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
+            fontSize: isSmallScreen ? 18 : null,
+          ),
         ),
         SizedBox(height: verticalSpacing),
 
-        // 第三行：大卡片
-        _buildFeatureCard(features[3]),
-        SizedBox(height: bottomSpacing),
-
-        // 第四行：两个小卡片
+        // 主要功能卡片 - 始终使用水平排列
         Row(
           children: [
-            Expanded(child: _buildFeatureCard(features[4])),
+            Expanded(
+              child: _buildMainFeatureCard(
+                title: '理论模拟',
+                icon: Icons.assignment_outlined,
+                gradientColors: [
+                  Colors.orange.shade400,
+                  Colors.deepOrange.shade600,
+                ],
+                onTap: () => _startMockExam(context, ref),
+              ),
+            ),
             SizedBox(width: horizontalSpacing),
-            Expanded(child: _buildFeatureCard(features[5])),
+            Expanded(
+              child: _buildMainFeatureCard(
+                title: '品评模拟',
+                icon: Icons.local_bar_outlined,
+                gradientColors: [Colors.teal.shade400, Colors.cyan.shade700],
+                onTap: () => appRouter.goToWineSimulation(),
+              ),
+            ),
+          ],
+        ),
+
+        SizedBox(height: sectionSpacing),
+
+        // 练习工具区 - 四个小卡片
+        Text(
+          '日常练习',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
+            fontSize: isSmallScreen ? 18 : null,
+          ),
+        ),
+        SizedBox(height: verticalSpacing),
+
+        // 练习工具卡片 - 始终使用2x2网格布局
+        Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _buildPracticeCard(
+                    title: '理论练习',
+                    icon: Icons.school_outlined,
+                    gradientColors: [
+                      Colors.blue.shade400,
+                      Colors.indigo.shade600,
+                    ],
+                    onTap: () => _startQuiz(context, ref),
+                  ),
+                ),
+                SizedBox(width: horizontalSpacing),
+                Expanded(
+                  child: _buildPracticeCard(
+                    title: '品评练习',
+                    icon: Icons.wine_bar_outlined,
+                    gradientColors: [Colors.red.shade400, Colors.pink.shade600],
+                    onTap: () => _startBlindTaste(context, ref),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: verticalSpacing),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildPracticeCard(
+                    title: '酒样闪卡',
+                    icon: Icons.style_outlined,
+                    gradientColors: [
+                      Colors.purple.shade400,
+                      Colors.deepPurple.shade600,
+                    ],
+                    onTap: () => _startFlashcard(context, ref),
+                  ),
+                ),
+
+                SizedBox(width: horizontalSpacing),
+                Expanded(
+                  child: _buildPracticeCard(
+                    title: '题库搜索',
+                    icon: Icons.search_outlined,
+                    gradientColors: [
+                      Colors.green.shade400,
+                      Colors.teal.shade600,
+                    ],
+                    onTap: () => appRouter.goToSearch(),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ],
     );
   }
 
-  // 构建单个功能卡片 - 错落有致的布局
-  Widget _buildFeatureCard(_FeatureCard feature) {
-    if (feature.isLarge) {
-      return _buildLargeCard(feature);
-    } else {
-      return _buildSmallCard(feature);
-    }
-  }
-
-  // 大卡片 - 横向布局
-  Widget _buildLargeCard(_FeatureCard feature) {
-    // 获取屏幕信息进行响应式处理
+  // 构建主要功能大卡片 - Spotify风格
+  Widget _buildMainFeatureCard({
+    required String title,
+    required IconData icon,
+    required List<Color> gradientColors,
+    required VoidCallback onTap,
+  }) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isLandscape = screenWidth > screenHeight;
+    final isSmallScreen = screenHeight < 700;
 
-    // 横屏模式下减小卡片高度和内边距
-    final cardHeight = isLandscape ? 80.0 : 100.0;
-    final cardPadding = isLandscape ? 16.0 : 20.0;
-    final iconSize = isLandscape ? 52.0 : 64.0;
-    final iconIconSize = isLandscape ? 26.0 : 32.0;
-    final titleFontSize = isLandscape ? 18.0 : null;
+    // 进一步减小卡片高度
+    final cardHeight = isLandscape ? 70.0 : (isSmallScreen ? 80.0 : 100.0);
+    final cardPadding = isLandscape || isSmallScreen ? 12.0 : 20.0;
 
-    return Card(
-      elevation: 3,
-      shadowColor: feature.color.withValues(alpha: 0.3),
-      surfaceTintColor: feature.color.withValues(alpha: 0.05),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: InkWell(
-        onTap: feature.onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          height: cardHeight,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                feature.color.withValues(alpha: 0.1),
-                feature.color.withValues(alpha: 0.05),
-              ],
-            ),
+    return Container(
+      height: cardHeight,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            gradientColors[0].withValues(alpha: 0.1),
+            gradientColors[1].withValues(alpha: 0.05),
+          ],
+        ),
+        border: Border.all(
+          color: gradientColors[0].withValues(alpha: 0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors[0].withValues(alpha: 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: 0,
           ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
           child: Padding(
             padding: EdgeInsets.all(cardPadding),
             child: Row(
               children: [
-                // 图标容器
+                // 图标容器 - 现代化设计
                 Container(
-                  width: iconSize,
-                  height: iconSize,
+                  width: isLandscape || isSmallScreen ? 40 : 60,
+                  height: isLandscape || isSmallScreen ? 40 : 60,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [
-                        feature.color.withValues(alpha: 0.9),
-                        feature.color.withValues(alpha: 0.7),
-                      ],
+                      colors: gradientColors,
                     ),
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: feature.color.withValues(alpha: 0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        color: gradientColors[0].withValues(alpha: 0.4),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
                   child: Icon(
-                    feature.icon,
-                    size: iconIconSize,
+                    icon,
+                    size: isLandscape || isSmallScreen ? 20 : 28,
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(width: isLandscape ? 16 : 20),
-                // 文本内容
+                SizedBox(width: isLandscape || isSmallScreen ? 12 : 20),
+
+                // 文本内容 - 居中显示
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        feature.title,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: titleFontSize,
-                        ),
+                  child: Center(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: isLandscape || isSmallScreen ? 14 : 18,
                       ),
-                      SizedBox(height: isLandscape ? 2 : 6),
-                      Text(
-                        feature.subtitle,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          height: 1.4,
-                          fontSize: isLandscape ? 13 : null, // 横屏模式字体更小
-                        ),
-                        maxLines: isLandscape ? 1 : 2, // 横屏模式只显示一行
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                // 箭头图标
-                Container(
-                  width: isLandscape ? 28 : 32,
-                  height: isLandscape ? 28 : 32,
-                  decoration: BoxDecoration(
-                    color: feature.color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.arrow_forward_ios,
-                    size: isLandscape ? 14 : 16,
-                    color: feature.color,
+                    ),
                   ),
                 ),
               ],
@@ -381,76 +595,89 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  // 小卡片 - 简洁的垂直布局
-  Widget _buildSmallCard(_FeatureCard feature) {
-    // 获取屏幕信息进行响应式处理
+  // 构建练习工具小卡片 - Apple Music风格
+  Widget _buildPracticeCard({
+    required String title,
+    required IconData icon,
+    required List<Color> gradientColors,
+    required VoidCallback onTap,
+  }) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isLandscape = screenWidth > screenHeight;
+    final isSmallScreen = screenHeight < 700;
 
-    // 横屏模式下减小卡片高度和内边距
-    final cardHeight = isLandscape ? 90.0 : 120.0;
-    final cardPadding = isLandscape ? 12.0 : 18.0;
-    final iconSize = isLandscape ? 40.0 : 52.0;
-    final iconPadding = isLandscape ? 12.0 : 16.0;
-    final textSpacing = isLandscape ? 4.0 : 8.0;
+    // 响应式卡片尺寸 - 针对小屏幕进一步优化
+    final cardHeight = isLandscape ? 90.0 : (isSmallScreen ? 100.0 : 120.0);
+    final iconSize = isLandscape || isSmallScreen ? 20.0 : 28.0;
+    final fontSize = isLandscape || isSmallScreen ? 12.0 : 16.0;
 
-    return Card(
-      elevation: 2,
-      shadowColor: feature.color.withValues(alpha: 0.2),
-      surfaceTintColor: feature.color.withValues(alpha: 0.05),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: feature.onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          height: cardHeight,
-          padding: EdgeInsets.all(cardPadding),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // 图标容器 - 更大更突出
-              Container(
-                width: iconSize,
-                height: iconSize,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      feature.color.withValues(alpha: 0.8),
-                      feature.color.withValues(alpha: 0.6),
+    return Container(
+      height: cardHeight,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.12),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: EdgeInsets.all(isLandscape || isSmallScreen ? 12.0 : 16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 图标容器
+                Container(
+                  width: isLandscape || isSmallScreen ? 40 : 56,
+                  height: isLandscape || isSmallScreen ? 40 : 56,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: gradientColors,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: gradientColors[0].withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(iconPadding),
-                  boxShadow: [
-                    BoxShadow(
-                      color: feature.color.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  child: Icon(icon, size: iconSize, color: Colors.white),
                 ),
-                child: Icon(
-                  feature.icon,
-                  size: isLandscape ? 24 : 32,
-                  color: Colors.white,
+                // 减小图标与文字的间距
+                SizedBox(height: isLandscape || isSmallScreen ? 4 : 6),
+
+                // 标题
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: fontSize,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              SizedBox(height: textSpacing),
-              // 标题 - 居中显示
-              Text(
-                feature.title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontSize: isLandscape ? 13 : 16, // 横屏模式字体更小
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -939,23 +1166,13 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
     );
   }
-}
 
-// 功能卡片数据类
-class _FeatureCard {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final MaterialColor color;
-  final VoidCallback onTap;
-  final bool isLarge;
-
-  const _FeatureCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-    this.isLarge = false,
-  });
+  // 导航到得分记录页面并刷新数据
+  void _navigateToScoreRecords() {
+    // 先刷新得分记录数据
+    ref.invalidate(scoreRecordsProvider);
+    ref.invalidate(scoreStatisticsProvider);
+    // 然后导航
+    appRouter.goToScoreRecords();
+  }
 }

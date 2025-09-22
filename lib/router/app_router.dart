@@ -8,6 +8,7 @@ import '../pages/blind_taste_page.dart';
 import '../pages/search_page.dart';
 import '../pages/flashcard_page.dart';
 import '../pages/wine_simulation_page.dart';
+import '../pages/score_records_page.dart';
 
 // 路由路径常量
 class AppRoutes {
@@ -19,6 +20,7 @@ class AppRoutes {
   static const String search = '/search';
   static const String flashcard = '/flashcard';
   static const String wineSimulation = '/wine-simulation';
+  static const String scoreRecords = '/score-records';
 }
 
 // 应用路由配置
@@ -79,6 +81,13 @@ final appRouter = GoRouter(
           path: 'wine-simulation', // 相对路径，实际为 /wine-simulation
           name: 'wine-simulation',
           builder: (context, state) => const WineSimulationPage(),
+        ),
+
+        // 得分记录页路由 - 首页的子路由
+        GoRoute(
+          path: 'score-records', // 相对路径，实际为 /score-records
+          name: 'score-records',
+          builder: (context, state) => const ScoreRecordsPage(),
         ),
       ],
     ),
@@ -145,5 +154,10 @@ extension AppRouterExtension on GoRouter {
   // 导航到酒样练习页
   void goToWineSimulation() {
     push(AppRoutes.wineSimulation); // 使用push而不是go，保持导航栈
+  }
+
+  // 导航到得分记录页
+  void goToScoreRecords() {
+    push(AppRoutes.scoreRecords); // 使用push而不是go，保持导航栈
   }
 }
