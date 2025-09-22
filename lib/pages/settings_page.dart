@@ -10,6 +10,7 @@ import '../models/settings_model.dart';
 import '../models/progress_model.dart';
 import '../services/progress_service.dart';
 import '../services/database_service.dart';
+import '../services/settings_service.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -1577,10 +1578,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         title: const Text('重新加载数据'),
         content: const Text(
           '此操作将：\n'
-          '• 清除所有已保存的进度\n'
-          '• 删除所有本地数据\n'
-          '• 重新初始化数据库\n'
-          '• 应用将恢复到初始状态\n\n'
+          '• 彻底清除所有已保存的进度数据\n'
+          '• 删除所有本地设置和缓存\n'
+          '• 删除并重新创建数据库文件\n'
+          '• 重新初始化应用到第一次启动状态\n'
+          '• 重新加载所有题库和品评数据\n\n'
           '确定要继续吗？此操作不可恢复。',
         ),
         actions: [
@@ -1605,27 +1607,43 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     children: [
                       CircularProgressIndicator(),
                       SizedBox(width: 16),
-                      Text('正在重新加载数据...'),
+                      Expanded(
+                        child: Text('正在彻底重置应用数据，请稍候...'),
+                      ),
                     ],
                   ),
                 ),
               );
 
               try {
-                // 清除所有provider状态
+                // 第一步：清除所有provider状态
                 ref.read(blindTasteProvider.notifier).reset();
                 ref.read(flashcardProvider.notifier).reset();
                 ref.read(quizControllerProvider.notifier).reset();
 
-                // 重新初始化数据库
+                // 第二步：彻底清除所有SharedPreferences数据
+                final progressService = ProgressService();
+                await progressService.completeReset();
+
+                // 第三步：彻底重置设置数据
+                final settingsService = SettingsService();
+                await settingsService.completeReset();
+
+                // 第四步：彻底重置数据库（删除文件并重新创建）
                 final databaseService = DatabaseService();
-                await databaseService.resetDatabase();
+                await databaseService.completeReset();
+
+                // 第五步：重新初始化设置提供者
+                await ref.read(settingsProvider.notifier).loadSettings();
 
                 // 关闭加载对话框
                 if (context.mounted) {
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('数据重新加载完成，应用已恢复到初始状态')),
+                    const SnackBar(
+                      content: Text('应用数据已彻底重置，已恢复到初始状态'),
+                      duration: Duration(seconds: 3),
+                    ),
                   );
                 }
               } catch (e) {
@@ -1634,7 +1652,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(SnackBar(content: Text('重新加载数据失败: $e')));
+                  ).showSnackBar(
+                    SnackBar(
+                      content: Text('重置失败: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
                 }
               }
             },

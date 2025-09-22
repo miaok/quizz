@@ -36,6 +36,11 @@ class SettingsController extends StateNotifier<QuizSettings> {
     }
   }
 
+  // 公开的加载设置方法
+  Future<void> loadSettings() async {
+    await _loadSettings();
+  }
+
   // 更新单选题数量
   Future<void> updateSingleChoiceCount(int count) async {
     final newSettings = state.copyWith(singleChoiceCount: count);

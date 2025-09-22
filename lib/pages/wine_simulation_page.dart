@@ -390,36 +390,22 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
                 children: [
                   Icon(
                     Icons.wine_bar,
-                    size: isLandscape ? 64 : 72, // 横屏稍微减小酒杯图标以留出更多空间
+                    size: isLandscape ? 64 : 72,
                     color: isCompleted
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                  // 在酒杯图标中央显示序号
+                  // 在酒杯图标中央偏上位置显示序号，扁平化设计
                   Positioned(
-                    bottom: 0,
-                    child: Container(
-                      width: isLandscape ? 24 : 26, // 横屏减小序号圆圈
-                      height: isLandscape ? 24 : 26,
-                      decoration: BoxDecoration(
-                        color: isCompleted
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.outline,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${index + 1}',
-                          style: TextStyle(
-                            fontSize: isLandscape ? 8 : 10, // 横屏减小序号字体
-                            fontWeight: FontWeight.bold,
-                            color: isCompleted
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : Theme.of(
-                                    context,
-                                  ).colorScheme.onInverseSurface,
-                          ),
-                        ),
+                    top: isLandscape ? 18 : 20, // 文字上移
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        fontSize: isLandscape ? 16 : 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black  // 深色模式下使用黑色
+                            : Colors.white,  // 浅色模式下使用白色
                       ),
                     ),
                   ),

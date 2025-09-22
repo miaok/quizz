@@ -260,6 +260,27 @@ class ProgressService {
     debugPrint('All progress cleared');
   }
 
+  /// 彻底清除所有应用数据（包括所有SharedPreferences数据）
+  Future<void> completeReset() async {
+    await initialize();
+
+    try {
+      // 获取所有键
+      final keys = _prefs!.getKeys();
+      debugPrint('Found ${keys.length} SharedPreferences keys to clear');
+
+      // 清除所有数据
+      await _prefs!.clear();
+      debugPrint('All SharedPreferences data cleared');
+
+      // 重新初始化
+      await initialize();
+    } catch (e) {
+      debugPrint('Error during complete reset: $e');
+      rethrow;
+    }
+  }
+
   /// 检查是否有答题进度
   Future<bool> hasQuizProgress([QuizMode? mode]) async {
     if (mode != null) {

@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:drift/drift.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import '../database/database.dart';
 import '../models/question_model.dart';
 import '../models/blind_taste_model.dart';
@@ -446,6 +449,43 @@ class DatabaseService {
       await _loadQuestionsFromAssets(forceReload: true);
       await _loadBlindTasteDataFromAssets(forceReload: true);
     } catch (e) {
+      rethrow;
+    }
+  }
+
+  // 彻底重置应用数据（删除数据库文件并重新初始化）
+  Future<void> completeReset() async {
+    try {
+      // 关闭现有数据库连接
+      if (_isInitialized) {
+        await _database.close();
+        _isInitialized = false;
+      }
+
+      // 删除数据库文件
+      await _deleteDatabaseFile();
+
+      // 重新初始化数据库
+      await initialize();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // 删除数据库文件
+  Future<void> _deleteDatabaseFile() async {
+    try {
+      final dbFolder = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dbFolder.path, 'quiz_database.db'));
+
+      if (await file.exists()) {
+        await file.delete();
+        debugPrint('Database file deleted successfully');
+      } else {
+        debugPrint('Database file does not exist');
+      }
+    } catch (e) {
+      debugPrint('Error deleting database file: $e');
       rethrow;
     }
   }

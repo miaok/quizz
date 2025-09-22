@@ -52,4 +52,18 @@ class SettingsService {
     await _prefs!.remove(_settingsKey);
     debugPrint('Settings reset to defaults');
   }
+
+  // 彻底重置所有设置数据
+  Future<void> completeReset() async {
+    await initialize();
+
+    try {
+      // 清除设置相关的所有数据
+      await _prefs!.remove(_settingsKey);
+      debugPrint('All settings data cleared');
+    } catch (e) {
+      debugPrint('Error during settings complete reset: $e');
+      rethrow;
+    }
+  }
 }
