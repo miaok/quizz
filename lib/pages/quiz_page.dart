@@ -181,7 +181,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
   // 处理鼠标拖拽开始（仅在Windows平台使用）
   void _handleMouseDragStart(PointerDownEvent event) {
-    if (Platform.isWindows && event.buttons == 1) { // 仅响应鼠标左键
+    if (Platform.isWindows && event.buttons == 1) {
+      // 仅响应鼠标左键
       _isDragging = true;
       _dragStartX = event.position.dx;
     }
@@ -541,7 +542,12 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                     },
                     itemBuilder: (context, index) {
                       final question = state.questions[index];
-                      return _buildQuestionPage(index, question, state, controller);
+                      return _buildQuestionPage(
+                        index,
+                        question,
+                        state,
+                        controller,
+                      );
                     },
                   ),
                 )
@@ -565,7 +571,12 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   },
                   itemBuilder: (context, index) {
                     final question = state.questions[index];
-                    return _buildQuestionPage(index, question, state, controller);
+                    return _buildQuestionPage(
+                      index,
+                      question,
+                      state,
+                      controller,
+                    );
                   },
                 ),
         ),
@@ -715,7 +726,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    _isAutoSwitching ? '切题中' : '答题卡',
+                    _isAutoSwitching ? '下一题' : '答题卡',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -755,12 +766,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
+                        color: typeColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.3),
+                          color: typeColor.withValues(alpha: 0.3),
                           width: 0.5,
                         ),
                       ),
@@ -768,9 +777,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                         '第${state.currentQuestionIndex + 1}题',
                         style: TextStyle(
                           fontSize: 10,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onPrimaryContainer,
+                          color: typeColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -825,7 +832,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+                  //const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
                 ],
               ),
               const SizedBox(height: 8),
@@ -947,7 +954,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
     if (isWrongAnswer) {
       return isDarkMode
-          ? Colors.red.withValues(alpha: strongAlpha)
+          ? Colors.red.shade800.withValues(alpha: strongAlpha)
           : Theme.of(
               context,
             ).colorScheme.error.withValues(alpha: selectedAlpha);
@@ -1133,7 +1140,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                         ? (isCorrectAnswer
                               ? Colors.green.shade700
                               : isWrongAnswer
-                              ? Colors.red.shade600
+                              ? (Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.red.shade800
+                                    : Colors.red.shade600)
                               : isHintAnswer
                               ? Colors.orange.shade600
                               : isAutoSwitching
@@ -1146,7 +1155,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       ? (isCorrectAnswer
                             ? Colors.green.shade700
                             : isWrongAnswer
-                            ? Colors.red.shade600
+                            ? (Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.red.shade800
+                                  : Colors.red.shade600)
                             : isHintAnswer
                             ? Colors.orange.shade600
                             : isAutoSwitching
@@ -1348,7 +1359,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                         ? (isCorrectAnswer
                               ? Colors.green.shade700
                               : isWrongAnswer
-                              ? Colors.red.shade600
+                              ? (Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.red.shade800
+                                    : Colors.red.shade600)
                               : isHintAnswer
                               ? Colors.orange.shade600
                               : _getPrimaryColor(context))
@@ -1359,7 +1372,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       ? (isCorrectAnswer
                             ? Colors.green.shade700
                             : isWrongAnswer
-                            ? Colors.red.shade600
+                            ? (Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.red.shade800
+                                  : Colors.red.shade600)
                             : isHintAnswer
                             ? Colors.orange.shade600
                             : _getPrimaryColor(context))
@@ -1622,11 +1637,16 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     );
 
     final config = AnswerCardConfig(
-      title: '答题卡',
+      title: '理论答题卡',
       icon: Icons.quiz,
-      progressTextBuilder: (completedCount, totalCount) =>
-          '$completedCount/$totalCount',
+      //progressTextBuilder: (completedCount, totalCount) =>
+      //'$completedCount/$totalCount',
       stats: [
+        AnswerCardStats(
+          label: '当前',
+          count: state.currentQuestionIndex + 1,
+          color: Theme.of(context).colorScheme.secondary,
+        ),
         AnswerCardStats(
           label: '已答',
           count: state.answeredCount,
@@ -1636,11 +1656,6 @@ class _QuizPageState extends ConsumerState<QuizPage> {
           label: '未答',
           count: state.questions.length - state.answeredCount,
           color: Theme.of(context).colorScheme.outline,
-        ),
-        AnswerCardStats(
-          label: '当前',
-          count: state.currentQuestionIndex + 1,
-          color: Theme.of(context).colorScheme.secondary,
         ),
       ],
       onItemTapped: (index) {
@@ -1665,15 +1680,15 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   }
 
   void _handleBackPressed(BuildContext context) {
-    final quizState = ref.read(quizControllerProvider);
+    //final quizState = ref.read(quizControllerProvider);
     final quizController = ref.read(quizControllerProvider.notifier);
     final settings = ref.read(settingsProvider);
 
     // 理论模拟（考试模式）：直接显示确认退出对话框
-    if (quizState.mode == QuizMode.exam) {
-      _showExitConfirmDialog(context);
-      return;
-    }
+    //if (quizState.mode == QuizMode.exam) {
+    //_showExitConfirmDialog(context);
+    //return;
+    //}
 
     // 理论练习（练习模式）：检查是否启用进度保存
     if (settings.enableProgressSave) {
@@ -1760,30 +1775,30 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   }
 
   // 显示考试模式的退出确认对话框
-  void _showExitConfirmDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认退出'),
-        content: const Text('确定要退出理论模拟吗？当前进度将会丢失。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              final currentMode = ref.read(quizControllerProvider).mode;
-              ref.read(quizControllerProvider.notifier).reset(currentMode);
-              appRouter.goToHome();
-            },
-            child: const Text('确定'),
-          ),
-        ],
-      ),
-    );
-  }
+  // void _showExitConfirmDialog(BuildContext context) {
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: const Text('确认退出'),
+  //       content: const Text('确定要退出理论模拟吗？当前进度将会丢失。'),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.of(context).pop(),
+  //           child: const Text('取消'),
+  //         ),
+  //         TextButton(
+  //           onPressed: () {
+  //             Navigator.of(context).pop();
+  //             final currentMode = ref.read(quizControllerProvider).mode;
+  //             ref.read(quizControllerProvider.notifier).reset(currentMode);
+  //             appRouter.goToHome();
+  //           },
+  //           child: const Text('确定'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   // 检查两个选项列表是否相等
   bool _areOptionsEqual(List<String> options1, List<String> options2) {

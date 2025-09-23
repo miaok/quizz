@@ -638,9 +638,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           const SizedBox(height: 8),
           Slider(
             value: delayMs.toDouble(),
-            min: 1000.0,
-            max: 5000.0,
-            divisions: 20,
+            min: 500.0,
+            max: 3000.0,
+            divisions: 25,
             onChanged: (value) {
               HapticManager.selection();
               controller.updateMultipleChoiceAutoSwitchDelay(value.round());
@@ -651,14 +651,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '1.0秒',
+                '0.5秒',
                 style: TextStyle(
                   fontSize: 10,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               Text(
-                '5.0秒',
+                '3.0秒',
                 style: TextStyle(
                   fontSize: 10,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,

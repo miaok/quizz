@@ -609,7 +609,9 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
     // 添加调试输出，帮助诊断问题
     debugPrint('Checking answer for item ${state.currentItem!.id}');
     debugPrint('User total score: ${state.userAnswer.selectedTotalScore}');
-    debugPrint('User total score (rounded): ${(state.userAnswer.selectedTotalScore * 10).round() / 10}');
+    debugPrint(
+      'User total score (rounded): ${(state.userAnswer.selectedTotalScore * 10).round() / 10}',
+    );
     debugPrint('Correct total score: ${state.currentItem!.totalScore}');
 
     // 首先检查是否有未作答的项目
@@ -961,15 +963,11 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
       (index) => BlindTasteAnswerCardItem(index, state),
     );
 
-    final answeredCount = state.savedAnswers.values
-        .where((answer) => _hasNonDefaultAnswer(answer))
-        .length;
-
     final config = AnswerCardConfig(
       title: '酒样练习答题卡',
       icon: Icons.wine_bar,
-      progressTextBuilder: (completedCount, totalCount) =>
-          '${state.completedItemIds.length}/$totalCount',
+      //progressTextBuilder: (completedCount, totalCount) =>
+      //'${state.completedItemIds.length}/$totalCount',
       stats: [
         AnswerCardStats(
           label: '当前',
@@ -982,13 +980,8 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
           color: Theme.of(context).colorScheme.primary,
         ),
         AnswerCardStats(
-          label: '已作答',
-          count: answeredCount,
-          color: Theme.of(context).colorScheme.tertiary,
-        ),
-        AnswerCardStats(
-          label: '总题数',
-          count: state.totalItemsInPool,
+          label: '未完成',
+          count: state.totalItemsInPool - state.completedItemIds.length,
           color: Theme.of(context).colorScheme.outline,
         ),
       ],
@@ -1011,16 +1004,5 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
         );
       }
     });
-  }
-
-  // 检查答案是否不是默认状态（即用户有过选择）
-  bool _hasNonDefaultAnswer(BlindTasteAnswer answer) {
-    final defaultAnswer = BlindTasteAnswer();
-
-    return answer.selectedAroma != defaultAnswer.selectedAroma ||
-        answer.selectedAlcoholDegree != defaultAnswer.selectedAlcoholDegree ||
-        answer.selectedTotalScore != defaultAnswer.selectedTotalScore ||
-        answer.selectedEquipment.isNotEmpty ||
-        answer.selectedFermentationAgent.isNotEmpty;
   }
 }

@@ -873,8 +873,8 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
     final config = AnswerCardConfig(
       title: '闪卡答题卡',
       icon: Icons.card_membership,
-      progressTextBuilder: (completedCount, totalCount) =>
-          '${state.viewedCardIds.length}/$totalCount',
+      //progressTextBuilder: (completedCount, totalCount) =>
+      //'${state.viewedCardIds.length}/$totalCount',
       stats: [
         AnswerCardStats(
           label: '当前',

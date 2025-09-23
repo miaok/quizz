@@ -41,7 +41,7 @@ class AnswerCardConfig {
   final IconData icon;
 
   /// 总进度文本格式 (例如: "${completedCount}/${totalCount}")
-  final String Function(int completedCount, int totalCount) progressTextBuilder;
+  //final String Function(int completedCount, int totalCount) progressTextBuilder;
 
   /// 底部统计项目列表
   final List<AnswerCardStats> stats;
@@ -58,7 +58,7 @@ class AnswerCardConfig {
   const AnswerCardConfig({
     required this.title,
     required this.icon,
-    required this.progressTextBuilder,
+    //required this.progressTextBuilder,
     required this.stats,
     required this.onItemTapped,
     this.crossAxisCount = 5,
@@ -71,21 +71,20 @@ class AnswerCard extends StatelessWidget {
   final List<AnswerCardItem> items;
   final AnswerCardConfig config;
 
-  const AnswerCard({
-    super.key,
-    required this.items,
-    required this.config,
-  });
+  const AnswerCard({super.key, required this.items, required this.config});
 
   @override
   Widget build(BuildContext context) {
-    final completedCount = items.where((item) => item.isCompleted).length;
+    //final completedCount = items.where((item) => item.isCompleted).length;
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isLandscape = screenWidth > screenHeight;
 
     // 根据屏幕方向和尺寸动态调整列数
-    final dynamicCrossAxisCount = _getDynamicCrossAxisCount(screenWidth, isLandscape);
+    final dynamicCrossAxisCount = _getDynamicCrossAxisCount(
+      screenWidth,
+      isLandscape,
+    );
     final dynamicSpacing = isLandscape ? 8.0 : 10.0;
     final dynamicPadding = isLandscape ? 12.0 : 16.0;
 
@@ -130,14 +129,14 @@ class AnswerCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  config.progressTextBuilder(completedCount, items.length),
-                  style: TextStyle(
-                    fontSize: isLandscape ? 14 : 16,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                // Text(
+                //   config.progressTextBuilder(completedCount, items.length),
+                //   style: TextStyle(
+                //     fontSize: isLandscape ? 14 : 16,
+                //     color: Colors.grey[600],
+                //     fontWeight: FontWeight.w500,
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -158,7 +157,12 @@ class AnswerCard extends StatelessWidget {
                 ),
                 itemCount: items.length,
                 itemBuilder: (context, index) {
-                  return _buildAnswerCardItem(context, items[index], index, isLandscape);
+                  return _buildAnswerCardItem(
+                    context,
+                    items[index],
+                    index,
+                    isLandscape,
+                  );
                 },
               ),
             ),
@@ -168,13 +172,23 @@ class AnswerCard extends StatelessWidget {
           Container(
             padding: EdgeInsets.all(dynamicPadding),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
-              border: Border(top: BorderSide(color: Colors.grey[200]!)),
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.surfaceContainerHigh
+                  : Colors.grey[50],
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.outline.withValues(alpha: 0.2)
+                      : Colors.grey[200]!,
+                ),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: config.stats
-                  .map((stat) => _buildStatItem(stat, isLandscape))
+                  .map((stat) => _buildStatItem(context, stat, isLandscape))
                   .toList(),
             ),
           ),
@@ -206,7 +220,12 @@ class AnswerCard extends StatelessWidget {
     }
   }
 
-  Widget _buildAnswerCardItem(BuildContext context, AnswerCardItem item, int index, bool isLandscape) {
+  Widget _buildAnswerCardItem(
+    BuildContext context,
+    AnswerCardItem item,
+    int index,
+    bool isLandscape,
+  ) {
     Color backgroundColor;
     Color textColor;
 
@@ -264,7 +283,11 @@ class AnswerCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(AnswerCardStats stat, bool isLandscape) {
+  Widget _buildStatItem(
+    BuildContext context,
+    AnswerCardStats stat,
+    bool isLandscape,
+  ) {
     final iconSize = isLandscape ? 20.0 : 24.0;
     final fontSize = isLandscape ? 10.0 : 12.0;
     final labelFontSize = isLandscape ? 10.0 : 12.0;
@@ -275,10 +298,7 @@ class AnswerCard extends StatelessWidget {
         Container(
           width: iconSize,
           height: iconSize,
-          decoration: BoxDecoration(
-            color: stat.color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: stat.color, shape: BoxShape.circle),
           child: Center(
             child: Text(
               '${stat.count}',
@@ -295,7 +315,9 @@ class AnswerCard extends StatelessWidget {
           stat.label,
           style: TextStyle(
             fontSize: labelFontSize,
-            color: Colors.grey[600],
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).colorScheme.onSurfaceVariant
+                : Colors.grey[600],
           ),
         ),
       ],
@@ -315,10 +337,7 @@ class AnswerCardHelper {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => AnswerCard(
-        items: items,
-        config: config,
-      ),
+      builder: (context) => AnswerCard(items: items, config: config),
     );
   }
 
@@ -340,7 +359,9 @@ class AnswerCardHelper {
     final isLandscape = screenWidth > screenHeight;
 
     // 使用动态参数，如果没有提供则计算默认值
-    final dynamicCrossAxisCount = crossAxisCount ?? _getDynamicCrossAxisCountStatic(screenWidth, isLandscape);
+    final dynamicCrossAxisCount =
+        crossAxisCount ??
+        _getDynamicCrossAxisCountStatic(screenWidth, isLandscape);
     final dynamicSpacing = crossAxisSpacing ?? (isLandscape ? 8.0 : 10.0);
     final dynamicMainSpacing = mainAxisSpacing ?? (isLandscape ? 8.0 : 10.0);
     final dynamicPadding = padding ?? (isLandscape ? 12.0 : 16.0);
@@ -359,7 +380,8 @@ class AnswerCardHelper {
 
     // 计算目标滚动位置，让当前项目所在行居中显示
     final double targetOffset =
-        (row * (itemHeight + dynamicMainSpacing)) - (itemHeight + dynamicMainSpacing);
+        (row * (itemHeight + dynamicMainSpacing)) -
+        (itemHeight + dynamicMainSpacing);
 
     // 确保滚动位置在有效范围内
     final double maxScrollExtent = controller.position.maxScrollExtent;
@@ -374,7 +396,10 @@ class AnswerCardHelper {
   }
 
   // 静态版本的动态列数计算方法
-  static int _getDynamicCrossAxisCountStatic(double screenWidth, bool isLandscape) {
+  static int _getDynamicCrossAxisCountStatic(
+    double screenWidth,
+    bool isLandscape,
+  ) {
     if (isLandscape) {
       // 横屏模式：根据屏幕宽度调整
       if (screenWidth > 1200) {

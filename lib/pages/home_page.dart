@@ -611,14 +611,21 @@ class _HomePageState extends ConsumerState<HomePage>
       height: cardHeight,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        color: Theme.of(context).colorScheme.surface,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            gradientColors[0].withValues(alpha: 0.1),
+            gradientColors[1].withValues(alpha: 0.05),
+          ],
+        ),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.12),
+          color: gradientColors[0].withValues(alpha: 0.2),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
+            color: gradientColors[0].withValues(alpha: 0.15),
             blurRadius: 16,
             offset: const Offset(0, 4),
             spreadRadius: 0,
