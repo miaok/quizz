@@ -718,19 +718,33 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
 
           const SizedBox(width: 16),
 
-          // 下一张按钮
+          // 下一张/结束按钮
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: state.hasNext
-                  ? () {
-                      HapticManager.medium();
-                      _nextCard(controller);
-                    }
-                  : null,
-              icon: const Text('下一张'),
-              label: const Icon(Icons.arrow_forward_ios, size: 16),
+              onPressed: () {
+                HapticManager.medium();
+                if (state.currentIndex == state.items.length - 1) {
+                  // 最后一张卡片，结束学习
+                  controller.nextCard(); // 这会触发完成逻辑
+                } else {
+                  // 不是最后一张，正常下一张
+                  _nextCard(controller);
+                }
+              },
+              icon: state.currentIndex == state.items.length - 1
+                  ? const Icon(Icons.check, size: 16)
+                  : const Text('下一张'),
+              label: state.currentIndex == state.items.length - 1
+                  ? const Text('结束闪卡')
+                  : const Icon(Icons.arrow_forward_ios, size: 16),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
+                backgroundColor: state.currentIndex == state.items.length - 1
+                    ? Theme.of(context).colorScheme.primary
+                    : null,
+                foregroundColor: state.currentIndex == state.items.length - 1
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : null,
               ),
             ),
           ),
@@ -839,7 +853,11 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
                 icon: const Icon(Icons.refresh),
                 label: const Text('开始新一轮'),
                 style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
                 ),
               ),
             ),
@@ -855,6 +873,8 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
                 label: const Text('返回首页'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  side: BorderSide(color: Theme.of(context).colorScheme.outline),
                 ),
               ),
             ),

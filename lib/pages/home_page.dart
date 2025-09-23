@@ -716,24 +716,8 @@ class _HomePageState extends ConsumerState<HomePage>
 
         bool shouldRestore;
         if (isCompleted) {
-          // 已完成所有题目，询问是否重新开始
-          final dialogResult = await _showRestartCompletedPracticeDialog(
-            context,
-            description,
-          );
-          if (dialogResult == null) {
-            // 用户点击关闭按钮，取消操作
-            return;
-          }
-
-          if (dialogResult) {
-            // 用户选择重新开始，清除旧进度
-            await quizController.clearSavedProgress(QuizMode.practice);
-            shouldRestore = false; // 设置为false以开始新练习
-          } else {
-            // 用户选择查看结果，恢复到已完成状态
-            shouldRestore = true;
-          }
+          // 已完成所有题目，直接恢复到完成状态显示完成页面
+          shouldRestore = true;
         } else {
           // 未完成的练习进度
           if (settings.enableProgressSave &&
@@ -1102,63 +1086,6 @@ class _HomePageState extends ConsumerState<HomePage>
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('继续记忆'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<bool?> _showRestartCompletedPracticeDialog(
-    BuildContext context,
-    String? description,
-  ) async {
-    if (!context.mounted) return null;
-
-    return await showDialog<bool?>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('练习已完成'),
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                iconSize: 20,
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('您已完成了所有练习题目：'),
-              const SizedBox(height: 8),
-              Text(
-                description ?? '练习已完成',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text('您希望：'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('查看结果'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('重新开始'),
             ),
           ],
         ),

@@ -46,7 +46,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('应用设置'),
+        title: Text('应用设置', style: Theme.of(context).textTheme.titleMedium),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -256,7 +256,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               const SizedBox(width: 8),
               Text(
                 '总题数',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                   fontWeight: FontWeight.w500,
                 ),
@@ -264,10 +264,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               const Spacer(),
               Text(
                 '${settings.totalQuestions} 题',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
                 ),
               ),
             ],
@@ -295,7 +294,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
           IconButton(
@@ -313,8 +314,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             alignment: Alignment.center,
             child: Text(
               '$currentValue',
-              style: TextStyle(
-                fontSize: 16,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
@@ -353,28 +353,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '样品数设置',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
                 Text(
-                  '品评模拟的基础数量范围为2-6杯',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                  '酒样数设置',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
                 ),
-                if (isLocked)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      '同酒样系列模式开启，杯数固定为5杯',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -396,8 +380,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               children: [
                 Text(
                   '$currentValue',
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Colors.amber,
                   ),
@@ -443,20 +426,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '重复酒样概率',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
                     Text(
-                      isLocked ? '同酒样系列模式下，重复概率固定为0%' : '设置一轮模拟中出现重复酒样的概率',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isLocked
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      '酒样重复概率',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -466,8 +439,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 children: [
                   Text(
                     '${(currentValue * 100).toInt()}%',
-                    style: TextStyle(
-                      fontSize: 16,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Colors.amber,
                     ),
@@ -519,19 +491,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '最大重复组数',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
                 Text(
-                  isLocked ? '同酒样系列模式下，重复组数固定为0组' : '设置一轮模拟中最多允许的重复酒样组数（1-3组）',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isLocked
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                  '最大重复组数',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
                 ),
+                // Text(
+                //   isLocked ? '质量差不存在重复' : '设置品评模拟的重复酒样组数',
+                //   style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                //     color: isLocked
+                //         ? Theme.of(context).colorScheme.primary
+                //         : Theme.of(context).colorScheme.onSurfaceVariant,
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -553,8 +526,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               children: [
                 Text(
                   '$currentValue',
-                  style: TextStyle(
-                    fontSize: 16,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Colors.amber,
                   ),
@@ -608,17 +580,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       '多选题切题延迟',
-                      style: TextStyle(
-                        fontSize: 14,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     Text(
-                      '设置多选题自动切换到下一题的延迟时间，给予充分时间选择多个选项',
-                      style: TextStyle(
-                        fontSize: 12,
+                      '设置多选题自动切题的延迟时间',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
@@ -627,8 +597,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               ),
               Text(
                 '${(delayMs / 1000).toStringAsFixed(1)}秒',
-                style: TextStyle(
-                  fontSize: 16,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.primary,
                 ),
@@ -639,8 +608,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           Slider(
             value: delayMs.toDouble(),
             min: 500.0,
-            max: 3000.0,
-            divisions: 25,
+            max: 2000.0,
+            divisions: 15,
             onChanged: (value) {
               HapticManager.selection();
               controller.updateMultipleChoiceAutoSwitchDelay(value.round());
@@ -652,15 +621,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             children: [
               Text(
                 '0.5秒',
-                style: TextStyle(
-                  fontSize: 10,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               Text(
-                '3.0秒',
-                style: TextStyle(
-                  fontSize: 10,
+                '2.0秒',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -684,10 +651,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Text(
               '考试时间',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
           IconButton(
@@ -707,8 +676,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             alignment: Alignment.center,
             child: Text(
               '${settings.examTimeMinutes} 分钟',
-              style: TextStyle(
-                fontSize: 14,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).colorScheme.primary,
               ),
@@ -740,15 +708,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       children: [
         _buildSwitchTile(
           title: '选项乱序',
-          subtitle: '开启后所有理论题目选项顺序随机打乱,建议保持开启',
+          subtitle: '理论选项乱序显示',
           icon: Icons.shuffle,
           value: settings.shuffleOptions,
           onChanged: controller.updateShuffleOptions,
         ),
         const SizedBox(height: 8),
         _buildSwitchTile(
-          title: '快速切题',
-          subtitle: '选择答案后自动进入下一题,多选题尽快选择所有答案',
+          title: '自动切题',
+          subtitle: '选择答案后自动切题',
           icon: Icons.fast_forward,
           value: settings.autoNextQuestion,
           onChanged: controller.updateAutoNextQuestion,
@@ -845,131 +813,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     return Column(
       children: [
         _buildSwitchTile(
-          title: '启用质量差模式',
-          subtitle: '开启后固定同一厂家，以1-5#编号排列',
+          title: '质量差模式',
+          subtitle: '1-5#排列同一厂家',
           icon: Icons.numbers,
           value: settings.enableWineSimulationSameWineSeries,
           onChanged: (value) =>
               controller.updateEnableWineSimulationSameWineSeries(value),
         ),
-        // if (settings.enableWineSimulationSameWineSeries) ...[
-        //   const SizedBox(height: 8),
-        // Container(
-        //   padding: const EdgeInsets.all(12),
-        //   decoration: BoxDecoration(
-        //     color: Theme.of(
-        //       context,
-        //     ).colorScheme.primaryContainer.withValues(alpha: 0.5),
-        //     borderRadius: BorderRadius.circular(8),
-        //     border: Border.all(
-        //       color: Theme.of(
-        //         context,
-        //       ).colorScheme.primary.withValues(alpha: 0.3),
-        //     ),
-        //   ),
-        // child: Row(
-        //   children: [
-        //     Icon(
-        //       Icons.info_outline,
-        //       color: Theme.of(context).colorScheme.primary,
-        //       size: 20,
-        //     ),
-        //     const SizedBox(width: 8),
-        // Expanded(
-        //   child: Text(
-        //     '同酒样系列模式说明：\n• 每轮固定5杯酒样\n以1-5#编号\n• 用于练习同厂家质量差',
-        //     style: TextStyle(
-        //       fontSize: 12,
-        //       color: Theme.of(context).colorScheme.onPrimaryContainer,
-        //       height: 1.3,
-        //     ),
-        //   ),
-        // ),
-        //   ],
-        // ),
-        // ),
-        // ],
       ],
     );
   }
-
-  // 品评设置区域（原函数，已重构为独立组件）
-  // @Deprecated('已重构为 _buildBasicTastingSection, _buildWineSimulationSection, _buildSameWineSeriesSection')
-  // Widget _buildBlindTasteSection(
-  //   QuizSettings settings,
-  //   SettingsController controller,
-  // ) {
-  //   return Column(
-  //     children: [
-  //       _buildSwitchTile(
-  //         title: '香型品评',
-  //         subtitle: '暂不品评',
-  //         icon: Icons.local_florist,
-  //         value: false,
-  //         onChanged: null, // 禁用开关，不允许用户切换
-  //       ),
-  //       const SizedBox(height: 8),
-  //       _buildSwitchTile(
-  //         title: '酒度品评',
-  //         subtitle: '学习酒度',
-  //         icon: Icons.thermostat,
-  //         value: settings.enableBlindTasteAlcohol,
-  //         onChanged: controller.updateEnableBlindTasteAlcohol,
-  //       ),
-  //       const SizedBox(height: 8),
-  //       _buildSwitchTile(
-  //         title: '总分品评',
-  //         subtitle: '学习打分',
-  //         icon: Icons.star,
-  //         value: settings.enableBlindTasteScore,
-  //         onChanged: controller.updateEnableBlindTasteScore,
-  //       ),
-  //       const SizedBox(height: 8),
-  //       _buildSwitchTile(
-  //         title: '设备品评',
-  //         subtitle: '学习设备',
-  //         icon: Icons.build,
-  //         value: settings.enableBlindTasteEquipment,
-  //         onChanged: controller.updateEnableBlindTasteEquipment,
-  //       ),
-  //       const SizedBox(height: 8),
-  //       _buildSwitchTile(
-  //         title: '发酵剂品评',
-  //         subtitle: '学习发酵剂',
-  //         icon: Icons.science,
-  //         value: settings.enableBlindTasteFermentation,
-  //         onChanged: controller.updateEnableBlindTasteFermentation,
-  //       ),
-  //       const SizedBox(height: 8),
-  //       _buildSwitchTile(
-  //         title: '同酒样系列模式',
-  //         subtitle: '固定5杯，同一酒样以1-5#编号',
-  //         icon: Icons.numbers,
-  //         value: settings.enableWineSimulationSameWineSeries,
-  //         onChanged: (value) =>
-  //             controller.updateEnableWineSimulationSameWineSeries(value),
-  //       ),
-  //       const SizedBox(height: 8),
-  //       _buildWineSimulationCountCard(
-  //         settings.enableWineSimulationSameWineSeries
-  //             ? 5
-  //             : settings.wineSimulationSampleCount,
-  //         controller.updateWineSimulationSampleCount,
-  //         isLocked: settings.enableWineSimulationSameWineSeries,
-  //       ),
-  //       const SizedBox(height: 8),
-  //       _buildWineSimulationProbabilityCard(
-  //         settings.wineSimulationDuplicateProbability,
-  //         controller.updateWineSimulationDuplicateProbability,
-  //       ),
-  //       const SizedBox(height: 8),
-  //       _buildWineSimulationMaxGroupsCard(
-  //         settings.wineSimulationMaxDuplicateGroups,
-  //         controller.updateWineSimulationMaxDuplicateGroups,
-  //       ),
-  //     ],
-  //   );
-  // }
 
   // 闪卡记忆设置区域
   Widget _buildFlashcardSection(
@@ -980,7 +833,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       children: [
         _buildSwitchTile(
           title: '酒样闪卡随机顺序',
-          subtitle: '酒样闪卡模式随机打乱酒样出现顺序',
+          subtitle: '酒样闪卡乱序',
           icon: Icons.shuffle,
           value: settings.enableFlashcardRandomOrder,
           onChanged: (value) =>
@@ -989,7 +842,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         const SizedBox(height: 8),
         _buildSwitchTile(
           title: '品评练习随机顺序',
-          subtitle: '品评练习时随机打乱酒样出现顺序',
+          subtitle: '品评练习乱序',
           icon: Icons.shuffle,
           value: settings.enableBlindTasteRandomOrder,
           onChanged: (value) =>
@@ -1144,18 +997,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                   children: [
                     Text(
                       title,
-                      style: TextStyle(
-                        fontSize: 14,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w500,
-                        fontFamily: null,
                       ),
                     ),
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                        fontFamily: null,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -1167,66 +1016,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       ),
     );
   }
-
-  // 紧凑型开关组件
-  // Widget _buildCompactSwitchTile({
-  //   required String title,
-  //   required IconData icon,
-  //   required bool value,
-  //   required Function(bool)? onChanged,
-  //   bool isDisabled = false,
-  // }) {
-  //   return Container(
-  //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-  //     decoration: BoxDecoration(
-  //       color: isDisabled
-  //           ? Theme.of(
-  //               context,
-  //             ).colorScheme.surfaceContainer.withValues(alpha: 0.5)
-  //           : Theme.of(context).colorScheme.surfaceContainer,
-  //       borderRadius: BorderRadius.circular(8),
-  //     ),
-  //     child: Row(
-  //       children: [
-  //         Icon(
-  //           icon,
-  //           color: isDisabled
-  //               ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
-  //               : Theme.of(context).colorScheme.primary,
-  //           size: 18,
-  //         ),
-  //         const SizedBox(width: 8),
-  //         Expanded(
-  //           child: Text(
-  //             title,
-  //             style: TextStyle(
-  //               fontSize: 13,
-  //               fontWeight: FontWeight.w500,
-  //               color: isDisabled
-  //                   ? Theme.of(
-  //                       context,
-  //                     ).colorScheme.onSurface.withValues(alpha: 0.5)
-  //                   : null,
-  //             ),
-  //           ),
-  //         ),
-  //         const SizedBox(width: 4),
-  //         Transform.scale(
-  //           scale: 0.8,
-  //           child: Switch(
-  //             value: value,
-  //             onChanged: onChanged != null && !isDisabled
-  //                 ? (newValue) {
-  //                     HapticManager.medium();
-  //                     onChanged(newValue);
-  //                   }
-  //                 : null,
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
 
   // 通用开关组件
   Widget _buildSwitchTile({
@@ -1252,14 +1041,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -1687,20 +1477,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 size: 20,
               ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       '练习模式题目乱序',
-                      style: TextStyle(
-                        fontSize: 14,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     Text(
                       '选择练习模式的题目出现顺序',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -1751,27 +1542,31 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                           children: [
                             Text(
                               _getPracticeShuffleModeDisplayName(mode),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: settings.practiceShuffleMode == mode
-                                    ? Theme.of(
-                                        context,
-                                      ).colorScheme.onPrimaryContainer
-                                    : null,
-                              ),
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                    color: settings.practiceShuffleMode == mode
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimaryContainer
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
+                                  ),
                             ),
                             Text(
                               _getPracticeShuffleModeDescription(mode),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: settings.practiceShuffleMode == mode
-                                    ? Theme.of(context)
-                                          .colorScheme
-                                          .onPrimaryContainer
-                                          .withValues(alpha: 0.7)
-                                    : Colors.grey,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: settings.practiceShuffleMode == mode
+                                        ? Theme.of(context)
+                                              .colorScheme
+                                              .onPrimaryContainer
+                                              .withValues(alpha: 0.7)
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                  ),
                             ),
                           ],
                         ),
@@ -1805,7 +1600,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       case PracticeShuffleMode.ordered:
         return '默认题库顺序';
       case PracticeShuffleMode.typeOrderedQuestionRandom:
-        return '题型顺序判断、单选、多选，题型内部题目乱序';
+        return '默认题型顺序，题型内部乱序';
       case PracticeShuffleMode.fullRandom:
         return '题库完全乱序';
     }
@@ -1874,15 +1669,4 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       ),
     );
   }
-
-  // 兼容性方法：处理练习模式随机顺序变化
-  // void _handlePracticeRandomOrderChange(
-  //   bool value,
-  //   SettingsController controller,
-  // ) {
-  //   final mode = value
-  //       ? PracticeShuffleMode.fullRandom
-  //       : PracticeShuffleMode.ordered;
-  //   _handlePracticeShuffleModeChange(mode, controller);
-  // }
 }

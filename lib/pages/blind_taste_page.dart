@@ -90,12 +90,12 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
   }
 
   // 统一的按钮样式方法
-  ButtonStyle _secondaryButtonStyle(BuildContext context) =>
-      OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        side: BorderSide(color: Theme.of(context).colorScheme.outline),
-      );
+  // ButtonStyle _secondaryButtonStyle(BuildContext context) =>
+  //     OutlinedButton.styleFrom(
+  //       padding: const EdgeInsets.symmetric(vertical: 16),
+  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  //       side: BorderSide(color: Theme.of(context).colorScheme.outline),
+  //     );
 
   // 重置按钮样式（统一样式）
   ButtonStyle _resetButtonStyle(BuildContext context) =>
@@ -622,10 +622,7 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
       unansweredItems.add('酒度');
     }
 
-    if (settings.enableBlindTasteScore &&
-        state.userAnswer.selectedTotalScore == 91.0) {
-      unansweredItems.add('总分');
-    }
+    // 总分有默认值91.0，用户选择保持默认值也是有效作答，所以不检查未作答
 
     if (settings.enableBlindTasteEquipment &&
         state.userAnswer.selectedEquipment.isEmpty) {
@@ -811,21 +808,52 @@ class _BlindTastePageState extends ConsumerState<BlindTastePage> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            // 只保留开始新一轮按钮
+            // 开始新一轮按钮
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 onPressed: () {
                   HapticManager.medium();
                   _handleNextQuestion();
                 },
-                style: _secondaryButtonStyle(context),
-                child: Text(
+                icon: const Icon(Icons.refresh),
+                label: const Text(
                   '开始新一轮',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // 返回首页按钮
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  HapticManager.medium();
+                  ref.read(blindTasteProvider.notifier).reset();
+                  appRouter.goToHome();
+                },
+                icon: const Icon(Icons.home),
+                label: const Text(
+                  '返回首页',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  side: BorderSide(
+                    color: Theme.of(context).colorScheme.outline,
                   ),
                 ),
               ),

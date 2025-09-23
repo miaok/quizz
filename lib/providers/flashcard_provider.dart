@@ -125,6 +125,14 @@ class FlashcardController extends StateNotifier<FlashcardState> {
   /// 切换到下一张卡片
   Future<void> nextCard() async {
     try {
+      // 如果当前已经是最后一张卡片，则标记轮次完成
+      if (state.currentIndex == state.items.length - 1) {
+        state = state.copyWith(isRoundCompleted: true);
+        // 如果完成了一轮，清除保存的进度
+        await clearProgress();
+        return;
+      }
+
       if (!state.hasNext) return;
 
       final nextIndex = state.currentIndex + 1;
@@ -150,16 +158,11 @@ class FlashcardController extends StateNotifier<FlashcardState> {
         viewedCardIds: updatedViewedIds,
         progress: progress,
         isCompleted: nextIndex == state.items.length - 1,
-        isRoundCompleted: nextIndex >= state.items.length - 1,
+        isRoundCompleted: false, // 只有当用户从最后一张卡片再次点击下一张时才完成
       );
 
-      // 自动保存进度，但如果已完成一轮则不保存
-      if (!state.isRoundCompleted) {
-        await _autoSaveProgress();
-      } else {
-        // 如果完成了一轮，清除保存的进度
-        await clearProgress();
-      }
+      // 自动保存进度
+      await _autoSaveProgress();
     } catch (e) {
       // 静默处理错误，避免崩溃
       debugPrint('FlashcardController.nextCard error: $e');
@@ -216,7 +219,7 @@ class FlashcardController extends StateNotifier<FlashcardState> {
       viewedCardIds: updatedViewedIds,
       progress: progress,
       isCompleted: index == state.items.length - 1,
-      isRoundCompleted: index == state.items.length - 1,
+      isRoundCompleted: false, // 跳转到卡片时不应该立即完成
     );
 
     // 自动保存进度
@@ -356,7 +359,7 @@ class FlashcardController extends StateNotifier<FlashcardState> {
         minAlcoholDegree: progress.flashcardMinAlcohol,
         maxAlcoholDegree: progress.flashcardMaxAlcohol,
         viewedCardIds: progress.flashcardViewedIds ?? <int>{},
-        isRoundCompleted: progress.currentIndex >= filteredItems.length - 1,
+        isRoundCompleted: false, // 恢复进度时不应该立即完成
       );
 
       return true;

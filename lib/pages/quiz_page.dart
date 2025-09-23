@@ -98,6 +98,23 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     horizontal: 20,
   );
 
+  // 按钮样式方法
+  ButtonStyle _secondaryButtonStyle(BuildContext context) =>
+      OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
+      );
+
+  ButtonStyle _primaryButtonStyle(BuildContext context) =>
+      ElevatedButton.styleFrom(
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 2,
+      );
+
   @override
   void initState() {
     super.initState();
@@ -277,6 +294,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   void _handlePracticeModeAnswer(QuizController controller) {
     final isCorrect = controller.isCurrentAnswerCorrect();
     final quizState = ref.read(quizControllerProvider);
+    final currentQuestion = quizState.questions[quizState.currentQuestionIndex];
 
     // 设置处理状态，防止快速点击
     setState(() {
@@ -295,8 +313,20 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       });
 
       // 延迟1秒后切换到下一题，让用户看到绿色高亮
-      Future.delayed(const Duration(milliseconds: 1000), () {
+      Future.delayed(const Duration(milliseconds: 800), () {
         if (mounted) {
+          // 确保在切题前最后一次保存正确答案
+          final currentIndex = ref
+              .read(quizControllerProvider)
+              .currentQuestionIndex;
+          final currentAnswer = ref
+              .read(quizControllerProvider)
+              .userAnswers[currentIndex];
+          if (currentAnswer != null) {
+            // 再次确认答案已保存
+            controller.submitAnswer(currentAnswer);
+          }
+
           setState(() {
             _showingCorrectAnswer = false;
             _isAutoSwitching = false;
@@ -311,11 +341,16 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       HapticManager.wrongAnswer();
       setState(() {
         _showingWrongAnswer = true;
-        _isProcessingAnswer = false; // 立即恢复其他选项的正常状态，允许重新选择
+        // 保持 _isProcessingAnswer = true，禁止用户在变色期间点击其他选项
       });
 
+      // 根据题目类型确定延迟时间：多选题使用更长时间让用户看清楚错误，单选题使用较长时间让用户看清楚
+      final resetDelay = currentQuestion.type == QuestionType.multiple
+          ? const Duration(milliseconds: 700) // 多选题：延长变色时间让用户看清楚错误
+          : const Duration(milliseconds: 600); // 单选题：延迟重置让用户看到错误选项
+
       // 延迟重置答案，让用户看到错误选项的高亮显示
-      Future.delayed(const Duration(milliseconds: 1000), () {
+      Future.delayed(resetDelay, () {
         if (mounted) {
           // 重置当前答案
           controller.resetCurrentAnswer();
@@ -323,7 +358,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             currentAnswer = null;
             multipleAnswers.clear();
             _showingWrongAnswer = false;
-            // _isProcessingAnswer 已经在错误发生时立即设为 false，这里不需要再次设置
+            _isProcessingAnswer = false; // 现在在延迟后重置处理状态，允许重新选择
           });
         }
       });
@@ -452,12 +487,18 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         return _buildQuizContent(state, controller);
 
       case QuizStatus.completed:
-        // 答题完成，停止倒计时器并导航到结果页
-        _countdownTimer?.cancel();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          appRouter.goToResult();
-        });
-        return const Center(child: CircularProgressIndicator());
+        // 根据模式决定显示方式
+        if (state.mode == QuizMode.practice) {
+          // 练习模式：显示完成页面
+          return _buildCompletedView(state, controller);
+        } else {
+          // 模拟模式：跳转到结果页显示得分和错题统计
+          _countdownTimer?.cancel();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            appRouter.goToResult();
+          });
+          return const Center(child: CircularProgressIndicator());
+        }
 
       default:
         return const Center(child: Text('初始化中...'));
@@ -1114,14 +1155,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               isWrongAnswer: isWrongAnswer,
               isCorrectAnswer: isCorrectAnswer,
               isHintAnswer: isHintAnswer,
-              isDisabled: _isProcessingAnswer,
+              isDisabled: _isProcessingAnswer && !_showingWrongAnswer,
             ),
             borderRadius: BorderRadius.circular(_optionCardRadius),
           ),
           child: ListTile(
             contentPadding: _optionPadding,
             leading: GestureDetector(
-              onTap: _isProcessingAnswer
+              onTap: (_isProcessingAnswer || _showingWrongAnswer)
                   ? null
                   : () {
                       _handleSingleChoiceSelection(option, controller);
@@ -1132,7 +1173,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: (_isProcessingAnswer && !isSelected)
+                    color:
+                        (_isProcessingAnswer &&
+                            !_showingWrongAnswer &&
+                            !isSelected)
                         ? Theme.of(
                             context,
                           ).colorScheme.outline.withValues(alpha: 0.3)
@@ -1181,14 +1225,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   isWrongAnswer: isWrongAnswer,
                   isCorrectAnswer: isCorrectAnswer,
                   isHintAnswer: isHintAnswer,
-                  isDisabled: _isProcessingAnswer,
+                  isDisabled: _isProcessingAnswer && !_showingWrongAnswer,
                 ),
                 fontSize: 18, // 增大单选题字体大小
                 height: 1.4,
               ),
               child: Text(option),
             ),
-            onTap: _isProcessingAnswer
+            onTap: (_isProcessingAnswer || _showingWrongAnswer)
                 ? null
                 : () {
                     _handleSingleChoiceSelection(option, controller);
@@ -1203,7 +1247,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   }
 
   void _handleSingleChoiceSelection(String? value, QuizController controller) {
-    if (value == null || _isProcessingAnswer) return;
+    if (value == null || _isProcessingAnswer || _showingWrongAnswer) return;
 
     // 设置处理状态，防止快速点击
     setState(() {
@@ -1219,8 +1263,24 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       _isAutoSwitching = false;
     });
 
-    // 提交答案
+    // 立即提交答案并确保保存
     controller.submitAnswer(value);
+
+    // 立即再次确认答案已保存到状态中
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final currentIndex = ref
+            .read(quizControllerProvider)
+            .currentQuestionIndex;
+        final savedAnswer = ref
+            .read(quizControllerProvider)
+            .userAnswers[currentIndex];
+        if (savedAnswer != value) {
+          // 如果答案未正确保存，再次提交
+          controller.submitAnswer(value);
+        }
+      }
+    });
 
     final settings = ref.read(settingsProvider);
     final quizState = ref.read(quizControllerProvider);
@@ -1246,6 +1306,17 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       // 延迟0.6秒后自动切换到下一题并添加切题震动
       _autoNextTimer = Timer(const Duration(milliseconds: 600), () {
         if (mounted && !quizState.isLastQuestion) {
+          // 切题前再次确认答案已保存
+          final currentIndex = ref
+              .read(quizControllerProvider)
+              .currentQuestionIndex;
+          final savedAnswer = ref
+              .read(quizControllerProvider)
+              .userAnswers[currentIndex];
+          if (savedAnswer != value) {
+            controller.submitAnswer(value);
+          }
+
           HapticManager.switchQuestion();
           _autoSwitchToNext(controller);
         }
@@ -1260,7 +1331,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     String option,
     QuizController controller,
   ) {
-    if (_isProcessingAnswer) return;
+    if (_isProcessingAnswer || _showingWrongAnswer) return;
 
     // 取消自动切题定时器
     _autoNextTimer?.cancel();
@@ -1340,7 +1411,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
           child: ListTile(
             contentPadding: _optionPadding,
             leading: GestureDetector(
-              onTap: _isProcessingAnswer
+              onTap: (_isProcessingAnswer || _showingWrongAnswer)
                   ? null
                   : () {
                       _handleMultipleChoiceSelection(option, controller);
@@ -1351,7 +1422,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(
-                    color: (_isProcessingAnswer && !isSelected)
+                    color:
+                        (_isProcessingAnswer &&
+                            !_showingWrongAnswer &&
+                            !isSelected)
                         ? Theme.of(
                             context,
                           ).colorScheme.outline.withValues(alpha: 0.3)
@@ -1396,14 +1470,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   isWrongAnswer: isWrongAnswer,
                   isCorrectAnswer: isCorrectAnswer,
                   isHintAnswer: isHintAnswer,
-                  isDisabled: _isProcessingAnswer,
+                  isDisabled: _isProcessingAnswer && !_showingWrongAnswer,
                 ),
                 fontSize: 18, // 增大多选题字体大小
                 height: 1.4,
               ),
               child: Text(option),
             ),
-            onTap: _isProcessingAnswer
+            onTap: (_isProcessingAnswer || _showingWrongAnswer)
                 ? null
                 : () {
                     _handleMultipleChoiceSelection(option, controller);
@@ -1677,6 +1751,101 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         );
       }
     });
+  }
+
+  // 构建完成界面
+  Widget _buildCompletedView(QuizState state, QuizController controller) {
+    // 停止倒计时器
+    _countdownTimer?.cancel();
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.celebration,
+              size: 80,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              state.mode == QuizMode.practice ? '恭喜完成理论练习！' : '恭喜完成理论模拟！',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '您已完成 ${state.questions.length} 道题目',
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            // 开始新一轮按钮
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  HapticManager.medium();
+                  // 重新开始答题
+                  final currentMode = state.mode;
+                  final settings = ref.read(settingsProvider);
+                  controller.reset(currentMode);
+
+                  // 根据模式使用对应的启动方法
+                  if (currentMode == QuizMode.practice) {
+                    // 练习模式：使用全题库答题
+                    await controller.startAllQuestionsQuiz(
+                      shuffleOptions: settings.shuffleOptions,
+                      shuffleMode: settings.practiceShuffleMode,
+                    );
+                  } else {
+                    // 考试模式：使用设置启动
+                    await controller.startQuizWithSettings(
+                      singleCount: settings.singleChoiceCount,
+                      multipleCount: settings.multipleChoiceCount,
+                      booleanCount: settings.booleanCount,
+                      shuffleOptions: settings.shuffleOptions,
+                    );
+                  }
+                },
+                icon: const Icon(Icons.refresh),
+                label: Text(
+                  state.mode == QuizMode.practice ? '开始新一轮练习' : '开始新一轮模拟',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: _primaryButtonStyle(context),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // 返回首页按钮
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  HapticManager.medium();
+                  controller.reset(state.mode);
+                  appRouter.goToHome();
+                },
+                icon: const Icon(Icons.home),
+                label: const Text(
+                  '返回首页',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                style: _secondaryButtonStyle(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _handleBackPressed(BuildContext context) {

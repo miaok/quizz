@@ -561,7 +561,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
           Expanded(
             child: ElevatedButton(
               onPressed: () => _retryQuiz(context, controller),
-              child: const Text('再次答题'),
+              child: const Text('再次模拟'),
             ),
           ),
         ],
