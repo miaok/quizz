@@ -98,69 +98,40 @@ class BlindTasteAnswer {
   }) {
     double score = 0.0;
 
-    // 计算启用的项目数量，用于动态分配分数
-    int enabledItemsCount = 0;
-    if (enableAroma) enabledItemsCount++;
-    if (enableAlcohol) enabledItemsCount++;
-    if (enableScore) enabledItemsCount++;
-    if (enableEquipment) enabledItemsCount++;
-    if (enableFermentation) enabledItemsCount++;
+    // 由于香型已被移除，只计算4个项目，每项25分
+    // 酒度、总分、设备、发酵剂各25分
 
-    if (enabledItemsCount == 0) return 0.0;
-
-    // 每个项目的基础分数（总分100分平均分配）
-    double baseScore = 100.0 / enabledItemsCount;
-
-    // 香型匹配
-    if (enableAroma && selectedAroma == correctAnswer.aroma) {
-      score += baseScore;
-    }
-
-    // 酒度匹配 - 允许±1-2度误差
+    // 酒度匹配 - 必须完全匹配
     if (enableAlcohol && selectedAlcoholDegree != null) {
-      double diff = (selectedAlcoholDegree! - correctAnswer.alcoholDegree)
-          .abs();
-      if (diff <= 1) {
-        score += baseScore;
-      } else if (diff <= 2) {
-        score += baseScore * 0.25; // 部分分数
+      if (selectedAlcoholDegree == correctAnswer.alcoholDegree) {
+        score += 25.0;
       }
     }
 
     // 总分匹配 - 必须完全匹配
     if (enableScore) {
       if (selectedTotalScore == correctAnswer.totalScore) {
-        score += baseScore;
+        score += 25.0;
       }
     }
 
-    // 设备匹配 - 顺序不影响，只要包含的元素相同
+    // 设备匹配 - 必须完全匹配，顺序不影响
     if (enableEquipment) {
       Set<String> selectedEquipmentSet = selectedEquipment.toSet();
       Set<String> correctEquipmentSet = correctAnswer.equipment.toSet();
       if (selectedEquipmentSet.length == correctEquipmentSet.length &&
           selectedEquipmentSet.containsAll(correctEquipmentSet)) {
-        score += baseScore;
-      } else if (correctEquipmentSet.isNotEmpty) {
-        int equipmentMatches = selectedEquipmentSet
-            .intersection(correctEquipmentSet)
-            .length;
-        score += (equipmentMatches / correctEquipmentSet.length) * baseScore;
+        score += 25.0;
       }
     }
 
-    // 发酵剂匹配 - 顺序不影响，只要包含的元素相同
+    // 发酵剂匹配 - 必须完全匹配，顺序不影响
     if (enableFermentation) {
       Set<String> selectedAgentSet = selectedFermentationAgent.toSet();
       Set<String> correctAgentSet = correctAnswer.fermentationAgent.toSet();
       if (selectedAgentSet.length == correctAgentSet.length &&
           selectedAgentSet.containsAll(correctAgentSet)) {
-        score += baseScore;
-      } else if (correctAgentSet.isNotEmpty) {
-        int fermentationMatches = selectedAgentSet
-            .intersection(correctAgentSet)
-            .length;
-        score += (fermentationMatches / correctAgentSet.length) * baseScore;
+        score += 25.0;
       }
     }
 

@@ -624,16 +624,4 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     if (score >= 60) return Colors.orange;
     return Colors.red;
   }
-
-  // String _getScoreLevel(double score) {
-  //   if (score >= 90) return '优秀';
-  //   if (score >= 80) return '良好';
-  //   if (score >= 60) return '及格';
-  //   return '不及格';
-  // }
-
-  // String _formatDateTime(DateTime dateTime) {
-  //   return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
-  //       '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-  // }
 }

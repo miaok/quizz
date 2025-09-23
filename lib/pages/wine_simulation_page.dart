@@ -404,8 +404,9 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
                         fontSize: isLandscape ? 16 : 18,
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.black  // 深色模式下使用黑色
-                            : Colors.white,  // 浅色模式下使用白色
+                            ? Colors
+                                  .black // 深色模式下使用黑色
+                            : Colors.white, // 浅色模式下使用白色
                       ),
                     ),
                   ),
@@ -798,28 +799,9 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
               ),
               const SizedBox(height: 8),
 
-              // 详细对比
+              // 详细对比 - 网格布局
               if (glass.userAnswer != null) ...[
-                // if (settings.enableBlindTasteAromaForced)
-                //   _buildComparisonRow(
-                //     '香型',
-                //     glass.userAnswer!.selectedAroma ?? '未选择',
-                //     glass.wineItem!.aroma,
-                //   ),
-                if (settings.enableBlindTasteAlcohol)
-                  _buildComparisonRow(
-                    '酒度',
-                    glass.userAnswer!.selectedAlcoholDegree != null
-                        ? '${glass.userAnswer!.selectedAlcoholDegree!.toInt()}°'
-                        : '未选择',
-                    '${glass.wineItem!.alcoholDegree.toInt()}°',
-                  ),
-                if (settings.enableBlindTasteScore)
-                  _buildComparisonRow(
-                    '总分',
-                    glass.userAnswer!.selectedTotalScore.toStringAsFixed(1),
-                    glass.wineItem!.totalScore.toStringAsFixed(1),
-                  ),
+                _buildCompactComparisonGrid(glass, settings),
               ],
             ],
           ],
@@ -828,46 +810,168 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
     );
   }
 
-  Widget _buildComparisonRow(
+  Widget _buildCompactComparisonGrid(WineGlassState glass, dynamic settings) {
+    final answer = glass.userAnswer!;
+    final wineItem = glass.wineItem!;
+
+    List<Widget> comparisonItems = [];
+
+    // 香型对比
+    // if (settings.enableBlindTasteAromaForced && answer.selectedAroma != null) {
+    //   comparisonItems.add(
+    //     _buildCompactComparisonItem(
+    //       '香型',
+    //       answer.selectedAroma!,
+    //       wineItem.aroma,
+    //     ),
+    //   );
+    // }
+
+    // 酒度对比
+    if (settings.enableBlindTasteAlcohol &&
+        answer.selectedAlcoholDegree != null) {
+      comparisonItems.add(
+        _buildCompactComparisonItem(
+          '酒度',
+          '${answer.selectedAlcoholDegree!.toInt()}°',
+          '${wineItem.alcoholDegree.toInt()}°',
+        ),
+      );
+    }
+
+    // 总分对比
+    if (settings.enableBlindTasteScore) {
+      comparisonItems.add(
+        _buildCompactComparisonItem(
+          '总分',
+          '${answer.selectedTotalScore.toStringAsFixed(1)}分',
+          '${wineItem.totalScore.toStringAsFixed(1)}分',
+        ),
+      );
+    }
+
+    // 设备对比
+    if (settings.enableBlindTasteEquipment &&
+        answer.selectedEquipment.isNotEmpty) {
+      comparisonItems.add(
+        _buildCompactComparisonItem(
+          '设备',
+          answer.selectedEquipment.join('、'),
+          wineItem.equipment.join('、'),
+          userAnswerList: answer.selectedEquipment,
+          correctAnswerList: wineItem.equipment,
+        ),
+      );
+    }
+
+    // 发酵剂对比
+    if (settings.enableBlindTasteFermentation &&
+        answer.selectedFermentationAgent.isNotEmpty) {
+      comparisonItems.add(
+        _buildCompactComparisonItem(
+          '发酵剂',
+          answer.selectedFermentationAgent.join('、'),
+          wineItem.fermentationAgent.join('、'),
+          userAnswerList: answer.selectedFermentationAgent,
+          correctAnswerList: wineItem.fermentationAgent,
+        ),
+      );
+    }
+
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      childAspectRatio: 2.0,
+      crossAxisSpacing: 8,
+      mainAxisSpacing: 6,
+      children: comparisonItems,
+    );
+  }
+
+  Widget _buildCompactComparisonItem(
     String label,
     String userAnswer,
-    String correctAnswer,
-  ) {
-    final isCorrect = userAnswer == correctAnswer;
+    String correctAnswer, {
+    List<String>? userAnswerList,
+    List<String>? correctAnswerList,
+  }) {
+    bool isCorrect;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
+    // 如果提供了列表参数，则使用集合比较
+    if (userAnswerList != null && correctAnswerList != null) {
+      Set<String> userSet = userAnswerList.toSet();
+      Set<String> correctSet = correctAnswerList.toSet();
+      isCorrect =
+          userSet.length == correctSet.length &&
+          userSet.containsAll(correctSet);
+    } else {
+      // 否则使用字符串比较
+      isCorrect = userAnswer == correctAnswer;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: isCorrect
+            ? Colors.green.withValues(alpha: 0.05)
+            : Colors.red.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isCorrect
+              ? Colors.green.withValues(alpha: 0.2)
+              : Colors.red.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 60,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+          // 标题和状态
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 11,
+                  ),
+                ),
               ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              userAnswer,
-              style: TextStyle(
+              Icon(
+                isCorrect ? Icons.check_circle : Icons.cancel,
+                size: 14,
                 color: isCorrect ? Colors.green : Colors.red,
-                fontWeight: FontWeight.w500,
               ),
-            ),
+            ],
           ),
-          Icon(
-            isCorrect ? Icons.check : Icons.close,
-            size: 16,
-            color: isCorrect ? Colors.green : Colors.red,
-          ),
-          const SizedBox(width: 8),
+          const SizedBox(height: 4),
+
+          // 用户答案
           Text(
-            correctAnswer,
+            '您: $userAnswer',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: isCorrect ? Colors.green.shade700 : Colors.red.shade700,
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+
+          // 正确答案
+          Text(
+            '答: $correctAnswer',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.green.shade700,
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
