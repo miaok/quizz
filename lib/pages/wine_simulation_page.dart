@@ -352,7 +352,6 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
       ),
       child: InkWell(
         onTap: () {
-          HapticManager.medium();
           _openWineGlassModal(glass, index);
         },
         borderRadius: BorderRadius.circular(isLandscape ? 16 : 16),
@@ -526,21 +525,20 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
   }
 
   Widget _buildResultsView(WineSimulationState state) {
+    final settings = ref.watch(settingsProvider);
+    final bool isQualityMode = settings.enableWineSimulationSameWineSeries;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 总体统计
-          _buildOverallStats(state),
-
-          const SizedBox(height: 14),
-
-          // 重复酒样检测结果
-          if (state.duplicateGroups.isNotEmpty)
+          // 重复酒样检测结果 - 只在非质量差模式下显示
+          if (!isQualityMode && state.duplicateGroups.isNotEmpty)
             _buildDuplicateDetectionResults(state),
 
-          if (state.duplicateGroups.isNotEmpty) const SizedBox(height: 16),
+          if (!isQualityMode && state.duplicateGroups.isNotEmpty)
+            const SizedBox(height: 16),
 
           // 详细结果列表
           Expanded(
@@ -578,73 +576,13 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
                     Navigator.of(context).pop();
                   },
                   style: _secondaryButtonStyle(context),
-                  child: const Text('返回'),
+                  child: const Text('返回首页'),
                 ),
               ),
             ],
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildOverallStats(WineSimulationState state) {
-    final totalGlasses = state.wineGlasses.length;
-    final correctCount = state.wineGlasses
-        .where((glass) => (glass.score ?? 0.0) >= 80.0)
-        .length;
-    final averageScore = state.wineGlasses.isNotEmpty
-        ? state.wineGlasses
-                  .map((glass) => glass.score ?? 0.0)
-                  .reduce((a, b) => a + b) /
-              totalGlasses
-        : 0.0;
-
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem('总酒杯数', '$totalGlasses', Icons.wine_bar),
-                _buildStatItem('正确识别', '$correctCount', Icons.check_circle),
-                _buildStatItem(
-                  '平均得分',
-                  averageScore.toStringAsFixed(1),
-                  Icons.star,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, size: 24, color: Theme.of(context).colorScheme.primary),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
     );
   }
 
@@ -712,6 +650,15 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
   ) {
     if (glassIndices.length < 2) return true;
 
+    final settings = ref.watch(settingsProvider);
+    final bool isQualityMode = settings.enableWineSimulationSameWineSeries;
+
+    // 在质量差模式下，由于每个酒样都是不同的，不需要重复检测
+    if (isQualityMode) {
+      return true;
+    }
+
+    // 非质量差模式的重复检测逻辑
     // 检查用户是否正确识别了这些酒杯包含相同的酒样
     final firstGlass = state.wineGlasses[glassIndices.first];
     final firstAnswer = firstGlass.userAnswer;
@@ -740,8 +687,9 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
     int index,
     WineSimulationState state,
   ) {
+    // 简化的对错判断逻辑：100分表示正确，0分表示错误
     final score = glass.score ?? 0.0;
-    final isCorrect = score >= 80.0;
+    final isCorrect = score >= 100.0;
     final settings = ref.watch(settingsProvider);
 
     return Card(
@@ -778,7 +726,7 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    '${score.toStringAsFixed(1)}分',
+                    isCorrect ? '正确' : '错误',
                     style: TextStyle(
                       color: isCorrect ? Colors.green : Colors.red,
                       fontWeight: FontWeight.bold,
@@ -792,7 +740,7 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
 
             if (glass.wineItem != null) ...[
               Text(
-                '正确答案: ${glass.wineItem!.name}',
+                '酒样: ${_getDisplayWineName(glass.wineItem!.name)}',
                 style: Theme.of(
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -817,15 +765,15 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
     List<Widget> comparisonItems = [];
 
     // 香型对比
-    // if (settings.enableBlindTasteAromaForced && answer.selectedAroma != null) {
-    //   comparisonItems.add(
-    //     _buildCompactComparisonItem(
-    //       '香型',
-    //       answer.selectedAroma!,
-    //       wineItem.aroma,
-    //     ),
-    //   );
-    // }
+    if (settings.enableBlindTasteAromaForced && answer.selectedAroma != null) {
+      comparisonItems.add(
+        _buildCompactComparisonItem(
+          '香型',
+          answer.selectedAroma!,
+          wineItem.aroma,
+        ),
+      );
+    }
 
     // 酒度对比
     if (settings.enableBlindTasteAlcohol &&
@@ -881,10 +829,10 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      childAspectRatio: 2.0,
+      crossAxisCount: 2, // 2列布局
+      childAspectRatio: 2.2, // 增加宽高比，让卡片更宽一些，减少高度
       crossAxisSpacing: 8,
-      mainAxisSpacing: 6,
+      mainAxisSpacing: 4, // 减小主轴间距
       children: comparisonItems,
     );
   }
@@ -911,12 +859,12 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(4), // 减小内边距
       decoration: BoxDecoration(
         color: isCorrect
             ? Colors.green.withValues(alpha: 0.05)
             : Colors.red.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: isCorrect
               ? Colors.green.withValues(alpha: 0.2)
@@ -936,18 +884,18 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 11,
+                    fontSize: 12, // 稍微增加字体大小以提高可读性
                   ),
                 ),
               ),
               Icon(
                 isCorrect ? Icons.check_circle : Icons.cancel,
-                size: 14,
+                size: 12, // 稍微减小图标大小
                 color: isCorrect ? Colors.green : Colors.red,
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
 
           // 用户答案
           Text(
@@ -955,12 +903,12 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: isCorrect ? Colors.green.shade700 : Colors.red.shade700,
               fontWeight: FontWeight.w500,
-              fontSize: 12,
+              fontSize: 11, // 稍微增加字体大小
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 1),
 
           // 正确答案
           Text(
@@ -968,7 +916,7 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Colors.green.shade700,
               fontWeight: FontWeight.w500,
-              fontSize: 12,
+              fontSize: 11, // 稍微增加字体大小
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -976,6 +924,13 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
         ],
       ),
     );
+  }
+
+  /// 获取酒样显示名称
+  /// 所有模式都保留完整的酒样名称（包括序号）
+  String _getDisplayWineName(String wineName) {
+    // 保留完整的酒样名称，不移除序号后缀
+    return wineName;
   }
 
   // 获取下一个未完成的酒杯索引
@@ -1301,7 +1256,6 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                     child: OutlinedButton(
                       onPressed: widget.hasNextGlass && widget.onNext != null
                           ? () {
-                              HapticManager.medium();
                               widget.onNext!(_currentAnswer);
                             }
                           : null,

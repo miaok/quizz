@@ -87,7 +87,7 @@ class BlindTasteAnswer {
     this.selectedFermentationAgent = const [],
   });
 
-  /// 计算得分（根据启用的品鉴项目动态分配分数）
+  /// 判断对错（返回100分表示正确，0分表示错误）
   double calculateScore(
     BlindTasteItemModel correctAnswer, {
     bool enableAroma = true,
@@ -96,46 +96,52 @@ class BlindTasteAnswer {
     bool enableEquipment = true,
     bool enableFermentation = true,
   }) {
-    double score = 0.0;
+    // 检查各项是否匹配，只要有一项不匹配就是错误
+    bool isCorrect = true;
 
-    // 由于香型已被移除，只计算4个项目，每项25分
-    // 酒度、总分、设备、发酵剂各25分
+    // 香型匹配检查
+    if (enableAroma && selectedAroma != null) {
+      if (selectedAroma != correctAnswer.aroma) {
+        isCorrect = false;
+      }
+    }
 
-    // 酒度匹配 - 必须完全匹配
+    // 酒度匹配检查
     if (enableAlcohol && selectedAlcoholDegree != null) {
-      if (selectedAlcoholDegree == correctAnswer.alcoholDegree) {
-        score += 25.0;
+      if (selectedAlcoholDegree != correctAnswer.alcoholDegree) {
+        isCorrect = false;
       }
     }
 
-    // 总分匹配 - 必须完全匹配
+    // 总分匹配检查
     if (enableScore) {
-      if (selectedTotalScore == correctAnswer.totalScore) {
-        score += 25.0;
+      if (selectedTotalScore != correctAnswer.totalScore) {
+        isCorrect = false;
       }
     }
 
-    // 设备匹配 - 必须完全匹配，顺序不影响
+    // 设备匹配检查
     if (enableEquipment) {
       Set<String> selectedEquipmentSet = selectedEquipment.toSet();
       Set<String> correctEquipmentSet = correctAnswer.equipment.toSet();
-      if (selectedEquipmentSet.length == correctEquipmentSet.length &&
-          selectedEquipmentSet.containsAll(correctEquipmentSet)) {
-        score += 25.0;
+      if (selectedEquipmentSet.length != correctEquipmentSet.length ||
+          !selectedEquipmentSet.containsAll(correctEquipmentSet)) {
+        isCorrect = false;
       }
     }
 
-    // 发酵剂匹配 - 必须完全匹配，顺序不影响
+    // 发酵剂匹配检查
     if (enableFermentation) {
       Set<String> selectedAgentSet = selectedFermentationAgent.toSet();
       Set<String> correctAgentSet = correctAnswer.fermentationAgent.toSet();
-      if (selectedAgentSet.length == correctAgentSet.length &&
-          selectedAgentSet.containsAll(correctAgentSet)) {
-        score += 25.0;
+      if (selectedAgentSet.length != correctAgentSet.length ||
+          !selectedAgentSet.containsAll(correctAgentSet)) {
+        isCorrect = false;
       }
     }
 
-    return score.clamp(0, 100);
+    // 返回100分（正确）或0分（错误）
+    return isCorrect ? 100.0 : 0.0;
   }
 
   /// 兼容性方法：使用默认设置计算得分

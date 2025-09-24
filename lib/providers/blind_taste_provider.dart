@@ -133,7 +133,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     double? minAlcoholDegree,
     double? maxAlcoholDegree,
   }) async {
-    debugPrint('Starting new blind taste session with params: maxItems=$maxItemsPerRound, aroma=$aromaFilter, minAlc=$minAlcoholDegree, maxAlc=$maxAlcoholDegree');
+    debugPrint(
+      'Starting new blind taste session with params: maxItems=$maxItemsPerRound, aroma=$aromaFilter, minAlc=$minAlcoholDegree, maxAlc=$maxAlcoholDegree',
+    );
 
     state = state.copyWith(isLoading: true, error: null);
 
@@ -195,13 +197,17 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
   /// 保存当前题目的答案
   void _saveCurrentAnswer() {
     if (state.currentItem?.id != null) {
-      final newSavedAnswers = Map<int, BlindTasteAnswer>.from(state.savedAnswers);
+      final newSavedAnswers = Map<int, BlindTasteAnswer>.from(
+        state.savedAnswers,
+      );
       newSavedAnswers[state.currentItem!.id!] = BlindTasteAnswer(
         selectedAroma: state.userAnswer.selectedAroma,
         selectedAlcoholDegree: state.userAnswer.selectedAlcoholDegree,
         selectedTotalScore: state.userAnswer.selectedTotalScore,
         selectedEquipment: List.from(state.userAnswer.selectedEquipment),
-        selectedFermentationAgent: List.from(state.userAnswer.selectedFermentationAgent),
+        selectedFermentationAgent: List.from(
+          state.userAnswer.selectedFermentationAgent,
+        ),
       );
 
       state = state.copyWith(savedAnswers: newSavedAnswers);
@@ -227,7 +233,8 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     final nextItem = state.questionPool[nextIndex];
 
     // 尝试恢复该题目的已保存答案
-    BlindTasteAnswer restoredAnswer = state.savedAnswers[nextItem.id] ?? BlindTasteAnswer();
+    BlindTasteAnswer restoredAnswer =
+        state.savedAnswers[nextItem.id] ?? BlindTasteAnswer();
 
     state = state.copyWith(
       currentItem: nextItem,
@@ -313,7 +320,7 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
 
   /// 设置总分
   void setTotalScore(double score) {
-    final newScore = score.clamp(84.0, 98.0);
+    final newScore = score.clamp(87.0, 95.0);
 
     final newAnswer = BlindTasteAnswer(
       selectedAroma: state.userAnswer.selectedAroma,
@@ -398,7 +405,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
   void resetCurrentAnswer() {
     // 从保存的答案中移除当前题目
     if (state.currentItem?.id != null) {
-      final newSavedAnswers = Map<int, BlindTasteAnswer>.from(state.savedAnswers);
+      final newSavedAnswers = Map<int, BlindTasteAnswer>.from(
+        state.savedAnswers,
+      );
       newSavedAnswers.remove(state.currentItem!.id!);
 
       state = state.copyWith(
@@ -498,7 +507,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
 
   /// 跳转到指定的题目（支持跳转到任意题目的作答页面）
   void goToQuestion(int index) {
-    if (index < 0 || index >= state.totalItemsInPool || state.questionPool.isEmpty) {
+    if (index < 0 ||
+        index >= state.totalItemsInPool ||
+        state.questionPool.isEmpty) {
       debugPrint('Invalid question index: $index or empty question pool');
       return;
     }
@@ -510,7 +521,8 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
     final targetItem = state.questionPool[index];
 
     // 尝试恢复该题目的已保存答案
-    BlindTasteAnswer userAnswer = state.savedAnswers[targetItem.id] ?? BlindTasteAnswer();
+    BlindTasteAnswer userAnswer =
+        state.savedAnswers[targetItem.id] ?? BlindTasteAnswer();
 
     // 更新状态到作答页面（不是结果页面）
     state = state.copyWith(
@@ -554,7 +566,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
       return false;
     }
 
-    debugPrint('Found valid saved progress: type=${progress.type}, currentIndex=${progress.currentIndex}, itemId=${progress.blindTasteItemId}');
+    debugPrint(
+      'Found valid saved progress: type=${progress.type}, currentIndex=${progress.currentIndex}, itemId=${progress.blindTasteItemId}',
+    );
 
     try {
       // 重新初始化服务，确保应用重启后能正常工作
@@ -576,7 +590,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
       // 恢复题目池状态
       if (progress.blindTasteQuestionPool != null &&
           progress.blindTasteQuestionPool!.isNotEmpty) {
-        debugPrint('Restoring question pool with ${progress.blindTasteQuestionPool!.length} items');
+        debugPrint(
+          'Restoring question pool with ${progress.blindTasteQuestionPool!.length} items',
+        );
 
         BlindTasteItemModel? currentItem;
         BlindTasteAnswer? currentAnswer = progress.blindTasteAnswer;
@@ -584,23 +600,32 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
 
         // 首先尝试恢复当前题目
         if (progress.blindTasteItemId != null) {
-          debugPrint('Attempting to restore current item with ID: ${progress.blindTasteItemId}');
+          debugPrint(
+            'Attempting to restore current item with ID: ${progress.blindTasteItemId}',
+          );
 
           // 检查当前题目是否已完成
-          final isCurrentCompleted = progress.blindTasteCompletedIds != null &&
-              progress.blindTasteCompletedIds!.contains(progress.blindTasteItemId!);
+          final isCurrentCompleted =
+              progress.blindTasteCompletedIds != null &&
+              progress.blindTasteCompletedIds!.contains(
+                progress.blindTasteItemId!,
+              );
 
           debugPrint('Current item completed status: $isCurrentCompleted');
 
           if (isCurrentCompleted) {
             // 当前题目已完成，找下一题
-            debugPrint('Current item is completed, looking for next uncompleted item');
+            debugPrint(
+              'Current item is completed, looking for next uncompleted item',
+            );
             currentItem = _service.getNextUncompletedItem(
               progress.blindTasteQuestionPool!,
               progress.blindTasteCompletedIds!,
             );
             if (currentItem != null) {
-              debugPrint('Found next uncompleted item: ${currentItem.name} (ID: ${currentItem.id})');
+              debugPrint(
+                'Found next uncompleted item: ${currentItem.name} (ID: ${currentItem.id})',
+              );
               currentAnswer = BlindTasteAnswer(); // 新题目使用空答案
               isCompleted = false;
             } else {
@@ -610,9 +635,13 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
             // 当前题目未完成，尝试恢复
             debugPrint('Current item is not completed, attempting to restore');
             try {
-              currentItem = await _service.getItemById(progress.blindTasteItemId!);
+              currentItem = await _service.getItemById(
+                progress.blindTasteItemId!,
+              );
               if (currentItem != null) {
-                debugPrint('Successfully restored current item: ${currentItem.name}');
+                debugPrint(
+                  'Successfully restored current item: ${currentItem.name}',
+                );
                 isCompleted = false; // 未完成的题目
               } else {
                 debugPrint('Failed to find current item by ID');
@@ -625,13 +654,17 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
 
         // 如果仍然没有currentItem，从题目池中获取第一个未完成的
         if (currentItem == null) {
-          debugPrint('No current item found, getting first uncompleted item from pool');
+          debugPrint(
+            'No current item found, getting first uncompleted item from pool',
+          );
           currentItem = _service.getNextUncompletedItem(
             progress.blindTasteQuestionPool!,
             progress.blindTasteCompletedIds ?? <int>{},
           );
           if (currentItem != null) {
-            debugPrint('Found first uncompleted item: ${currentItem.name} (ID: ${currentItem.id})');
+            debugPrint(
+              'Found first uncompleted item: ${currentItem.name} (ID: ${currentItem.id})',
+            );
             currentAnswer = BlindTasteAnswer();
             isCompleted = false;
           } else {
@@ -657,14 +690,16 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
           userAnswer: currentAnswer ?? BlindTasteAnswer(),
           currentIndex: progress.currentIndex,
           isCompleted: isCompleted,
-          finalScore: isCompleted && currentItem != null ? progress.blindTasteAnswer?.calculateScore(
-            currentItem,
-            enableAroma: settings.enableBlindTasteAroma,
-            enableAlcohol: settings.enableBlindTasteAlcohol,
-            enableScore: settings.enableBlindTasteScore,
-            enableEquipment: settings.enableBlindTasteEquipment,
-            enableFermentation: settings.enableBlindTasteFermentation,
-          ) : null,
+          finalScore: isCompleted && currentItem != null
+              ? progress.blindTasteAnswer?.calculateScore(
+                  currentItem,
+                  enableAroma: settings.enableBlindTasteAroma,
+                  enableAlcohol: settings.enableBlindTasteAlcohol,
+                  enableScore: settings.enableBlindTasteScore,
+                  enableEquipment: settings.enableBlindTasteEquipment,
+                  enableFermentation: settings.enableBlindTasteFermentation,
+                )
+              : null,
           isLoading: false,
           questionPool: progress.blindTasteQuestionPool!,
           completedItemIds: progress.blindTasteCompletedIds ?? <int>{},
@@ -676,7 +711,9 @@ class BlindTasteNotifier extends StateNotifier<BlindTasteState> {
           maxAlcoholDegree: progress.blindTasteMaxAlcohol,
         );
 
-        debugPrint('Progress restored successfully. Current item: ${currentItem?.name ?? "null"}');
+        debugPrint(
+          'Progress restored successfully. Current item: ${currentItem?.name ?? "null"}',
+        );
         return true;
       } else {
         debugPrint('No question pool found in saved progress');

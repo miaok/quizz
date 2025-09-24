@@ -148,7 +148,8 @@ class WineSimulationNotifier extends StateNotifier<WineSimulationState> {
   }
 
   /// 生成酒样分配（包含重复酒样逻辑）
-  /// 生成同酒样系列的酒样分配
+  /// 生成同酒样系列的酒样分配（质量差模式）
+  /// 选择同一厂家的1#-5#酒样，每个都有不同的质量参数
   Map<String, dynamic> _generateSameWineSeries(
     List<BlindTasteItemModel> allWines,
     int glassCount,
@@ -160,34 +161,58 @@ class WineSimulationNotifier extends StateNotifier<WineSimulationState> {
       };
     }
 
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final baseWine = allWines[timestamp % allWines.length];
-    final sanitizedBaseName = baseWine.name
-        .replaceAll(RegExp(r'(?:\d+#)$'), '')
-        .trim();
-    final baseDisplayName = sanitizedBaseName.isEmpty
-        ? baseWine.name
-        : sanitizedBaseName;
-    final appendHash = !baseDisplayName.endsWith('#');
+    // 找到所有带序号的酒样，按基础名称分组
+    final Map<String, List<BlindTasteItemModel>> wineGroups = {};
 
-    final wines = List<BlindTasteItemModel>.generate(glassCount, (index) {
-      final suffix = appendHash ? '${index + 1}#' : '${index + 1}';
-      return BlindTasteItemModel(
-        id: baseWine.id,
-        name: '$baseDisplayName$suffix',
-        aroma: baseWine.aroma,
-        alcoholDegree: baseWine.alcoholDegree,
-        totalScore: baseWine.totalScore,
-        equipment: List<String>.from(baseWine.equipment),
-        fermentationAgent: List<String>.from(baseWine.fermentationAgent),
-      );
+    for (final wine in allWines) {
+      // 提取基础名称（移除序号后缀）
+      final match = RegExp(r'^(.+?)(\d+)#?$').firstMatch(wine.name);
+      if (match != null) {
+        final baseName = match.group(1)?.trim() ?? '';
+        if (baseName.isNotEmpty) {
+          wineGroups.putIfAbsent(baseName, () => []);
+          wineGroups[baseName]!.add(wine);
+        }
+      }
+    }
+
+    // 过滤出有足够数量酒样的厂家组（至少要有glassCount个酒样）
+    final validGroups = wineGroups.entries
+        .where((entry) => entry.value.length >= glassCount)
+        .toList();
+
+    if (validGroups.isEmpty) {
+      // 如果没有符合条件的组，回退到随机选择不同酒样
+      final wines = <BlindTasteItemModel>[];
+      for (int i = 0; i < glassCount; i++) {
+        wines.add(allWines[i % allWines.length]);
+      }
+      return {
+        'wines': wines,
+        'duplicateGroups': <String, List<int>>{},
+      };
+    }
+
+    // 随机选择一个厂家组
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final selectedGroup = validGroups[timestamp % validGroups.length].value;
+
+    // 对酒样按序号排序
+    selectedGroup.sort((a, b) {
+      final aMatch = RegExp(r'(\d+)#?$').firstMatch(a.name);
+      final bMatch = RegExp(r'(\d+)#?$').firstMatch(b.name);
+      final aNum = aMatch != null ? int.tryParse(aMatch.group(1) ?? '0') ?? 0 : 0;
+      final bNum = bMatch != null ? int.tryParse(bMatch.group(1) ?? '0') ?? 0 : 0;
+      return aNum.compareTo(bNum);
     });
 
+    // 取前glassCount个酒样
+    final wines = selectedGroup.take(glassCount).toList();
+
+    // 质量差模式下不需要重复检测逻辑，每个酒样都是不同的
     return {
       'wines': wines,
-      'duplicateGroups': {
-        baseDisplayName: List<int>.generate(glassCount, (index) => index),
-      },
+      'duplicateGroups': <String, List<int>>{}, // 空的重复组
     };
   }
 

@@ -131,7 +131,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         ),
         const SizedBox(height: 16),
         _buildSectionCard(
-          title: '同酒样系列模式',
+          title: '质量差模式',
           icon: Icons.numbers,
           child: _buildSameWineSeriesSection(settings, controller),
         ),

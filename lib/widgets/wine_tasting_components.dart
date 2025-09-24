@@ -140,12 +140,12 @@ class TotalScoreSectionWidget extends StatelessWidget {
               children: [
                 // 减分按钮
                 IconButton(
-                  onPressed: selectedTotalScore > 84.0
+                  onPressed: selectedTotalScore > 87.0
                       ? () {
                           HapticManager.medium();
                           final newScore = (selectedTotalScore - 0.2).clamp(
-                            84.0,
-                            98.0,
+                            87.0,
+                            95.0,
                           );
                           onScoreChanged(newScore);
                         }
@@ -171,10 +171,10 @@ class TotalScoreSectionWidget extends StatelessWidget {
                 const SizedBox(width: 2),
                 Expanded(
                   child: Slider(
-                    value: selectedTotalScore.clamp(84.0, 98.0),
-                    min: 84.0,
-                    max: 98.0,
-                    divisions: 70,
+                    value: selectedTotalScore.clamp(87.0, 95.0),
+                    min: 87.0,
+                    max: 95.0,
+                    divisions: 40, // (95.0 - 87.0) / 0.2 = 40 divisions
                     onChanged: (value) {
                       HapticManager.selection();
                       onScoreChanged(value);
@@ -184,12 +184,12 @@ class TotalScoreSectionWidget extends StatelessWidget {
                 const SizedBox(width: 2),
                 // 加分按钮
                 IconButton(
-                  onPressed: selectedTotalScore < 98.0
+                  onPressed: selectedTotalScore < 95.0
                       ? () {
                           HapticManager.medium();
                           final newScore = (selectedTotalScore + 0.2).clamp(
-                            84.0,
-                            98.0,
+                            87.0,
+                            95.0,
                           );
                           onScoreChanged(newScore);
                         }

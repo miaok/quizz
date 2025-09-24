@@ -7,6 +7,7 @@ import '../providers/flashcard_provider.dart';
 import '../providers/quiz_provider.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
+import '../utils/haptic_manager.dart';
 import '../widgets/immersive_scaffold.dart';
 import 'score_records_page.dart';
 
@@ -536,7 +537,10 @@ class _HomePageState extends ConsumerState<HomePage>
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            HapticManager.medium();
+            onTap();
+          },
           borderRadius: BorderRadius.circular(24),
           child: Padding(
             padding: EdgeInsets.all(cardPadding),
@@ -635,7 +639,10 @@ class _HomePageState extends ConsumerState<HomePage>
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            HapticManager.medium();
+            onTap();
+          },
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: EdgeInsets.all(isLandscape || isSmallScreen ? 12.0 : 16.0),
