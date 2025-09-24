@@ -429,7 +429,6 @@ class WineSimulationNotifier extends StateNotifier<WineSimulationState> {
 
   /// 手动提交所有答案并计算结果
   void submitAllAnswers() {
-    if (!state.allCompleted) return;
     _calculateResults(state);
   }
 

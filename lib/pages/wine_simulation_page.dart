@@ -159,8 +159,8 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
             Expanded(child: _buildWineGlassGrid(state)),
 
             // 提交按钮
-            const SizedBox(height: 16),
-            _buildSubmitButton(state),
+            //const SizedBox(height: 16),
+            //_buildSubmitButton(state),
           ],
         ),
       );
@@ -256,30 +256,8 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
           const Spacer(),
 
           // 提交按钮
-          _buildSubmitButton(state),
+          //_buildSubmitButton(state),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSubmitButton(WineSimulationState state) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: state.allCompleted
-            ? () {
-                HapticManager.submitAnswer();
-                ref.read(wineSimulationProvider.notifier).submitAllAnswers();
-              }
-            : null,
-        style: _primaryButtonStyle(context),
-        child: Text(
-          state.allCompleted
-              ? '提交答案'
-              : '请完成所有酒杯样品评 (${state.completedCount}/${state.wineGlasses.length})',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          textAlign: TextAlign.center,
-        ),
       ),
     );
   }
@@ -403,9 +381,13 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
                         fontSize: isLandscape ? 16 : 18,
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors
-                                  .black // 深色模式下使用黑色
-                            : Colors.white, // 浅色模式下使用白色
+                            ? const Color.fromARGB(255, 57, 54, 54) // 深色模式下使用黑色
+                            : const Color.fromARGB(
+                                255,
+                                251,
+                                244,
+                                244,
+                              ), // 浅色模式下使用白色
                       ),
                     ),
                   ),
@@ -565,7 +547,7 @@ class _WineSimulationPageState extends ConsumerState<WineSimulationPage> {
                         .startNewSimulation();
                   },
                   style: _primaryButtonStyle(context),
-                  child: const Text('重新开始'),
+                  child: const Text('再次模拟'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1031,12 +1013,12 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
         elevation: 2,
       );
 
-  ButtonStyle _secondaryButtonStyle(BuildContext context) =>
-      OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        side: BorderSide(color: Theme.of(context).colorScheme.outline),
-      );
+  // ButtonStyle _secondaryButtonStyle(BuildContext context) =>
+  //     OutlinedButton.styleFrom(
+  //       padding: const EdgeInsets.symmetric(vertical: 16),
+  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  //       side: BorderSide(color: Theme.of(context).colorScheme.outline),
+  //     );
 
   @override
   Widget build(BuildContext context) {
@@ -1087,6 +1069,10 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
                   IconButton(
                     onPressed: () {
                       HapticManager.medium();
+                      // 关闭弹窗时保存用户答案
+                      ref
+                          .read(wineSimulationProvider.notifier)
+                          .updateGlassAnswer(widget.glassIndex, _currentAnswer);
                       Navigator.of(context).pop();
                     },
                     icon: Icon(Icons.close, size: isLandscape ? 18 : 20),
@@ -1247,64 +1233,46 @@ class _WineTastingModalState extends ConsumerState<WineTastingModal> {
               ),
             ),
 
-            // 底部按钮
+            // 底部按钮 - 只保留下一杯/提交答案按钮
             Padding(
               padding: EdgeInsets.symmetric(horizontal: isLandscape ? 3 : 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: widget.hasNextGlass && widget.onNext != null
-                          ? () {
-                              widget.onNext!(_currentAnswer);
-                            }
-                          : null,
-                      style: _secondaryButtonStyle(context).copyWith(
-                        padding: WidgetStateProperty.all(
-                          EdgeInsets.symmetric(
-                            vertical: isLandscape ? 8 : 12,
-                          ), // 减小按钮高度
-                        ),
-                      ),
-                      child: Text(
-                        widget.hasNextGlass ? '下一杯' : '无下一杯',
-                        style: TextStyle(
-                          fontSize: isLandscape ? 12 : 14, // 减小字体
-                          fontWeight: FontWeight.w500, // 减轻字重
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: widget.hasNextGlass && widget.onNext != null
+                      ? () {
+                          widget.onNext!(_currentAnswer);
+                        }
+                      : () {
+                          // 当没有下一杯时，执行提交答案功能
+                          HapticManager.submitAnswer();
+                          // 直接保存答案
+                          ref
+                              .read(wineSimulationProvider.notifier)
+                              .updateGlassAnswer(
+                                widget.glassIndex,
+                                _currentAnswer,
+                              );
+                          Navigator.of(context).pop();
+                          // 提交所有答案，显示结果页面
+                          ref
+                              .read(wineSimulationProvider.notifier)
+                              .submitAllAnswers();
+                        },
+                  style: _primaryButtonStyle(context).copyWith(
+                    padding: WidgetStateProperty.all(
+                      EdgeInsets.symmetric(vertical: isLandscape ? 8 : 12),
                     ),
                   ),
-                  SizedBox(width: isLandscape ? 6 : 8), // 减小间距
-                  Expanded(
-                    flex: 2, // 保存按钮占更多空间
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // 移除禁用逻辑，保存按钮始终可点击
-                        HapticManager.submitAnswer();
-                        widget.onSave(_currentAnswer);
-                      },
-                      style: _primaryButtonStyle(context).copyWith(
-                        padding: WidgetStateProperty.all(
-                          EdgeInsets.symmetric(
-                            vertical: isLandscape ? 8 : 12,
-                          ), // 减小按钮高度
-                        ),
-                      ),
-                      child: Text(
-                        '保存',
-                        style: TextStyle(
-                          fontSize: isLandscape ? 12 : 14, // 减小字体
-                          fontWeight: FontWeight.w600, // 减轻字重
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onPrimaryContainer,
-                        ),
-                      ),
+                  child: Text(
+                    widget.hasNextGlass ? '下一杯' : '提交答案',
+                    style: TextStyle(
+                      fontSize: isLandscape ? 12 : 14,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ],
