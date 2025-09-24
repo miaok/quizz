@@ -77,19 +77,19 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
     AsyncValue<Map<String, dynamic>> statisticsAsync,
   ) {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Card(
-        elevation: 2,
+        elevation: 1,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 '统计概览',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               statisticsAsync.when(
                 data: (stats) => Column(
                   children: [
@@ -103,7 +103,7 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
                             Colors.blue,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: _buildStatCard(
                             '平均分',
@@ -114,7 +114,7 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         Expanded(
@@ -125,7 +125,7 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
                             Colors.orange,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: _buildStatCard(
                             '最近分',
@@ -161,25 +161,25 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
     Color color,
   ) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 4),
+          Icon(icon, color: color, size: 14),
+          const SizedBox(height: 2),
           Text(
             value,
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
               color: color,
             ),
           ),
-          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          Text(title, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
         ],
       ),
     );
@@ -188,17 +188,37 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
   /// 构建记录列表区域
   Widget _buildRecordsSection(AsyncValue<List<ScoreRecord>> recordsAsync) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
       child: Card(
-        elevation: 2,
+        elevation: 3,
+        shadowColor: Colors.blue.withValues(alpha: 0.2),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.blue.withValues(alpha: 0.05),
+                    Colors.blue.withValues(alpha: 0.02),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+              ),
+              child: const Text(
                 '考试记录',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
               ),
             ),
             recordsAsync.when(
@@ -250,31 +270,40 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
 
   /// 构建记录表格
   Widget _buildRecordsTable(List<ScoreRecord> records) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return Container(
+      width: double.infinity,
       child: DataTable(
-        columnSpacing: 16,
+        columnSpacing: 0,
         headingRowHeight: 40,
         dataRowMinHeight: 36,
         dataRowMaxHeight: 48,
-        columns: const [
+        columns: [
           DataColumn(
-            label: Text('考试时间', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: Expanded(
+              flex: 2,
+              child: Text('考试时间',
+                style: TextStyle(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
           DataColumn(
-            label: Text('得分', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: Expanded(
+              flex: 1,
+              child: Text('得分',
+                style: TextStyle(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
           DataColumn(
-            label: Text('用时', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          DataColumn(
-            label: Text('题目', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          DataColumn(
-            label: Text('正确率', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          DataColumn(
-            label: Text('操作', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: Expanded(
+              flex: 1,
+              child: Text('用时',
+                style: TextStyle(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
         ],
         rows: records.map((record) => _buildDataRow(record)).toList(),
@@ -285,81 +314,60 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
   /// 构建数据行
   DataRow _buildDataRow(ScoreRecord record) {
     final scoreColor = _getScoreColor(record.score);
-    final correctRate = (record.correctAnswers / record.totalQuestions * 100)
-        .toStringAsFixed(1);
 
     return DataRow(
       cells: [
         DataCell(
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                record.examTimeText.split(' ')[0],
-                style: const TextStyle(fontSize: 12),
-              ),
-              Text(
-                record.examTimeText.split(' ')[1],
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-              ),
-            ],
+          Container(
+            width: double.infinity,
+            alignment: Alignment.center,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  record.examTimeText.split(' ')[0],
+                  style: const TextStyle(fontSize: 12),
+                ),
+                Text(
+                  record.examTimeText.split(' ')[1],
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+              ],
+            ),
           ),
         ),
         DataCell(
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: scoreColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: scoreColor.withValues(alpha: 0.3)),
+            width: double.infinity,
+            alignment: Alignment.center,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: scoreColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: scoreColor.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                record.scoreText,
+                style: TextStyle(
+                  color: scoreColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
             ),
+          ),
+        ),
+        DataCell(
+          Container(
+            width: double.infinity,
+            alignment: Alignment.center,
             child: Text(
-              record.scoreText,
-              style: TextStyle(
-                color: scoreColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+              record.durationText,
+              style: const TextStyle(fontSize: 12),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ),
-        DataCell(
-          Text(record.durationText, style: const TextStyle(fontSize: 12)),
-        ),
-        DataCell(
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '总${record.totalQuestions}题',
-                style: const TextStyle(fontSize: 12),
-              ),
-              Text(
-                '单${record.singleChoiceCount} 多${record.multipleChoiceCount} 判${record.booleanCount}',
-                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-              ),
-            ],
-          ),
-        ),
-        DataCell(
-          Text(
-            '$correctRate%',
-            style: TextStyle(
-              fontSize: 12,
-              color: scoreColor,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        DataCell(
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 18),
-            onPressed: () => _showDeleteDialog(record),
-            tooltip: '删除此记录',
-            constraints: const BoxConstraints(),
-            padding: EdgeInsets.zero,
           ),
         ),
       ],
