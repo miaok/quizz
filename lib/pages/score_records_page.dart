@@ -281,7 +281,8 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
           DataColumn(
             label: Expanded(
               flex: 2,
-              child: Text('考试时间',
+              child: Text(
+                '考试时间',
                 style: TextStyle(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
@@ -290,7 +291,8 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
           DataColumn(
             label: Expanded(
               flex: 1,
-              child: Text('得分',
+              child: Text(
+                '得分',
                 style: TextStyle(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
@@ -299,7 +301,8 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
           DataColumn(
             label: Expanded(
               flex: 1,
-              child: Text('用时',
+              child: Text(
+                '用时',
                 style: TextStyle(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
@@ -381,48 +384,7 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
     return Colors.red;
   }
 
-  /// 显示删除确认对话框
-  Future<void> _showDeleteDialog(ScoreRecord record) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('删除记录'),
-        content: Text('确定要删除 ${record.examTimeText} 的考试记录吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        await _scoreRecordService.deleteRecord(record);
-        ref.invalidate(scoreRecordsProvider);
-        ref.invalidate(scoreStatisticsProvider);
-
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('记录已删除')));
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('删除失败: $e')));
-        }
-      }
-    }
-  }
-
-  /// 显示清空所有记录确认对话框
+  // 显示清空所有记录确认对话框
   Future<void> _showClearAllDialog() async {
     final confirmed = await showDialog<bool>(
       context: context,
