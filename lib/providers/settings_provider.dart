@@ -92,6 +92,12 @@ class SettingsController extends StateNotifier<QuizSettings> {
     await _saveSettings(newSettings);
   }
 
+  // 更新二次乱序设置
+  Future<void> updateEnableSecondShuffle(bool enable) async {
+    final newSettings = state.copyWith(enableSecondShuffle: enable);
+    await _saveSettings(newSettings);
+  }
+
   // 更新品鉴模式香型设置
   Future<void> updateEnableBlindTasteAroma(bool enable) async {
     final newSettings = state.copyWith(enableBlindTasteAroma: enable);

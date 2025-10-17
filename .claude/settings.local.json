@@ -7,7 +7,8 @@
       "Bash(flutter build apk --debug)",
       "WebSearch",
       "Bash(flutter packages pub run build_runner build --delete-conflicting-outputs)",
-      "Bash(flutter run:*)"
+      "Bash(flutter run:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

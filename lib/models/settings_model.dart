@@ -14,6 +14,7 @@ class QuizSettings {
   final bool autoNextQuestion;
   final bool enableProgressSave; // 是否启用进度保存
   final int examTimeMinutes; // 考试时间（分钟）
+  final bool enableSecondShuffle; // 二次乱序（练习模式答错后再次打乱选项并动画）
 
   // 品鉴模式项目设置
   final bool enableBlindTasteAroma; // 是否启用香型品鉴
@@ -39,6 +40,7 @@ class QuizSettings {
     this.autoNextQuestion = true,
     this.enableProgressSave = true, // 默认启用进度保存
     this.examTimeMinutes = 15, // 默认考试时间15分钟
+    this.enableSecondShuffle = false, // 默认关闭二次乱序
     this.enableBlindTasteAroma = false, // 默认启用香型品鉴
     this.enableBlindTasteAlcohol = true, // 默认启用酒度品鉴
     this.enableBlindTasteScore = true, // 默认启用总分品鉴
@@ -63,6 +65,7 @@ class QuizSettings {
     bool? autoNextQuestion,
     bool? enableProgressSave,
     int? examTimeMinutes,
+    bool? enableSecondShuffle,
     bool? enableBlindTasteAroma,
     bool? enableBlindTasteAlcohol,
     bool? enableBlindTasteScore,
@@ -86,6 +89,7 @@ class QuizSettings {
       autoNextQuestion: autoNextQuestion ?? this.autoNextQuestion,
       enableProgressSave: enableProgressSave ?? this.enableProgressSave,
       examTimeMinutes: examTimeMinutes ?? this.examTimeMinutes,
+      enableSecondShuffle: enableSecondShuffle ?? this.enableSecondShuffle,
       enableBlindTasteAroma:
           enableBlindTasteAroma ?? this.enableBlindTasteAroma,
       enableBlindTasteAlcohol:
@@ -133,6 +137,7 @@ class QuizSettings {
       'autoNextQuestion': autoNextQuestion,
       'enableProgressSave': enableProgressSave,
       'examTimeMinutes': examTimeMinutes,
+      'enableSecondShuffle': enableSecondShuffle,
       'enableBlindTasteAroma': enableBlindTasteAroma,
       'enableBlindTasteAlcohol': enableBlindTasteAlcohol,
       'enableBlindTasteScore': enableBlindTasteScore,
@@ -160,6 +165,7 @@ class QuizSettings {
       autoNextQuestion: json['autoNextQuestion'] ?? false,
       enableProgressSave: json['enableProgressSave'] ?? true,
       examTimeMinutes: json['examTimeMinutes'] ?? 15,
+      enableSecondShuffle: json['enableSecondShuffle'] ?? false,
       enableBlindTasteAroma: json['enableBlindTasteAroma'] ?? false,
       enableBlindTasteAlcohol: json['enableBlindTasteAlcohol'] ?? true,
       enableBlindTasteScore: json['enableBlindTasteScore'] ?? true,
@@ -196,6 +202,7 @@ class QuizSettings {
         other.autoNextQuestion == autoNextQuestion &&
         other.enableProgressSave == enableProgressSave &&
         other.examTimeMinutes == examTimeMinutes &&
+        other.enableSecondShuffle == enableSecondShuffle &&
         other.enableBlindTasteAroma == enableBlindTasteAroma &&
         other.enableBlindTasteAlcohol == enableBlindTasteAlcohol &&
         other.enableBlindTasteScore == enableBlindTasteScore &&
@@ -224,6 +231,7 @@ class QuizSettings {
         autoNextQuestion.hashCode ^
         enableProgressSave.hashCode ^
         examTimeMinutes.hashCode ^
+        enableSecondShuffle.hashCode ^
         enableBlindTasteAroma.hashCode ^
         enableBlindTasteAlcohol.hashCode ^
         enableBlindTasteScore.hashCode ^
