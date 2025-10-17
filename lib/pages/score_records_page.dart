@@ -270,7 +270,7 @@ class _ScoreRecordsPageState extends ConsumerState<ScoreRecordsPage> {
 
   /// 构建记录表格
   Widget _buildRecordsTable(List<ScoreRecord> records) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: DataTable(
         columnSpacing: 0,

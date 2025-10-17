@@ -73,6 +73,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     milliseconds: 800,
   ); // 选项锁定时长
 
+  // 进度卡片下沉动画标志
+  bool _progressCardSinking = false;
+
   // 鼠标拖拽相关变量（仅在Windows平台使用）
   bool _isDragging = false;
   double? _dragStartX;
@@ -114,6 +117,42 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 2,
       );
+
+  // ===== MD3 配色辅助方法 =====
+  // 尽量靠近 Material 3 的表面/边框/阴影语义，增强层级对比
+  // 移除未使用的方法（_md3Surface）
+
+  Color _md3CardBackground(BuildContext context) {
+    // 卡片采用更接近 cardColor 的表面容器色
+    // 若主题未特别配置，cardColor 通常已与 M3 对齐
+    return Theme.of(context).cardColor;
+  }
+
+  Color _md3SurfaceVariant(BuildContext context) {
+    // 用于进度条背景、轻度分隔等
+    return Theme.of(context).colorScheme.surfaceContainerHighest;
+  }
+
+  Color _md3Outline(BuildContext context) {
+    return Theme.of(context).colorScheme.outline;
+  }
+
+  Color _md3OutlineSoft(BuildContext context) {
+    // 更柔和的描边
+    return _md3Outline(context).withValues(alpha: 0.18);
+  }
+
+  Color _md3Shadow(BuildContext context, {bool strong = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (strong) {
+      return isDark
+          ? Colors.black.withValues(alpha: 0.5)
+          : Colors.black.withValues(alpha: 0.18);
+    }
+    return isDark
+        ? Colors.black.withValues(alpha: 0.35)
+        : Colors.black.withValues(alpha: 0.10);
+  }
 
   @override
   void initState() {
@@ -309,6 +348,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         // 如果不是最后一题，显示切题动画
         if (!quizState.isLastQuestion) {
           _isAutoSwitching = true;
+          _progressCardSinking = true; // 同步下沉动画开始
         }
       });
 
@@ -329,7 +369,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
           setState(() {
             _showingCorrectAnswer = false;
-            _isAutoSwitching = false;
+                _isAutoSwitching = false;
+                _progressCardSinking = false; // 同步结束下沉动画
             _isProcessingAnswer = false; // 重置处理状态
           });
           HapticManager.switchQuestion();
@@ -395,6 +436,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     if (settings.autoNextQuestion && !quizState.isLastQuestion) {
       setState(() {
         _isAutoSwitching = true;
+        _progressCardSinking = true; // 同步下沉动画开始
         // 不在这里设置 _isProcessingAnswer = true，让用户能继续选择其他选项
       });
 
@@ -553,8 +595,18 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
     return Column(
       children: [
-        // 进度条
-        _buildProgressBar(state),
+        // 进度条（切题时轻微下沉与缩放动画）
+        AnimatedSlide(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          offset: _progressCardSinking ? const Offset(0, 0.02) : Offset.zero,
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 180),
+            scale: _progressCardSinking ? 0.98 : 1.0,
+            curve: Curves.easeOutCubic,
+            child: _buildProgressBar(state),
+          ),
+        ),
 
         // 题目内容 - 使用PageView实现滑动切换
         Expanded(
@@ -572,7 +624,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       controller.goToQuestion(index);
                       // 取消自动切题状态和错误状态，重置选项锁定状态
                       setState(() {
-                        _isAutoSwitching = false;
+                      _isAutoSwitching = false;
+                      _progressCardSinking = false; // 同步结束下沉动画
+                      _isAutoSwitching = false;
+                      _progressCardSinking = false; // 同步结束下沉动画
                         _showingWrongAnswer = false;
                         _showingCorrectAnswer = false;
                         _isProcessingAnswer = false; // 重置选项锁定状态
@@ -598,6 +653,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   physics: const BouncingScrollPhysics(), // 使用弹性滚动物理效果
                   onPageChanged: (index) {
                     // 滑动切换题目时更新状态
+                    controller.goToQuestion(index);
                     controller.goToQuestion(index);
                     // 取消自动切题状态和错误状态，重置选项锁定状态
                     setState(() {
@@ -737,19 +793,28 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         child: Container(
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+            color: _md3CardBackground(context),
             borderRadius: BorderRadius.circular(12),
             border: _isAutoSwitching
-                ? Border.all(color: Colors.green.shade400, width: 2)
+                ? Border.all(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.55),
+                    width: 1.5,
+                  )
                 : Border.all(
-                    color: Colors.grey.withValues(alpha: 0.15),
+                    color: _md3OutlineSoft(context),
                     width: 1,
                   ),
             boxShadow: [
               BoxShadow(
                 color: _isAutoSwitching
-                    ? Colors.green.withValues(alpha: 0.15)
-                    : Colors.grey.withValues(alpha: 0.08),
+                    ? Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.18)
+                    : _md3Shadow(context),
                 spreadRadius: 0,
                 blurRadius: 8,
                 offset: const Offset(0, 2),
@@ -771,7 +836,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: _isAutoSwitching ? Colors.green : null,
+                      color: _isAutoSwitching
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -783,10 +850,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: typeColor.withValues(alpha: 0.1),
+                        color: typeColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: typeColor.withValues(alpha: 0.3),
+                          color: typeColor.withValues(alpha: 0.28),
                           width: 0.5,
                         ),
                       ),
@@ -807,10 +874,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: typeColor.withValues(alpha: 0.1),
+                        color: typeColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: typeColor.withValues(alpha: 0.3),
+                          color: typeColor.withValues(alpha: 0.28),
                           width: 0.5,
                         ),
                       ),
@@ -834,16 +901,26 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color:
-                            _remainingTimeInSeconds <=
-                                300 // 最后5分钟显示红色警告
-                            ? Colors.red.withValues(alpha: 0.1)
-                            : Colors.blue.withValues(alpha: 0.1),
+                        color: _remainingTimeInSeconds <= 300
+                            ? Theme.of(context)
+                                .colorScheme
+                                .error
+                                .withValues(alpha: 0.10)
+                            : Theme.of(context)
+                                .colorScheme
+                                .tertiary
+                                .withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: _remainingTimeInSeconds <= 300
-                              ? Colors.red.withValues(alpha: 0.3)
-                              : Colors.blue.withValues(alpha: 0.3),
+                              ? Theme.of(context)
+                                  .colorScheme
+                                  .error
+                                  .withValues(alpha: 0.28)
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .tertiary
+                                  .withValues(alpha: 0.28),
                           width: 0.5,
                         ),
                       ),
@@ -854,8 +931,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                             Icons.timer,
                             size: 10,
                             color: _remainingTimeInSeconds <= 300
-                                ? Colors.red
-                                : Colors.blue,
+                                ? Theme.of(context).colorScheme.error
+                                : Theme.of(context).colorScheme.tertiary,
                           ),
                           const SizedBox(width: 3),
                           Text(
@@ -863,8 +940,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                             style: TextStyle(
                               fontSize: 10,
                               color: _remainingTimeInSeconds <= 300
-                                  ? Colors.red
-                                  : Colors.blue,
+                                  ? Theme.of(context).colorScheme.error
+                                  : Theme.of(context).colorScheme.tertiary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -890,10 +967,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 builder: (context, value, child) {
                   return LinearProgressIndicator(
                     value: value,
-                    backgroundColor: Colors.grey[300],
+                    backgroundColor: _md3SurfaceVariant(context),
                     valueColor: AlwaysStoppedAnimation<Color>(
                       _isAutoSwitching
-                          ? Colors.green
+                          ? Theme.of(context).colorScheme.primary
                           : _getProgressColor(
                               state.answeredCount / state.questions.length,
                             ),
@@ -928,106 +1005,37 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     bool isHintAnswer = false,
     bool isDisabled = false,
   }) {
+    final scheme = Theme.of(context).colorScheme;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // 禁用状态下，只有未选择的选项背景略微变灰，已选择的选项保持正常状态
+    // 禁用状态：未选项更灰一些
     if (isDisabled && !isSelected) {
-      return isDarkMode
-          ? Theme.of(context).cardColor.withValues(alpha: 0.7)
-          : Theme.of(context).cardColor.withValues(alpha: 0.8);
+      return scheme.surfaceContainerHighest
+          .withValues(alpha: isDarkMode ? 0.22 : 0.32);
     }
 
     if (isCorrectAnswer && isSelected) {
-      return Theme.of(context).colorScheme.primaryContainer;
+      return scheme.primaryContainer; // 正确：使用主容器色
     }
     if (isWrongAnswer && isSelected) {
-      return Theme.of(context).colorScheme.errorContainer;
+      return scheme.errorContainer; // 错误：使用错误容器色
     }
     if (isHintAnswer) {
-      return Colors.orange.withValues(alpha: 0.2);
+      // 提示态：使用 tertiaryContainer 更贴近 MD3 提示强调
+      return scheme.tertiaryContainer.withValues(alpha: 0.6);
     }
     if (isAutoSwitching) {
-      return Theme.of(context).colorScheme.primaryContainer;
+      return scheme.primaryContainer; // 自动切题动画：同正确的容器色
     }
     if (isSelected) {
-      // 在深色模式下使用更明显的背景色，确保文字可见
-      return isDarkMode
-          ? Theme.of(
-              context,
-            ).colorScheme.primaryContainer.withValues(alpha: 0.3)
-          : Theme.of(
-              context,
-            ).colorScheme.primaryContainer.withValues(alpha: 0.2);
+      // 选中但未定性：用 surfaceVariant 提升对比度
+      return scheme.surfaceContainerHighest
+          .withValues(alpha: isDarkMode ? 0.35 : 0.42);
     }
-    return Theme.of(context).cardColor;
+    return _md3CardBackground(context);
   }
 
-  // 获取选项阴影颜色（针对深色模式优化）
-  Color _getOptionShadowColor(
-    BuildContext context,
-    bool isSelected, {
-    bool isCorrectAnswer = false,
-    bool isWrongAnswer = false,
-    bool isHintAnswer = false,
-    bool isAutoSwitching = false,
-    bool isProcessingAnswer = false,
-  }) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    // 深色模式下使用更强的阴影，浅色模式使用标准阴影
-    final double baseAlpha = isDarkMode ? 0.4 : 0.2;
-    final double selectedAlpha = isDarkMode ? 0.6 : 0.3;
-    final double strongAlpha = isDarkMode ? 0.7 : 0.4;
-
-    if (isProcessingAnswer && !isSelected) {
-      return isDarkMode
-          ? Colors.white.withValues(alpha: 0.1)
-          : Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1);
-    }
-
-    if (isCorrectAnswer) {
-      return isDarkMode
-          ? Colors.green.withValues(alpha: strongAlpha)
-          : Theme.of(
-              context,
-            ).colorScheme.primary.withValues(alpha: strongAlpha);
-    }
-
-    if (isWrongAnswer) {
-      return isDarkMode
-          ? Colors.red.shade800.withValues(alpha: strongAlpha)
-          : Theme.of(
-              context,
-            ).colorScheme.error.withValues(alpha: selectedAlpha);
-    }
-
-    if (isHintAnswer) {
-      return Colors.orange.withValues(alpha: strongAlpha);
-    }
-
-    if (isAutoSwitching) {
-      return isDarkMode
-          ? Colors.green.withValues(alpha: selectedAlpha)
-          : Theme.of(
-              context,
-            ).colorScheme.primary.withValues(alpha: selectedAlpha);
-    }
-
-    if (isSelected) {
-      return isDarkMode
-          ? Theme.of(
-              context,
-            ).colorScheme.primary.withValues(alpha: selectedAlpha)
-          : Theme.of(
-              context,
-            ).colorScheme.primary.withValues(alpha: selectedAlpha);
-    }
-
-    // 默认阴影 - 深色模式使用白色半透明阴影，浅色模式使用主题阴影
-    return isDarkMode
-        ? Colors.white.withValues(alpha: 0.15)
-        : Theme.of(context).colorScheme.shadow.withValues(alpha: baseAlpha);
-  }
+  // 已统一为 BoxDecoration 的 boxShadow，移除未使用的选项阴影计算方法
 
   Color _getOptionTextColor(
     BuildContext context,
@@ -1038,32 +1046,28 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     bool isHintAnswer = false,
     bool isDisabled = false,
   }) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
 
-    // 禁用状态下，只有未选择的选项文字轻微变灰
     if (isDisabled && !isSelected) {
-      return Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+      return scheme.onSurface.withValues(alpha: 0.6);
     }
-
     if (isCorrectAnswer && isSelected) {
-      return Theme.of(context).colorScheme.onPrimaryContainer;
+      return scheme.onPrimaryContainer;
     }
     if (isWrongAnswer && isSelected) {
-      return Theme.of(context).colorScheme.onErrorContainer;
+      return scheme.onErrorContainer;
     }
     if (isHintAnswer) {
-      return Colors.orange.shade800;
+      return scheme.onTertiaryContainer;
     }
     if (isAutoSwitching) {
-      return Theme.of(context).colorScheme.onPrimaryContainer;
+      return scheme.onPrimaryContainer;
     }
     if (isSelected) {
-      // 在深色模式下确保文字有足够的对比度
-      return isDarkMode
-          ? Theme.of(context).colorScheme.onSurface
-          : Theme.of(context).colorScheme.primary;
+      // 选中但未定性：在 surfaceVariant 上的前景
+      return scheme.onSurfaceVariant;
     }
-    return Theme.of(context).colorScheme.onSurface;
+    return scheme.onSurface;
   }
 
   Widget _buildQuestionHeader(
@@ -1074,15 +1078,15 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: _md3CardBackground(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.grey.withValues(alpha: 0.12),
+          color: _md3OutlineSoft(context),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.05),
+            color: _md3Shadow(context),
             spreadRadius: 0,
             blurRadius: 8,
             offset: const Offset(0, 2),
@@ -1131,19 +1135,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       curve: Curves.easeInOut,
       margin: const EdgeInsets.only(bottom: 8),
       child: Material(
-        elevation: (_isProcessingAnswer && !isSelected)
-            ? 0.5
-            : (isSelected ? 3 : 1),
+        elevation: 0, // 使用与题干容器一致的悬浮效果（由 BoxShadow 提供）
         borderRadius: BorderRadius.circular(_optionCardRadius),
-        shadowColor: _getOptionShadowColor(
-          context,
-          isSelected,
-          isCorrectAnswer: isCorrectAnswer,
-          isWrongAnswer: isWrongAnswer,
-          isHintAnswer: isHintAnswer,
-          isAutoSwitching: isAutoSwitching,
-          isProcessingAnswer: _isProcessingAnswer,
-        ),
+        shadowColor: Colors.transparent,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
@@ -1158,6 +1152,18 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               isDisabled: _isProcessingAnswer && !_showingWrongAnswer,
             ),
             borderRadius: BorderRadius.circular(_optionCardRadius),
+            border: Border.all(
+              color: _md3OutlineSoft(context),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _md3Shadow(context),
+                spreadRadius: 0,
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: ListTile(
             contentPadding: _optionPadding,
@@ -1177,16 +1183,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                         (_isProcessingAnswer &&
                             !_showingWrongAnswer &&
                             !isSelected)
-                        ? Theme.of(
-                            context,
-                          ).colorScheme.outline.withValues(alpha: 0.3)
+                        ? _md3OutlineSoft(context)
                         : isSelected
                         ? (isCorrectAnswer
                               ? Colors.green.shade700
                               : isWrongAnswer
                               ? (Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.red.shade800
-                                    : Colors.red.shade600)
+                                    ? const Color.fromARGB(255, 150, 16, 16)
+                                    : const Color.fromARGB(255, 186, 45, 43))
                               : isHintAnswer
                               ? Colors.orange.shade600
                               : isAutoSwitching
@@ -1200,12 +1204,12 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                             ? Colors.green.shade700
                             : isWrongAnswer
                             ? (Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.red.shade800
-                                  : Colors.red.shade600)
+                                    ? const Color.fromARGB(255, 150, 16, 16)
+                                    : const Color.fromARGB(255, 186, 45, 43))
                             : isHintAnswer
-                            ? Colors.orange.shade600
+                            ? Theme.of(context).colorScheme.tertiary
                             : isAutoSwitching
-                            ? Colors.green.shade600
+                            ? Theme.of(context).colorScheme.primary
                             : _getPrimaryColor(context))
                       : Colors.transparent,
                 ),
@@ -1301,6 +1305,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     if (settings.autoNextQuestion && !quizState.isLastQuestion) {
       setState(() {
         _isAutoSwitching = true;
+        _progressCardSinking = true; // 同步下沉动画开始
       });
 
       // 延迟0.6秒后自动切换到下一题并添加切题震动
@@ -1383,17 +1388,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       curve: Curves.easeInOut,
       margin: const EdgeInsets.only(bottom: 8),
       child: Material(
-        elevation: isSelected ? 2.5 : 1,
+        elevation: 0, // 使用与题干容器一致的悬浮效果（由 BoxShadow 提供）
         borderRadius: BorderRadius.circular(_optionCardRadius),
-        shadowColor: _getOptionShadowColor(
-          context,
-          isSelected,
-          isCorrectAnswer: isCorrectAnswer,
-          isWrongAnswer: isWrongAnswer,
-          isHintAnswer: isHintAnswer,
-          isAutoSwitching: false,
-          isProcessingAnswer: false,
-        ),
+        shadowColor: Colors.transparent,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeInOut,
@@ -1407,6 +1404,18 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               isHintAnswer: isHintAnswer,
             ),
             borderRadius: BorderRadius.circular(_optionCardRadius),
+            border: Border.all(
+              color: _md3OutlineSoft(context),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _md3Shadow(context),
+                spreadRadius: 0,
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: ListTile(
             contentPadding: _optionPadding,
@@ -1426,9 +1435,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                         (_isProcessingAnswer &&
                             !_showingWrongAnswer &&
                             !isSelected)
-                        ? Theme.of(
-                            context,
-                          ).colorScheme.outline.withValues(alpha: 0.3)
+                        ? _md3OutlineSoft(context)
                         : isSelected
                         ? (isCorrectAnswer
                               ? Colors.green.shade700
@@ -1450,7 +1457,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                                   ? Colors.red.shade800
                                   : Colors.red.shade600)
                             : isHintAnswer
-                            ? Colors.orange.shade600
+                            ? Theme.of(context).colorScheme.tertiary
                             : _getPrimaryColor(context))
                       : Colors.transparent,
                 ),
@@ -1624,10 +1631,16 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _optionLockTimer?.cancel();
     setState(() {
       _isAutoSwitching = false;
+      _progressCardSinking = false; // 同步结束下沉动画
       _isProcessingAnswer = false; // 重置处理状态，允许选项点击
     });
 
     if (_pageController.hasClients) {
+      // 触发进度卡片下沉动画
+      setState(() => _progressCardSinking = true);
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted) setState(() => _progressCardSinking = false);
+      });
       _pageController.previousPage(
         duration: _buttonSwitchDuration,
         curve: _smoothCurve,
@@ -1643,6 +1656,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _optionLockTimer?.cancel();
     setState(() {
       _isAutoSwitching = false;
+      _progressCardSinking = false; // 同步结束下沉动画
       _showingWrongAnswer = false; // 重置错误状态
       _showingCorrectAnswer = false; // 重置正确状态
       _isProcessingAnswer = false; // 重置处理状态，允许下一题的选项点击
@@ -1653,6 +1667,11 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         _countdownTimer?.cancel(); // 停止倒计时器
         controller.nextQuestion(); // 完成答题
       } else {
+        // 触发进度卡片下沉动画
+        setState(() => _progressCardSinking = true);
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted) setState(() => _progressCardSinking = false);
+        });
         _pageController.nextPage(
           duration: _buttonSwitchDuration,
           curve: _smoothCurve,
@@ -1670,10 +1689,16 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   void _autoSwitchToNext(QuizController controller) {
     setState(() {
       _isAutoSwitching = false; // 动画开始时重置状态
+      _progressCardSinking = false; // 同步结束下沉动画
       _isProcessingAnswer = false; // 重置处理状态，允许下一题的选项点击
     });
 
     if (_pageController.hasClients) {
+      // 触发进度卡片下沉动画
+      setState(() => _progressCardSinking = true);
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted) setState(() => _progressCardSinking = false);
+      });
       _pageController.nextPage(
         duration: _autoSwitchDuration,
         curve: _autoSwitchCurve,
@@ -1688,6 +1713,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     _autoNextTimer?.cancel();
     setState(() {
       _isAutoSwitching = false;
+      _progressCardSinking = false; // 同步结束下沉动画
       _showingWrongAnswer = false; // 重置错误状态
       _showingCorrectAnswer = false; // 重置正确状态
       _isProcessingAnswer = false; // 重置选项锁定状态
