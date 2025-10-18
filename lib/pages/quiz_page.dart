@@ -1223,20 +1223,22 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             ),
             title: AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
-              style: TextStyle(
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: _getOptionTextColor(
-                  context,
-                  isSelected,
-                  isAutoSwitching,
-                  isWrongAnswer: isWrongAnswer,
-                  isCorrectAnswer: isCorrectAnswer,
-                  isHintAnswer: isHintAnswer,
-                  isDisabled: _isProcessingAnswer && !_showingWrongAnswer,
-                ),
-                fontSize: 18, // 增大单选题字体大小
-                height: 1.4,
-              ),
+              style:
+                  Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: _getOptionTextColor(
+                      context,
+                      isSelected,
+                      isAutoSwitching,
+                      isWrongAnswer: isWrongAnswer,
+                      isCorrectAnswer: isCorrectAnswer,
+                      isHintAnswer: isHintAnswer,
+                      isDisabled: _isProcessingAnswer && !_showingWrongAnswer,
+                    ),
+                    fontSize: 18, // 增大单选题字体大小
+                    height: 1.4,
+                  ) ??
+                  const TextStyle(),
               child: Text(option),
             ),
             onTap: (_isProcessingAnswer || _showingWrongAnswer)
@@ -1468,20 +1470,22 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             ),
             title: AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 180),
-              style: TextStyle(
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: _getOptionTextColor(
-                  context,
-                  isSelected,
-                  false,
-                  isWrongAnswer: isWrongAnswer,
-                  isCorrectAnswer: isCorrectAnswer,
-                  isHintAnswer: isHintAnswer,
-                  isDisabled: _isProcessingAnswer && !_showingWrongAnswer,
-                ),
-                fontSize: 18, // 增大多选题字体大小
-                height: 1.4,
-              ),
+              style:
+                  Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: _getOptionTextColor(
+                      context,
+                      isSelected,
+                      false,
+                      isWrongAnswer: isWrongAnswer,
+                      isCorrectAnswer: isCorrectAnswer,
+                      isHintAnswer: isHintAnswer,
+                      isDisabled: _isProcessingAnswer && !_showingWrongAnswer,
+                    ),
+                    fontSize: 18, // 增大多选题字体大小
+                    height: 1.4,
+                  ) ??
+                  const TextStyle(),
               child: Text(option),
             ),
             onTap: (_isProcessingAnswer || _showingWrongAnswer)
