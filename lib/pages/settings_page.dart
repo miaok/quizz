@@ -105,6 +105,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           icon: Icons.tune,
           child: _buildQuizOptionsSection(settings, controller),
         ),
+        const SizedBox(height: 16),
+        _buildSectionCard(
+          title: '练习模式出题顺序',
+          icon: Icons.sort,
+          child: _buildPracticeShuffleModeSelector(settings, controller),
+        ),
         const SizedBox(height: 20),
       ],
     );
@@ -374,11 +380,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 : null,
             icon: const Icon(Icons.remove_circle_outline),
             iconSize: 20,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            visualDensity: VisualDensity.compact,
           ),
           Container(
-            width: 36,
+            width: 20,
             alignment: Alignment.center,
             child: Text(
               '$currentValue',
@@ -397,123 +403,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 : null,
             icon: const Icon(Icons.add_circle_outline),
             iconSize: 20,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 紧凑型数量调节行
-  Widget _buildCompactCountRow(
-    String title,
-    int currentValue,
-    Function(int) onChanged,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
-            ),
-          ),
-          IconButton(
-            onPressed: currentValue > 0
-                ? () {
-                    HapticManager.medium();
-                    onChanged(currentValue - 1);
-                  }
-                : null,
-            icon: const Icon(Icons.remove_circle_outline),
-            iconSize: 20,
+            padding: const EdgeInsets.symmetric(horizontal: 2),
             visualDensity: VisualDensity.compact,
-          ),
-          Container(
-            width: 40,
-            alignment: Alignment.center,
-            child: Text(
-              '$currentValue',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: currentValue < 100
-                ? () {
-                    HapticManager.medium();
-                    onChanged(currentValue + 1);
-                  }
-                : null,
-            icon: const Icon(Icons.add_circle_outline),
-            iconSize: 20,
-            visualDensity: VisualDensity.compact,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 数量调节卡片
-  Widget _buildCountCard(
-    String title,
-    int currentValue,
-    Color color,
-    Function(int) onChanged,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
-            ),
-          ),
-          IconButton(
-            onPressed: currentValue > 0
-                ? () {
-                    HapticManager.medium();
-                    onChanged(currentValue - 1);
-                  }
-                : null,
-            icon: const Icon(Icons.remove_circle_outline),
-            iconSize: 20,
-          ),
-          Container(
-            width: 40,
-            alignment: Alignment.center,
-            child: Text(
-              '$currentValue',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: currentValue < 100
-                ? () {
-                    HapticManager.medium();
-                    onChanged(currentValue + 1);
-                  }
-                : null,
-            icon: const Icon(Icons.add_circle_outline),
-            iconSize: 20,
           ),
         ],
       ),
@@ -535,9 +426,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
+                Icon(
+                  Icons.format_list_numbered,
+                  size: 18,
+                  color: IconTheme.of(context).color,
+                ),
+                const SizedBox(width: 8),
                 Text(
                   '酒样数设置',
                   style: Theme.of(
@@ -608,9 +504,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           Row(
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
+                    Icon(
+                      Icons.percent,
+                      size: 18,
+                      color: IconTheme.of(context).color,
+                    ),
+                    const SizedBox(width: 8),
                     Text(
                       '酒样重复概率',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -673,23 +574,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
+                Icon(
+                  Icons.layers,
+                  size: 18,
+                  color: IconTheme.of(context).color,
+                ),
+                const SizedBox(width: 8),
                 Text(
                   '最大重复组数',
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
                 ),
-                // Text(
-                //   isLocked ? '质量差不存在重复' : '设置品评模拟的重复酒样组数',
-                //   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                //     color: isLocked
-                //         ? Theme.of(context).colorScheme.primary
-                //         : Theme.of(context).colorScheme.onSurfaceVariant,
-                //   ),
-                // ),
               ],
             ),
           ),
@@ -837,11 +735,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              '考试时间',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.hourglass_empty,
+                  size: 18,
+                  color: IconTheme.of(context).color,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '考试时间',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
+                ),
+              ],
             ),
           ),
           IconButton(
@@ -916,8 +824,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         ),
         const SizedBox(height: 8),
         _buildMultipleChoiceDelayCard(settings, controller),
-        const SizedBox(height: 8),
-        _buildPracticeShuffleModeSelector(settings, controller),
       ],
     );
   }
