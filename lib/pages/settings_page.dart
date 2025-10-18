@@ -155,15 +155,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       padding: const EdgeInsets.all(16.0),
       children: [
         _buildSectionCard(
-          title: '震动管理',
-          icon: Icons.vibration,
-          child: _buildHapticSection(),
-        ),
-        const SizedBox(height: 16),
-        _buildSectionCard(
           title: '主题模式',
           icon: Icons.brightness_6,
           child: _buildThemeModeSection(settings, controller),
+        ),
+        const SizedBox(height: 16),
+        _buildSectionCard(
+          title: '震动管理',
+          icon: Icons.vibration,
+          child: _buildHapticSection(),
         ),
         const SizedBox(height: 16),
         _buildSectionCard(
@@ -224,40 +224,48 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     QuizSettings settings,
     SettingsController controller,
   ) {
-    return SegmentedButton<ThemeMode>(
-      segments: const <ButtonSegment<ThemeMode>>[
-        ButtonSegment<ThemeMode>(
-          value: ThemeMode.system,
-          label: Text('跟随系统'),
-          icon: Icon(Icons.brightness_auto),
-        ),
-        ButtonSegment<ThemeMode>(
-          value: ThemeMode.light,
-          label: Text('浅色模式'),
-          icon: Icon(Icons.light_mode),
-        ),
-        ButtonSegment<ThemeMode>(
-          value: ThemeMode.dark,
-          label: Text('深色模式'),
-          icon: Icon(Icons.dark_mode),
-        ),
-      ],
-      selected: {settings.themeMode},
-      onSelectionChanged: (Set<ThemeMode> newSelection) {
-        if (newSelection.isNotEmpty) {
-          HapticManager.medium();
-          controller.updateThemeMode(newSelection.first);
-        }
-      },
-      style: SegmentedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        textStyle: const TextStyle(fontWeight: FontWeight.w500),
-        selectedBackgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        selectedForegroundColor: Theme.of(
-          context,
-        ).colorScheme.onPrimaryContainer,
-        side: BorderSide(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<ThemeMode>(
+        segments: const <ButtonSegment<ThemeMode>>[
+          ButtonSegment<ThemeMode>(
+            value: ThemeMode.system,
+            label: Text('跟随系统'),
+            icon: Icon(Icons.brightness_auto),
+          ),
+          ButtonSegment<ThemeMode>(
+            value: ThemeMode.light,
+            label: Text('浅色模式'),
+            icon: Icon(Icons.light_mode),
+          ),
+          ButtonSegment<ThemeMode>(
+            value: ThemeMode.dark,
+            label: Text('深色模式'),
+            icon: Icon(Icons.dark_mode),
+          ),
+        ],
+        selected: {settings.themeMode},
+        onSelectionChanged: (Set<ThemeMode> newSelection) {
+          if (newSelection.isNotEmpty) {
+            HapticManager.medium();
+            controller.updateThemeMode(newSelection.first);
+          }
+        },
+        style: SegmentedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontFamily: 'Microsoft YaHei', // 确保按钮文本使用微软雅黑
+          ),
+          selectedBackgroundColor: Theme.of(
+            context,
+          ).colorScheme.primaryContainer,
+          selectedForegroundColor: Theme.of(
+            context,
+          ).colorScheme.onPrimaryContainer,
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+          ),
         ),
       ),
     );
@@ -268,61 +276,188 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     QuizSettings settings,
     SettingsController controller,
   ) {
-    return Column(
-      children: [
-        _buildCountCard(
-          '判断题',
-          settings.booleanCount,
-          Colors.green,
-          (value) => controller.updateBooleanCount(value),
-        ),
-        const SizedBox(height: 8),
-        _buildCountCard(
-          '单选题',
-          settings.singleChoiceCount,
-          Colors.blue,
-          (value) => controller.updateSingleChoiceCount(value),
-        ),
-        const SizedBox(height: 8),
-        _buildCountCard(
-          '多选题',
-          settings.multipleChoiceCount,
-          Colors.orange,
-          (value) => controller.updateMultipleChoiceCount(value),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          // 第一行：题型标题和图标
+          Row(
             children: [
-              Icon(
-                Icons.quiz,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              _buildTypeHeader('判断题', icon: Icons.flaky_outlined),
+              _buildTypeHeader(
+                '单选题',
+                icon: Icons.radio_button_checked_outlined,
               ),
+              _buildTypeHeader('多选题', icon: Icons.check_box_outlined),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // 第二行：数量调节器
+          Row(
+            children: [
+              _buildCountControl(
+                settings.booleanCount,
+                (value) => controller.updateBooleanCount(value),
+              ),
+              const SizedBox(width: 8),
+              _buildCountControl(
+                settings.singleChoiceCount,
+                (value) => controller.updateSingleChoiceCount(value),
+              ),
+              const SizedBox(width: 8),
+              _buildCountControl(
+                settings.multipleChoiceCount,
+                (value) => controller.updateMultipleChoiceCount(value),
+              ),
+            ],
+          ),
+          const Divider(height: 24),
+          Row(
+            children: [
+              Icon(Icons.quiz, color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 '总题数',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
               ),
               const Spacer(),
               Text(
                 '${settings.totalQuestions} 题',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  // 构建题型标题和图标
+  Widget _buildTypeHeader(String title, {required IconData icon}) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 22),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建数量调节器
+  Widget _buildCountControl(int currentValue, Function(int) onChanged) {
+    return Expanded(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            onPressed: currentValue > 0
+                ? () {
+                    HapticManager.medium();
+                    onChanged(currentValue - 1);
+                  }
+                : null,
+            icon: const Icon(Icons.remove_circle_outline),
+            iconSize: 20,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          Container(
+            width: 36,
+            alignment: Alignment.center,
+            child: Text(
+              '$currentValue',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: currentValue < 100
+                ? () {
+                    HapticManager.medium();
+                    onChanged(currentValue + 1);
+                  }
+                : null,
+            icon: const Icon(Icons.add_circle_outline),
+            iconSize: 20,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 紧凑型数量调节行
+  Widget _buildCompactCountRow(
+    String title,
+    int currentValue,
+    Function(int) onChanged,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
+            ),
+          ),
+          IconButton(
+            onPressed: currentValue > 0
+                ? () {
+                    HapticManager.medium();
+                    onChanged(currentValue - 1);
+                  }
+                : null,
+            icon: const Icon(Icons.remove_circle_outline),
+            iconSize: 20,
+            visualDensity: VisualDensity.compact,
+          ),
+          Container(
+            width: 40,
+            alignment: Alignment.center,
+            child: Text(
+              '$currentValue',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: currentValue < 100
+                ? () {
+                    HapticManager.medium();
+                    onChanged(currentValue + 1);
+                  }
+                : null,
+            icon: const Icon(Icons.add_circle_outline),
+            iconSize: 20,
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
     );
   }
 
@@ -666,23 +801,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             },
             activeColor: Theme.of(context).colorScheme.primary,
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '0.5秒',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              Text(
-                '2.0秒',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
+          // Row(
+          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          //   children: [
+          //     Text(
+          //       '0.5秒',
+          //       style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          //         color: Theme.of(context).colorScheme.onSurfaceVariant,
+          //       ),
+          //     ),
+          //     Text(
+          //       '2.0秒',
+          //       style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          //         color: Theme.of(context).colorScheme.onSurfaceVariant,
+          //       ),
+          //     ),
+          //   ],
+          // ),
         ],
       ),
     );
@@ -1519,123 +1654,66 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     SettingsController controller,
   ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.shuffle,
-                color: Theme.of(context).colorScheme.primary,
-                size: 20,
+      child: SizedBox(
+        width: double.infinity,
+        child: SegmentedButton<PracticeShuffleMode>(
+          segments: <ButtonSegment<PracticeShuffleMode>>[
+            ButtonSegment<PracticeShuffleMode>(
+              value: PracticeShuffleMode.ordered,
+              label: Text(
+                _getPracticeShuffleModeDisplayName(PracticeShuffleMode.ordered),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '练习模式题目乱序',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      '选择练习模式的题目出现顺序',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+              icon: const Icon(Icons.sort),
+            ),
+            ButtonSegment<PracticeShuffleMode>(
+              value: PracticeShuffleMode.typeOrderedQuestionRandom,
+              label: Text(
+                _getPracticeShuffleModeDisplayName(
+                  PracticeShuffleMode.typeOrderedQuestionRandom,
                 ),
               ),
-            ],
+              icon: const Icon(Icons.shuffle),
+            ),
+            ButtonSegment<PracticeShuffleMode>(
+              value: PracticeShuffleMode.fullRandom,
+              label: Text(
+                _getPracticeShuffleModeDisplayName(
+                  PracticeShuffleMode.fullRandom,
+                ),
+              ),
+              icon: const Icon(Icons.casino),
+            ),
+          ],
+          selected: {settings.practiceShuffleMode},
+          onSelectionChanged: (Set<PracticeShuffleMode> newSelection) {
+            if (newSelection.isNotEmpty) {
+              _handlePracticeShuffleModeChange(newSelection.first, controller);
+            }
+          },
+          style: SegmentedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Microsoft YaHei',
+            ),
+            selectedBackgroundColor: Theme.of(
+              context,
+            ).colorScheme.primaryContainer,
+            selectedForegroundColor: Theme.of(
+              context,
+            ).colorScheme.onPrimaryContainer,
+            side: BorderSide(
+              color: Theme.of(
+                context,
+              ).colorScheme.outline.withValues(alpha: 0.5),
+            ),
           ),
-          const SizedBox(height: 12),
-          ...PracticeShuffleMode.values.map((mode) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: InkWell(
-                onTap: () {
-                  HapticManager.medium();
-                  _handlePracticeShuffleModeChange(mode, controller);
-                },
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: settings.practiceShuffleMode == mode
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: settings.practiceShuffleMode == mode
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        settings.practiceShuffleMode == mode
-                            ? Icons.radio_button_checked
-                            : Icons.radio_button_unchecked,
-                        size: 20,
-                        color: settings.practiceShuffleMode == mode
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.grey,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _getPracticeShuffleModeDisplayName(mode),
-                              style: Theme.of(context).textTheme.labelLarge
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                    color: settings.practiceShuffleMode == mode
-                                        ? Theme.of(
-                                            context,
-                                          ).colorScheme.onPrimaryContainer
-                                        : Theme.of(
-                                            context,
-                                          ).colorScheme.onSurface,
-                                  ),
-                            ),
-                            Text(
-                              _getPracticeShuffleModeDescription(mode),
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: settings.practiceShuffleMode == mode
-                                        ? Theme.of(context)
-                                              .colorScheme
-                                              .onPrimaryContainer
-                                              .withValues(alpha: 0.7)
-                                        : Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
-        ],
+        ),
       ),
     );
   }
@@ -1646,7 +1724,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
       case PracticeShuffleMode.ordered:
         return '默认顺序';
       case PracticeShuffleMode.typeOrderedQuestionRandom:
-        return '题型顺序，题目乱序';
+        return '内部乱序';
       case PracticeShuffleMode.fullRandom:
         return '完全乱序';
     }
