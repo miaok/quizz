@@ -341,42 +341,58 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     });
 
     if (isCorrect) {
-      // 答案正确，显示绿色高亮状态和切题动画，触发轻快震动
+      // 答案正确，显示绿色高亮状态，触发轻快震动
       HapticManager.correctAnswer();
+
+      final settings = ref.read(settingsProvider);
+
       setState(() {
         _showingCorrectAnswer = true;
-        // 如果不是最后一题，显示切题动画
-        if (!quizState.isLastQuestion) {
+        // 只有在开启自动切题且不是最后一题时，才显示切题动画
+        if (settings.autoNextQuestion && !quizState.isLastQuestion) {
           _isAutoSwitching = true;
           _progressCardSinking = true; // 同步下沉动画开始
         }
       });
 
-      // 延迟1秒后切换到下一题，让用户看到绿色高亮
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) {
-          // 确保在切题前最后一次保存正确答案
-          final currentIndex = ref
-              .read(quizControllerProvider)
-              .currentQuestionIndex;
-          final currentAnswer = ref
-              .read(quizControllerProvider)
-              .userAnswers[currentIndex];
-          if (currentAnswer != null) {
-            // 再次确认答案已保存
-            controller.submitAnswer(currentAnswer);
-          }
+      // 检查是否开启了自动切题功能
+      if (settings.autoNextQuestion && !quizState.isLastQuestion) {
+        // 开启了自动切题：延迟800毫秒后切换到下一题，让用户看到绿色高亮
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (mounted) {
+            // 确保在切题前最后一次保存正确答案
+            final currentIndex = ref
+                .read(quizControllerProvider)
+                .currentQuestionIndex;
+            final currentAnswer = ref
+                .read(quizControllerProvider)
+                .userAnswers[currentIndex];
+            if (currentAnswer != null) {
+              // 再次确认答案已保存
+              controller.submitAnswer(currentAnswer);
+            }
 
-          setState(() {
-            _showingCorrectAnswer = false;
-            _isAutoSwitching = false;
-            _progressCardSinking = false; // 同步结束下沉动画
-            _isProcessingAnswer = false; // 重置处理状态
-          });
-          HapticManager.switchQuestion();
-          _goToNextQuestion(controller, ref.read(quizControllerProvider));
-        }
-      });
+            setState(() {
+              _showingCorrectAnswer = false;
+              _isAutoSwitching = false;
+              _progressCardSinking = false; // 同步结束下沉动画
+              _isProcessingAnswer = false; // 重置处理状态
+            });
+            HapticManager.switchQuestion();
+            _goToNextQuestion(controller, ref.read(quizControllerProvider));
+          }
+        });
+      } else {
+        // 未开启自动切题：只显示正确答案高亮，然后重置状态让用户手动切题
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (mounted) {
+            setState(() {
+              _showingCorrectAnswer = false;
+              _isProcessingAnswer = false; // 重置处理状态，允许用户手动切题
+            });
+          }
+        });
+      }
     } else {
       // 答案错误，显示错误状态，触发稍强震动
       HapticManager.wrongAnswer();
