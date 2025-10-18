@@ -369,8 +369,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
           setState(() {
             _showingCorrectAnswer = false;
-                _isAutoSwitching = false;
-                _progressCardSinking = false; // 同步结束下沉动画
+            _isAutoSwitching = false;
+            _progressCardSinking = false; // 同步结束下沉动画
             _isProcessingAnswer = false; // 重置处理状态
           });
           HapticManager.switchQuestion();
@@ -624,10 +624,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       controller.goToQuestion(index);
                       // 取消自动切题状态和错误状态，重置选项锁定状态
                       setState(() {
-                      _isAutoSwitching = false;
-                      _progressCardSinking = false; // 同步结束下沉动画
-                      _isAutoSwitching = false;
-                      _progressCardSinking = false; // 同步结束下沉动画
+                        _isAutoSwitching = false;
+                        _progressCardSinking = false; // 同步结束下沉动画
+                        _isAutoSwitching = false;
+                        _progressCardSinking = false; // 同步结束下沉动画
                         _showingWrongAnswer = false;
                         _showingCorrectAnswer = false;
                         _isProcessingAnswer = false; // 重置选项锁定状态
@@ -797,23 +797,18 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             borderRadius: BorderRadius.circular(12),
             border: _isAutoSwitching
                 ? Border.all(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.55),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.55),
                     width: 1.5,
                   )
-                : Border.all(
-                    color: _md3OutlineSoft(context),
-                    width: 1,
-                  ),
+                : Border.all(color: _md3OutlineSoft(context), width: 1),
             boxShadow: [
               BoxShadow(
                 color: _isAutoSwitching
-                    ? Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.18)
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.18)
                     : _md3Shadow(context),
                 spreadRadius: 0,
                 blurRadius: 8,
@@ -902,25 +897,21 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       ),
                       decoration: BoxDecoration(
                         color: _remainingTimeInSeconds <= 300
-                            ? Theme.of(context)
-                                .colorScheme
-                                .error
-                                .withValues(alpha: 0.10)
-                            : Theme.of(context)
-                                .colorScheme
-                                .tertiary
-                                .withValues(alpha: 0.10),
+                            ? Theme.of(
+                                context,
+                              ).colorScheme.error.withValues(alpha: 0.10)
+                            : Theme.of(
+                                context,
+                              ).colorScheme.tertiary.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: _remainingTimeInSeconds <= 300
-                              ? Theme.of(context)
-                                  .colorScheme
-                                  .error
-                                  .withValues(alpha: 0.28)
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .tertiary
-                                  .withValues(alpha: 0.28),
+                              ? Theme.of(
+                                  context,
+                                ).colorScheme.error.withValues(alpha: 0.28)
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.tertiary.withValues(alpha: 0.28),
                           width: 0.5,
                         ),
                       ),
@@ -1010,8 +1001,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
     // 禁用状态：未选项更灰一些
     if (isDisabled && !isSelected) {
-      return scheme.surfaceContainerHighest
-          .withValues(alpha: isDarkMode ? 0.22 : 0.32);
+      return scheme.surfaceContainerHighest.withValues(
+        alpha: isDarkMode ? 0.22 : 0.32,
+      );
     }
 
     if (isCorrectAnswer && isSelected) {
@@ -1029,8 +1021,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     }
     if (isSelected) {
       // 选中但未定性：用 surfaceVariant 提升对比度
-      return scheme.surfaceContainerHighest
-          .withValues(alpha: isDarkMode ? 0.35 : 0.42);
+      return scheme.surfaceContainerHighest.withValues(
+        alpha: isDarkMode ? 0.35 : 0.42,
+      );
     }
     return _md3CardBackground(context);
   }
@@ -1080,10 +1073,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       decoration: BoxDecoration(
         color: _md3CardBackground(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _md3OutlineSoft(context),
-          width: 1,
-        ),
+        border: Border.all(color: _md3OutlineSoft(context), width: 1),
         boxShadow: [
           BoxShadow(
             color: _md3Shadow(context),
@@ -1152,10 +1142,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               isDisabled: _isProcessingAnswer && !_showingWrongAnswer,
             ),
             borderRadius: BorderRadius.circular(_optionCardRadius),
-            border: Border.all(
-              color: _md3OutlineSoft(context),
-              width: 1,
-            ),
+            border: Border.all(color: _md3OutlineSoft(context), width: 1),
             boxShadow: [
               BoxShadow(
                 color: _md3Shadow(context),
@@ -1189,12 +1176,12 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                               ? Colors.green.shade700
                               : isWrongAnswer
                               ? (Theme.of(context).brightness == Brightness.dark
-                                    ? const Color.fromARGB(255, 150, 16, 16)
-                                    : const Color.fromARGB(255, 186, 45, 43))
+                                    ? Colors.red.shade800
+                                    : Colors.red.shade600)
                               : isHintAnswer
                               ? Colors.orange.shade600
-                              : isAutoSwitching
-                              ? Colors.green.shade600
+                              // : isAutoSwitching
+                              // ? Colors.green.shade700
                               : _getPrimaryColor(context))
                         : Theme.of(context).colorScheme.outline,
                     width: 2,
@@ -1204,8 +1191,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                             ? Colors.green.shade700
                             : isWrongAnswer
                             ? (Theme.of(context).brightness == Brightness.dark
-                                    ? const Color.fromARGB(255, 150, 16, 16)
-                                    : const Color.fromARGB(255, 186, 45, 43))
+                                  ? Colors.red.shade800
+                                  : Colors.red.shade600)
                             : isHintAnswer
                             ? Theme.of(context).colorScheme.tertiary
                             : isAutoSwitching
@@ -1404,10 +1391,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               isHintAnswer: isHintAnswer,
             ),
             borderRadius: BorderRadius.circular(_optionCardRadius),
-            border: Border.all(
-              color: _md3OutlineSoft(context),
-              width: 1,
-            ),
+            border: Border.all(color: _md3OutlineSoft(context), width: 1),
             boxShadow: [
               BoxShadow(
                 color: _md3Shadow(context),
@@ -1568,14 +1552,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                     backgroundColor:
                         (isAutoNextMode && state.isLastQuestion) ||
                             state.isLastQuestion
-                        ? Colors.green.shade600
+                        ? Colors.green.shade700
                         : _getPrimaryColor(context),
                     foregroundColor: Colors.white,
                     elevation: 2,
                     shadowColor:
                         (isAutoNextMode && state.isLastQuestion) ||
                             state.isLastQuestion
-                        ? Colors.green.withValues(alpha: 0.3)
+                        ? Colors.green.shade700
                         : _getPrimaryColor(context).withValues(alpha: 0.3),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(_buttonRadius),
