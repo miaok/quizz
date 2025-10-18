@@ -130,11 +130,10 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
     return ThemeData(
       colorScheme: colorScheme,
       useMaterial3: true,
-      fontFamily: null, // 使用系统默认字体
-
+      fontFamily: 'Microsoft YaHei', // 使用系统默认字体
       // 文本主题 - 确保所有文本都使用系统默认字体
       textTheme: const TextTheme().apply(
-        fontFamily: null, // 强制所有文本使用系统默认字体
+        fontFamily: 'Microsoft YaHei', // 强制所有文本使用系统默认字体
       ),
 
       // AppBar主题
@@ -148,7 +147,7 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
           color: colorScheme.onSurface,
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          fontFamily: null, // 确保使用系统默认字体
+          fontFamily: 'Microsoft YaHei', // 确保使用系统默认字体
         ),
       ),
 
@@ -208,7 +207,10 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
       chipTheme: ChipThemeData(
         backgroundColor: colorScheme.surfaceContainerHighest,
         selectedColor: colorScheme.primaryContainer,
-        labelStyle: TextStyle(color: colorScheme.onSurface, fontFamily: null),
+        labelStyle: TextStyle(
+          color: colorScheme.onSurface,
+          fontFamily: 'Microsoft YaHei',
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
@@ -224,11 +226,10 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
     return ThemeData(
       colorScheme: colorScheme,
       useMaterial3: true,
-      fontFamily: null, // 使用系统默认字体
-
+      fontFamily: 'Microsoft YaHei', // 使用系统默认字体
       // 文本主题 - 确保所有文本都使用系统默认字体
       textTheme: const TextTheme().apply(
-        fontFamily: null, // 强制所有文本使用系统默认字体
+        fontFamily: 'Microsoft YaHei', // 强制所有文本使用系统默认字体
       ),
 
       // AppBar主题
@@ -242,7 +243,7 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
           color: colorScheme.onSurface,
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          fontFamily: null, // 确保使用系统默认字体
+          fontFamily: 'Microsoft YaHei', // 确保使用系统默认字体
         ),
       ),
 
@@ -302,7 +303,10 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
       chipTheme: ChipThemeData(
         backgroundColor: colorScheme.surfaceContainerHighest,
         selectedColor: colorScheme.primaryContainer,
-        labelStyle: TextStyle(color: colorScheme.onSurface, fontFamily: null),
+        labelStyle: TextStyle(
+          color: colorScheme.onSurface,
+          fontFamily: 'Microsoft YaHei',
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
