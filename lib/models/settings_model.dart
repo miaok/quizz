@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 // 练习模式乱序枚举
 enum PracticeShuffleMode {
   fullRandom, // 完全乱序：题型和题型内部题目顺序均乱序
@@ -15,6 +17,7 @@ class QuizSettings {
   final bool enableProgressSave; // 是否启用进度保存
   final int examTimeMinutes; // 考试时间（分钟）
   final bool enableSecondShuffle; // 二次乱序（练习模式答错后再次打乱选项并动画）
+  final ThemeMode themeMode;
 
   // 品鉴模式项目设置
   final bool enableBlindTasteAroma; // 是否启用香型品鉴
@@ -55,6 +58,7 @@ class QuizSettings {
     this.wineSimulationDuplicateProbability = 0.3, // 默认30%概率出现重复酒样
     this.wineSimulationMaxDuplicateGroups = 1, // 默认最多1组重复酒样
     this.multipleChoiceAutoSwitchDelay = 1200, // 默认多选题自动切题延迟1200ms
+    this.themeMode = ThemeMode.system,
   });
 
   QuizSettings copyWith({
@@ -80,6 +84,7 @@ class QuizSettings {
     double? wineSimulationDuplicateProbability,
     int? wineSimulationMaxDuplicateGroups,
     int? multipleChoiceAutoSwitchDelay,
+    ThemeMode? themeMode,
   }) {
     return QuizSettings(
       singleChoiceCount: singleChoiceCount ?? this.singleChoiceCount,
@@ -120,6 +125,7 @@ class QuizSettings {
           this.wineSimulationMaxDuplicateGroups,
       multipleChoiceAutoSwitchDelay:
           multipleChoiceAutoSwitchDelay ?? this.multipleChoiceAutoSwitchDelay,
+      themeMode: themeMode ?? this.themeMode,
     );
   }
 

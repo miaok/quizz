@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'providers/settings_provider.dart';
 import 'router/app_router.dart';
 import 'services/database_service.dart';
 import 'services/settings_service.dart';
@@ -30,14 +31,15 @@ void main() async {
   runApp(const ProviderScope(child: MyQuizApp()));
 }
 
-class MyQuizApp extends StatefulWidget {
+class MyQuizApp extends ConsumerStatefulWidget {
   const MyQuizApp({super.key});
 
   @override
-  State<MyQuizApp> createState() => _MyQuizAppState();
+  ConsumerState<MyQuizApp> createState() => _MyQuizAppState();
 }
 
-class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
+class _MyQuizAppState extends ConsumerState<MyQuizApp>
+    with WidgetsBindingObserver {
   bool _hasInitializedUI = false;
   bool _hasInitializedOrientation = false;
   Brightness? _lastBrightness;
@@ -327,6 +329,9 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
       });
     }
 
+    // 从Provider中监听主题模式设置
+    final themeMode = ref.watch(settingsProvider.select((s) => s.themeMode));
+
     return MaterialApp.router(
       title: 'QUIZ',
       debugShowCheckedModeBanner: false,
@@ -334,8 +339,8 @@ class _MyQuizAppState extends State<MyQuizApp> with WidgetsBindingObserver {
       // 路由配置
       routerConfig: appRouter,
 
-      // 主题模式 - 自动跟随系统
-      themeMode: ThemeMode.system,
+      // 主题模式 - 跟随用户设置
+      themeMode: themeMode,
 
       // 浅色主题
       theme: _buildLightTheme(),

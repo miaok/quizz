@@ -161,6 +161,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         ),
         const SizedBox(height: 16),
         _buildSectionCard(
+          title: '主题模式',
+          icon: Icons.brightness_6,
+          child: _buildThemeModeSection(settings, controller),
+        ),
+        const SizedBox(height: 16),
+        _buildSectionCard(
           title: '进度管理',
           icon: Icons.save,
           child: _buildProgressSection(settings, controller),
@@ -208,6 +214,50 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             const SizedBox(height: 16),
             child,
           ],
+        ),
+      ),
+    );
+  }
+
+  // 主题模式设置区域
+  Widget _buildThemeModeSection(
+    QuizSettings settings,
+    SettingsController controller,
+  ) {
+    return SegmentedButton<ThemeMode>(
+      segments: const <ButtonSegment<ThemeMode>>[
+        ButtonSegment<ThemeMode>(
+          value: ThemeMode.system,
+          label: Text('跟随系统'),
+          icon: Icon(Icons.brightness_auto),
+        ),
+        ButtonSegment<ThemeMode>(
+          value: ThemeMode.light,
+          label: Text('浅色模式'),
+          icon: Icon(Icons.light_mode),
+        ),
+        ButtonSegment<ThemeMode>(
+          value: ThemeMode.dark,
+          label: Text('深色模式'),
+          icon: Icon(Icons.dark_mode),
+        ),
+      ],
+      selected: {settings.themeMode},
+      onSelectionChanged: (Set<ThemeMode> newSelection) {
+        if (newSelection.isNotEmpty) {
+          HapticManager.medium();
+          controller.updateThemeMode(newSelection.first);
+        }
+      },
+      style: SegmentedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        textStyle: const TextStyle(fontWeight: FontWeight.w500),
+        selectedBackgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        selectedForegroundColor: Theme.of(
+          context,
+        ).colorScheme.onPrimaryContainer,
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
         ),
       ),
     );

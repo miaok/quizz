@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/settings_model.dart';
 import '../services/settings_service.dart';
 import 'quiz_provider.dart';
+import 'package:flutter/material.dart';
 
 // 设置服务Provider
 final settingsServiceProvider = Provider<SettingsService>((ref) {
@@ -218,6 +219,13 @@ class SettingsController extends StateNotifier<QuizSettings> {
     } catch (e) {
       // 保存失败时不更新状态
       rethrow;
+    }
+  }
+
+  Future<void> updateThemeMode(ThemeMode mode) async {
+    if (state.themeMode != mode) {
+      state = state.copyWith(themeMode: mode);
+      await _settingsService.saveSettings(state);
     }
   }
 }
