@@ -54,6 +54,9 @@ class BlindTasteAnswerCardItem implements AnswerCardItem {
 
   @override
   bool get isFirstTimeWrong => false; // 品评模式不适用
+
+  @override
+  bool get isFlagged => false; // 品评模式不适用
 }
 
 class BlindTastePage extends ConsumerStatefulWidget {

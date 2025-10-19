@@ -43,6 +43,7 @@ class QuizState {
   final QuizStatus status;
   final QuizMode mode; // 答题模式
   final Set<int> firstAttemptWrongAnswers; // 首次答错的题目索引集合
+  final Set<int> flaggedQuestions; // 用户标记的题目索引集合
   final List<QuestionModel> questions;
   final List<QuestionModel> originalQuestions; // 存储原始题目（未处理选项顺序）
   final int currentQuestionIndex;
@@ -57,6 +58,7 @@ class QuizState {
     this.status = QuizStatus.initial,
     this.mode = QuizMode.exam, // 默认考试模式
     this.firstAttemptWrongAnswers = const {},
+    this.flaggedQuestions = const {},
     this.questions = const [],
     this.originalQuestions = const [], // 默认空列表
     this.currentQuestionIndex = 0,
@@ -72,6 +74,7 @@ class QuizState {
     QuizStatus? status,
     QuizMode? mode,
     Set<int>? firstAttemptWrongAnswers,
+    Set<int>? flaggedQuestions,
     List<QuestionModel>? questions,
     List<QuestionModel>? originalQuestions,
     int? currentQuestionIndex,
@@ -87,6 +90,7 @@ class QuizState {
       mode: mode ?? this.mode,
       firstAttemptWrongAnswers:
           firstAttemptWrongAnswers ?? this.firstAttemptWrongAnswers,
+      flaggedQuestions: flaggedQuestions ?? this.flaggedQuestions,
       questions: questions ?? this.questions,
       originalQuestions: originalQuestions ?? this.originalQuestions,
       currentQuestionIndex: currentQuestionIndex ?? this.currentQuestionIndex,
@@ -279,7 +283,9 @@ class QuizController extends StateNotifier<QuizState> {
     newAnswers[state.currentQuestionIndex] = answer;
 
     // 检查是否为首次答错（仅在理论练习模式下）
-    Set<int> newFirstAttemptWrongAnswers = Set.from(state.firstAttemptWrongAnswers);
+    Set<int> newFirstAttemptWrongAnswers = Set.from(
+      state.firstAttemptWrongAnswers,
+    );
 
     if (state.mode == QuizMode.practice) {
       final currentIndex = state.currentQuestionIndex;
@@ -287,7 +293,8 @@ class QuizController extends StateNotifier<QuizState> {
       // 如果这是第一次提交答案
       if (!state.userAnswers.containsKey(currentIndex)) {
         // 检查答案是否正确
-        if (state.questions.isNotEmpty && currentIndex < state.questions.length) {
+        if (state.questions.isNotEmpty &&
+            currentIndex < state.questions.length) {
           final currentQuestion = state.questions[currentIndex];
           final isCorrect = currentQuestion.isAnswerCorrect(answer);
 
@@ -306,6 +313,21 @@ class QuizController extends StateNotifier<QuizState> {
 
     // 自动保存进度（练习模式）
     _autoSaveProgress();
+  }
+
+  // 标记/取消标记题目
+  void toggleFlag(int questionIndex) {
+    if (state.status != QuizStatus.inProgress) return;
+
+    final newFlagged = Set<int>.from(state.flaggedQuestions);
+    if (newFlagged.contains(questionIndex)) {
+      newFlagged.remove(questionIndex);
+    } else {
+      newFlagged.add(questionIndex);
+    }
+
+    state = state.copyWith(flaggedQuestions: newFlagged);
+    _autoSaveProgress(); // 标记状态也保存
   }
 
   // 检查当前答案是否正确（用于练习模式）
@@ -595,6 +617,7 @@ class QuizController extends StateNotifier<QuizState> {
           questionStartTimes: progress.questionStartTimes,
           quizStartTime: progress.startTime,
           selectedCategory: progress.selectedCategory,
+          flaggedQuestions: progress.flaggedQuestions,
         );
         debugPrint(
           'Successfully restored quiz progress for ${progress.mode!.name} mode',

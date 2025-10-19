@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/haptic_manager.dart';
 
 /// 答题卡项目数据接口
@@ -20,6 +21,9 @@ abstract class AnswerCardItem {
 
   /// 是否是第一次答错的题目（仅在理论练习模式下）
   bool get isFirstTimeWrong => false;
+
+  /// 是否被用户标记
+  bool get isFlagged => false;
 }
 
 /// 答题卡统计数据
@@ -55,6 +59,9 @@ class AnswerCardConfig {
   /// 点击项目时的回调
   final Function(int index) onItemTapped;
 
+  /// 长按项目时的回调
+  final Function(int index)? onItemLongPressed;
+
   /// 滚动控制器
   final ScrollController? scrollController;
 
@@ -67,6 +74,7 @@ class AnswerCardConfig {
     //required this.progressTextBuilder,
     required this.stats,
     required this.onItemTapped,
+    this.onItemLongPressed,
     this.crossAxisCount = 5,
     this.scrollController,
     this.showWrongAnswerColor = true,
@@ -74,11 +82,18 @@ class AnswerCardConfig {
 }
 
 /// 通用答题卡组件
-class AnswerCard extends StatelessWidget {
+class AnswerCard extends StatefulWidget {
   final List<AnswerCardItem> items;
   final AnswerCardConfig config;
 
   const AnswerCard({super.key, required this.items, required this.config});
+
+  @override
+  State<AnswerCard> createState() => _AnswerCardState();
+}
+
+class _AnswerCardState extends State<AnswerCard> {
+  String? _activeFilterLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +109,9 @@ class AnswerCard extends StatelessWidget {
     );
     final dynamicSpacing = isLandscape ? 8.0 : 10.0;
     final dynamicPadding = isLandscape ? 12.0 : 16.0;
+
+    // 根据当前筛选器过滤项目
+    final filteredItems = _filterItems(widget.items);
 
     return Container(
       height: MediaQuery.of(context).size.height * (isLandscape ? 0.8 : 0.7),
@@ -123,13 +141,13 @@ class AnswerCard extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  config.icon,
+                  widget.config.icon,
                   color: Theme.of(context).colorScheme.primary,
                   size: isLandscape ? 20 : 24,
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  config.title,
+                  widget.config.title,
                   style: TextStyle(
                     fontSize: isLandscape ? 16 : 18,
                     fontWeight: FontWeight.bold,
@@ -151,24 +169,30 @@ class AnswerCard extends StatelessWidget {
           const Divider(height: 1),
 
           // 题目网格
+          // 使用Consumer包裹，以便在标记题目后能即时刷新UI
           Expanded(
             child: Padding(
               padding: EdgeInsets.all(dynamicPadding),
-              child: GridView.builder(
-                controller: config.scrollController,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: dynamicCrossAxisCount,
-                  crossAxisSpacing: dynamicSpacing,
-                  mainAxisSpacing: dynamicSpacing,
-                  childAspectRatio: 1,
-                ),
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  return _buildAnswerCardItem(
-                    context,
-                    items[index],
-                    index,
-                    isLandscape,
+              child: Consumer(
+                builder: (context, ref, child) {
+                  // 这里重新watch一下items，确保它们是最新的
+                  return GridView.builder(
+                    controller: widget.config.scrollController,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: dynamicCrossAxisCount,
+                      crossAxisSpacing: dynamicSpacing,
+                      mainAxisSpacing: dynamicSpacing,
+                      childAspectRatio: 1,
+                    ),
+                    itemCount: filteredItems.length,
+                    itemBuilder: (context, index) {
+                      return _buildAnswerCardItem(
+                        context,
+                        filteredItems[index],
+                        index,
+                        isLandscape,
+                      );
+                    },
                   );
                 },
               ),
@@ -194,14 +218,43 @@ class AnswerCard extends StatelessWidget {
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: config.stats
-                  .map((stat) => _buildStatItem(context, stat, isLandscape))
-                  .toList(),
+              children: [
+                _buildAllFilterButton(isLandscape), // 添加“全部”按钮
+                ...widget.config.stats
+                    .map((stat) => _buildStatItem(context, stat, isLandscape))
+                    .toList(),
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  // 过滤项目
+  List<AnswerCardItem> _filterItems(List<AnswerCardItem> allItems) {
+    if (_activeFilterLabel == null) {
+      return allItems;
+    }
+
+    switch (_activeFilterLabel) {
+      case '当前':
+        return allItems.where((item) => item.isCurrent).toList();
+      case '已答':
+      case '已学':
+      case '已完成':
+        return allItems.where((item) => item.isCompleted).toList();
+      case '未答':
+      case '未学':
+      case '未完成':
+        return allItems.where((item) => !item.isCompleted).toList();
+      case '错误':
+        return allItems.where((item) => item.isFirstTimeWrong).toList();
+      case '标记': // 为未来可能的标记筛选做准备
+        return allItems.where((item) => item.isFlagged).toList();
+      default:
+        return allItems;
+    }
   }
 
   // 根据屏幕宽度和方向动态计算列数
@@ -238,12 +291,15 @@ class AnswerCard extends StatelessWidget {
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    if (item.isCurrent) {
+    if (item.isCurrent && _activeFilterLabel != '当前') {
       backgroundColor = Theme.of(context).colorScheme.secondary;
       textColor = Theme.of(context).colorScheme.onSecondary;
-    } else if (item.isFirstTimeWrong && config.showWrongAnswerColor) {
+    } else if (item.isFirstTimeWrong && widget.config.showWrongAnswerColor) {
       // 新增：错题显示红色背景（需要开启设置）
       backgroundColor = Colors.red;
+      textColor = Colors.white;
+    } else if (item.isFlagged) {
+      backgroundColor = Colors.amber;
       textColor = Colors.white;
     } else if (item.isCompleted) {
       backgroundColor = Theme.of(context).colorScheme.primary;
@@ -262,34 +318,62 @@ class AnswerCard extends StatelessWidget {
     final borderRadius = isLandscape ? 6.0 : 8.0;
 
     return GestureDetector(
+      onLongPress: () {
+        if (widget.config.onItemLongPressed != null) {
+          HapticManager.longPress();
+          // 注意：长按标记的是原始列表的索引
+          final originalIndex = widget.items.indexOf(item);
+          if (originalIndex != -1) {
+            widget.config.onItemLongPressed!(originalIndex);
+          }
+        }
+      },
       onTap: () {
         HapticManager.selectQuestion();
-        config.onItemTapped(index);
-        Navigator.of(context).pop(); // 关闭答题卡
+        // 注意：点击跳转的是原始列表的索引
+        final originalIndex = widget.items.indexOf(item);
+        if (originalIndex != -1) {
+          widget.config.onItemTapped(originalIndex);
+        }
       },
-      child: Container(
-        width: buttonSize,
-        height: buttonSize,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(borderRadius),
-          border: item.isCurrent
-              ? Border.all(
-                  color: Theme.of(context).colorScheme.secondary,
-                  width: isLandscape ? 1.5 : 2,
-                )
-              : null,
-        ),
-        child: Center(
-          child: Text(
-            '${item.displayNumber}',
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.bold,
-              color: textColor,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: buttonSize,
+            height: buttonSize,
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: item.isCurrent && _activeFilterLabel != '当前'
+                  ? Border.all(
+                      color: Theme.of(context).colorScheme.secondary,
+                      width: isLandscape ? 1.5 : 2,
+                    )
+                  : null,
+            ),
+            child: Center(
+              child: Text(
+                '${item.displayNumber}',
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
             ),
           ),
-        ),
+          if (item.isFlagged)
+            Positioned(
+              top: 2,
+              right: 2,
+              child: Icon(
+                Icons.flag,
+                color: Colors.white.withOpacity(0.8),
+                size: isLandscape ? 10 : 12,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -300,38 +384,106 @@ class AnswerCard extends StatelessWidget {
     bool isLandscape,
   ) {
     final iconSize = isLandscape ? 20.0 : 24.0;
-    final fontSize = isLandscape ? 10.0 : 12.0;
     final labelFontSize = isLandscape ? 10.0 : 12.0;
+    final isActive = _activeFilterLabel == stat.label;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: iconSize,
-          height: iconSize,
-          decoration: BoxDecoration(color: stat.color, shape: BoxShape.circle),
-          child: Center(
-            child: Text(
-              '${stat.count}',
+    return GestureDetector(
+      onTap: () {
+        HapticManager.selection();
+        setState(() {
+          if (isActive) {
+            _activeFilterLabel = null; // 再次点击取消筛选
+          } else {
+            _activeFilterLabel = stat.label;
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isActive ? stat.color.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: isActive ? Border.all(color: stat.color, width: 1.5) : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: iconSize * 0.6,
+                  height: iconSize * 0.6,
+                  decoration: BoxDecoration(
+                    color: stat.color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${stat.count}',
+                  style: TextStyle(
+                    color: stat.color,
+                    fontSize: labelFontSize + 2,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: isLandscape ? 2 : 4),
+            Text(
+              stat.label,
               style: TextStyle(
-                color: Colors.white,
-                fontSize: fontSize,
-                fontWeight: FontWeight.bold,
+                fontSize: labelFontSize,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.onSurfaceVariant
+                    : Colors.grey[600],
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
               ),
             ),
-          ),
+          ],
         ),
-        SizedBox(height: isLandscape ? 2 : 4),
-        Text(
-          stat.label,
-          style: TextStyle(
-            fontSize: labelFontSize,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Theme.of(context).colorScheme.onSurfaceVariant
-                : Colors.grey[600],
-          ),
+      ),
+    );
+  }
+
+  Widget _buildAllFilterButton(bool isLandscape) {
+    final labelFontSize = isLandscape ? 10.0 : 12.0;
+    final isActive = _activeFilterLabel == null;
+    final color = Theme.of(context).colorScheme.onSurfaceVariant;
+
+    return GestureDetector(
+      onTap: () {
+        HapticManager.selection();
+        setState(() {
+          _activeFilterLabel = null;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isActive ? color.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: isActive ? Border.all(color: color, width: 1.5) : null,
         ),
-      ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.apps, size: labelFontSize + 4, color: color),
+            SizedBox(height: isLandscape ? 2 : 4),
+            Text(
+              '全部',
+              style: TextStyle(
+                fontSize: labelFontSize,
+                color: color,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

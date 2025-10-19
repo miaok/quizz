@@ -41,6 +41,12 @@ class QuizAnswerCardItem implements AnswerCardItem {
     // 检查是否在首次错误集合中
     return state.firstAttemptWrongAnswers.contains(index);
   }
+
+  @override
+  bool get isFlagged {
+    // 检查是否在标记集合中
+    return state.flaggedQuestions.contains(index);
+  }
 }
 
 class QuizPage extends ConsumerStatefulWidget {
@@ -1796,6 +1802,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       onItemTapped: (index) {
         final controller = ref.read(quizControllerProvider.notifier);
         _goToQuestionByIndex(index, controller);
+      },
+      onItemLongPressed: (index) {
+        final controller = ref.read(quizControllerProvider.notifier);
+        controller.toggleFlag(index);
       },
       scrollController: _questionCardScrollController,
       // 从设置中读取是否显示错题颜色

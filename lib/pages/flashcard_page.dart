@@ -37,6 +37,9 @@ class FlashcardAnswerCardItem implements AnswerCardItem {
   }
 
   @override
+  bool get isFlagged => false; // 闪卡模式不适用
+
+  @override
   bool get isFirstTimeWrong => false; // 闪卡模式不适用
 
   @override

@@ -14,9 +14,7 @@ class HapticManager {
   }
 
   /// 更新设置
-  static void updateSettings({
-    required bool hapticEnabled,
-  }) {
+  static void updateSettings({required bool hapticEnabled}) {
     _hapticEnabled = hapticEnabled;
   }
 
@@ -136,6 +134,13 @@ class HapticManager {
   static void flipCard() {
     if (_hapticEnabled) {
       HapticFeedback.lightImpact();
+    }
+  }
+
+  /// 长按操作的触感反馈
+  static void longPress() {
+    if (_hapticEnabled) {
+      HapticFeedback.mediumImpact();
     }
   }
 }

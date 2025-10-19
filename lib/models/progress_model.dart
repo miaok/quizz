@@ -22,6 +22,7 @@ class QuizProgress {
   final Map<int, dynamic> userAnswers; // 用户答案
   final Map<int, DateTime> questionStartTimes; // 每题开始时间
   final DateTime? startTime; // 开始时间
+  final Set<int> flaggedQuestions; // 标记的题目
   final String? selectedCategory; // 选择的分类
   final DateTime savedAt; // 保存时间
 
@@ -51,6 +52,7 @@ class QuizProgress {
     this.questions = const [],
     this.currentIndex = 0,
     this.userAnswers = const {},
+    this.flaggedQuestions = const {},
     this.questionStartTimes = const {},
     this.startTime,
     this.selectedCategory,
@@ -85,6 +87,7 @@ class QuizProgress {
       questions: state.questions,
       currentIndex: state.currentQuestionIndex,
       userAnswers: state.userAnswers,
+      flaggedQuestions: state.flaggedQuestions,
       questionStartTimes: state.questionStartTimes,
       startTime: state.quizStartTime,
       selectedCategory: state.selectedCategory,
@@ -140,6 +143,7 @@ class QuizProgress {
     QuizMode? mode,
     List<QuestionModel>? questions,
     int? currentIndex,
+    Set<int>? flaggedQuestions,
     Map<int, dynamic>? userAnswers,
     Map<int, DateTime>? questionStartTimes,
     DateTime? startTime,
@@ -167,6 +171,7 @@ class QuizProgress {
       mode: mode ?? this.mode,
       questions: questions ?? this.questions,
       currentIndex: currentIndex ?? this.currentIndex,
+      flaggedQuestions: flaggedQuestions ?? this.flaggedQuestions,
       userAnswers: userAnswers ?? this.userAnswers,
       questionStartTimes: questionStartTimes ?? this.questionStartTimes,
       startTime: startTime ?? this.startTime,
@@ -205,6 +210,7 @@ class QuizProgress {
       'userAnswers': userAnswers.map(
         (key, value) => MapEntry(key.toString(), value),
       ),
+      'flaggedQuestions': flaggedQuestions.toList(),
       'questionStartTimes': questionStartTimes.map(
         (key, value) => MapEntry(key.toString(), value.millisecondsSinceEpoch),
       ),
@@ -258,6 +264,12 @@ class QuizProgress {
       }
       return MapEntry(int.parse(key), processedValue);
     });
+
+    final flaggedQuestionsJson =
+        json['flaggedQuestions'] as List<dynamic>? ?? [];
+    final flaggedQuestions = flaggedQuestionsJson
+        .map((id) => id as int)
+        .toSet();
 
     final questionStartTimesJson =
         json['questionStartTimes'] as Map<String, dynamic>? ?? {};
@@ -314,6 +326,7 @@ class QuizProgress {
       questions: questions,
       currentIndex: json['currentIndex'] as int? ?? 0,
       userAnswers: userAnswers,
+      flaggedQuestions: flaggedQuestions,
       questionStartTimes: questionStartTimes,
       startTime: startTime,
       selectedCategory: json['selectedCategory'] as String?,
