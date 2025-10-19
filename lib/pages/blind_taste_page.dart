@@ -51,6 +51,9 @@ class BlindTasteAnswerCardItem implements AnswerCardItem {
         answer.selectedEquipment.isNotEmpty ||
         answer.selectedFermentationAgent.isNotEmpty;
   }
+
+  @override
+  bool get isFirstTimeWrong => false; // 品评模式不适用
 }
 
 class BlindTastePage extends ConsumerStatefulWidget {

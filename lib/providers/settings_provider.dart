@@ -209,6 +209,12 @@ class SettingsController extends StateNotifier<QuizSettings> {
     await _saveSettings(newSettings);
   }
 
+  // 更新显示错题颜色设置
+  Future<void> updateShowWrongAnswerColor(bool show) async {
+    final newSettings = state.copyWith(showWrongAnswerColor: show);
+    await _saveSettings(newSettings);
+  }
+
   // 批量更新设置
   Future<void> updateSettings(QuizSettings settings) async {
     await _saveSettings(settings);

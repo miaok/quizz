@@ -42,6 +42,7 @@ enum QuizMode {
 class QuizState {
   final QuizStatus status;
   final QuizMode mode; // 答题模式
+  final Set<int> firstAttemptWrongAnswers; // 首次答错的题目索引集合
   final List<QuestionModel> questions;
   final List<QuestionModel> originalQuestions; // 存储原始题目（未处理选项顺序）
   final int currentQuestionIndex;
@@ -55,6 +56,7 @@ class QuizState {
   const QuizState({
     this.status = QuizStatus.initial,
     this.mode = QuizMode.exam, // 默认考试模式
+    this.firstAttemptWrongAnswers = const {},
     this.questions = const [],
     this.originalQuestions = const [], // 默认空列表
     this.currentQuestionIndex = 0,
@@ -69,6 +71,7 @@ class QuizState {
   QuizState copyWith({
     QuizStatus? status,
     QuizMode? mode,
+    Set<int>? firstAttemptWrongAnswers,
     List<QuestionModel>? questions,
     List<QuestionModel>? originalQuestions,
     int? currentQuestionIndex,
@@ -82,6 +85,8 @@ class QuizState {
     return QuizState(
       status: status ?? this.status,
       mode: mode ?? this.mode,
+      firstAttemptWrongAnswers:
+          firstAttemptWrongAnswers ?? this.firstAttemptWrongAnswers,
       questions: questions ?? this.questions,
       originalQuestions: originalQuestions ?? this.originalQuestions,
       currentQuestionIndex: currentQuestionIndex ?? this.currentQuestionIndex,
@@ -273,7 +278,31 @@ class QuizController extends StateNotifier<QuizState> {
     final newAnswers = Map<int, dynamic>.from(state.userAnswers);
     newAnswers[state.currentQuestionIndex] = answer;
 
-    state = state.copyWith(userAnswers: newAnswers);
+    // 检查是否为首次答错（仅在理论练习模式下）
+    Set<int> newFirstAttemptWrongAnswers = Set.from(state.firstAttemptWrongAnswers);
+
+    if (state.mode == QuizMode.practice) {
+      final currentIndex = state.currentQuestionIndex;
+
+      // 如果这是第一次提交答案
+      if (!state.userAnswers.containsKey(currentIndex)) {
+        // 检查答案是否正确
+        if (state.questions.isNotEmpty && currentIndex < state.questions.length) {
+          final currentQuestion = state.questions[currentIndex];
+          final isCorrect = currentQuestion.isAnswerCorrect(answer);
+
+          // 如果答案错误，将题目索引添加到首次错误集合中
+          if (!isCorrect) {
+            newFirstAttemptWrongAnswers.add(currentIndex);
+          }
+        }
+      }
+    }
+
+    state = state.copyWith(
+      userAnswers: newAnswers,
+      firstAttemptWrongAnswers: newFirstAttemptWrongAnswers,
+    );
 
     // 自动保存进度（练习模式）
     _autoSaveProgress();

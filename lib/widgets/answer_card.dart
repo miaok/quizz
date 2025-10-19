@@ -17,6 +17,9 @@ abstract class AnswerCardItem {
 
   /// 是否已有答案（可选，用于区分完成状态和答题状态）
   bool get hasAnswer => isCompleted;
+
+  /// 是否是第一次答错的题目（仅在理论练习模式下）
+  bool get isFirstTimeWrong => false;
 }
 
 /// 答题卡统计数据
@@ -55,6 +58,9 @@ class AnswerCardConfig {
   /// 滚动控制器
   final ScrollController? scrollController;
 
+  /// 是否显示错题颜色（仅在理论练习模式下生效）
+  final bool showWrongAnswerColor;
+
   const AnswerCardConfig({
     required this.title,
     required this.icon,
@@ -63,6 +69,7 @@ class AnswerCardConfig {
     required this.onItemTapped,
     this.crossAxisCount = 5,
     this.scrollController,
+    this.showWrongAnswerColor = true,
   });
 }
 
@@ -234,6 +241,10 @@ class AnswerCard extends StatelessWidget {
     if (item.isCurrent) {
       backgroundColor = Theme.of(context).colorScheme.secondary;
       textColor = Theme.of(context).colorScheme.onSecondary;
+    } else if (item.isFirstTimeWrong && config.showWrongAnswerColor) {
+      // 新增：错题显示红色背景（需要开启设置）
+      backgroundColor = Colors.red;
+      textColor = Colors.white;
     } else if (item.isCompleted) {
       backgroundColor = Theme.of(context).colorScheme.primary;
       textColor = Theme.of(context).colorScheme.onPrimary;

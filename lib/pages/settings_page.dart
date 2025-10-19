@@ -825,6 +825,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               : null,
         ),
         const SizedBox(height: 8),
+        _buildSwitchTile(
+          title: '错题提示',
+          subtitle: '在理论练习答题卡中高亮显示错题',
+          icon: Icons.color_lens,
+          value: settings.showWrongAnswerColor,
+          onChanged: controller.updateShowWrongAnswerColor,
+        ),
+        const SizedBox(height: 8),
         _buildMultipleChoiceDelayCard(settings, controller),
       ],
     );

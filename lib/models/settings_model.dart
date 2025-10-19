@@ -34,6 +34,7 @@ class QuizSettings {
   final double wineSimulationDuplicateProbability; // 酒样练习重复概率 (0.0-1.0)
   final int wineSimulationMaxDuplicateGroups; // 酒样练习最大重复组数
   final int multipleChoiceAutoSwitchDelay; // 多选题自动切题延迟时间（毫秒），范围1000-10000ms
+  final bool showWrongAnswerColor; // 是否在答题卡中显示错题颜色（理论练习模式）
 
   const QuizSettings({
     this.singleChoiceCount = 33,
@@ -55,9 +56,10 @@ class QuizSettings {
     this.practiceShuffleMode = PracticeShuffleMode.fullRandom, // 默认完全乱序
     this.enableWineSimulationSameWineSeries = false, // 默认关闭同酒样系列模式
     this.wineSimulationSampleCount = 5, // 默认酒样练习模式酒杯数量为5
-    this.wineSimulationDuplicateProbability = 0.3, // 默认30%概率出现重复酒样
+    this.wineSimulationDuplicateProbability = 0, // 默认0%概率出现重复酒样
     this.wineSimulationMaxDuplicateGroups = 1, // 默认最多1组重复酒样
     this.multipleChoiceAutoSwitchDelay = 1200, // 默认多选题自动切题延迟1200ms
+    this.showWrongAnswerColor = true, // 默认启用错题颜色显示
     this.themeMode = ThemeMode.system,
   });
 
@@ -84,6 +86,7 @@ class QuizSettings {
     double? wineSimulationDuplicateProbability,
     int? wineSimulationMaxDuplicateGroups,
     int? multipleChoiceAutoSwitchDelay,
+    bool? showWrongAnswerColor,
     ThemeMode? themeMode,
   }) {
     return QuizSettings(
@@ -125,6 +128,7 @@ class QuizSettings {
           this.wineSimulationMaxDuplicateGroups,
       multipleChoiceAutoSwitchDelay:
           multipleChoiceAutoSwitchDelay ?? this.multipleChoiceAutoSwitchDelay,
+      showWrongAnswerColor: showWrongAnswerColor ?? this.showWrongAnswerColor,
       themeMode: themeMode ?? this.themeMode,
     );
   }
@@ -158,6 +162,7 @@ class QuizSettings {
       'wineSimulationDuplicateProbability': wineSimulationDuplicateProbability,
       'wineSimulationMaxDuplicateGroups': wineSimulationMaxDuplicateGroups,
       'multipleChoiceAutoSwitchDelay': multipleChoiceAutoSwitchDelay,
+      'showWrongAnswerColor': showWrongAnswerColor,
     };
   }
 
@@ -189,11 +194,12 @@ class QuizSettings {
           json['enableWineSimulationSameWineSeries'] ?? false,
       wineSimulationSampleCount: json['wineSimulationSampleCount'] ?? 5,
       wineSimulationDuplicateProbability:
-          json['wineSimulationDuplicateProbability'] ?? 0.3,
+          json['wineSimulationDuplicateProbability'] ?? 0,
       wineSimulationMaxDuplicateGroups:
           json['wineSimulationMaxDuplicateGroups'] ?? 1,
       multipleChoiceAutoSwitchDelay:
           json['multipleChoiceAutoSwitchDelay'] ?? 1200,
+      showWrongAnswerColor: json['showWrongAnswerColor'] ?? true,
     );
   }
 
@@ -225,7 +231,8 @@ class QuizSettings {
             wineSimulationDuplicateProbability &&
         other.wineSimulationMaxDuplicateGroups ==
             wineSimulationMaxDuplicateGroups &&
-        other.multipleChoiceAutoSwitchDelay == multipleChoiceAutoSwitchDelay;
+        other.multipleChoiceAutoSwitchDelay == multipleChoiceAutoSwitchDelay &&
+        other.showWrongAnswerColor == showWrongAnswerColor;
   }
 
   @override
@@ -251,7 +258,8 @@ class QuizSettings {
         wineSimulationSampleCount.hashCode ^
         wineSimulationDuplicateProbability.hashCode ^
         wineSimulationMaxDuplicateGroups.hashCode ^
-        multipleChoiceAutoSwitchDelay.hashCode;
+        multipleChoiceAutoSwitchDelay.hashCode ^
+        showWrongAnswerColor.hashCode;
   }
 
   // 解析练习模式乱序模式

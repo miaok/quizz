@@ -32,6 +32,15 @@ class QuizAnswerCardItem implements AnswerCardItem {
 
   @override
   bool get hasAnswer => isCompleted;
+
+  @override
+  bool get isFirstTimeWrong {
+    // 只在理论练习模式下显示错题颜色
+    if (state.mode != QuizMode.practice) return false;
+
+    // 检查是否在首次错误集合中
+    return state.firstAttemptWrongAnswers.contains(index);
+  }
 }
 
 class QuizPage extends ConsumerStatefulWidget {
@@ -1749,6 +1758,11 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       (index) => QuizAnswerCardItem(index, state),
     );
 
+    // 仅在理论练习模式下计算错题数
+    final incorrectCount = state.mode == QuizMode.practice
+        ? items.where((item) => item.isFirstTimeWrong).length
+        : 0;
+
     final config = AnswerCardConfig(
       title: '理论答题卡',
       icon: Icons.quiz,
@@ -1765,17 +1779,27 @@ class _QuizPageState extends ConsumerState<QuizPage> {
           count: state.answeredCount,
           color: Theme.of(context).colorScheme.primary,
         ),
-        AnswerCardStats(
-          label: '未答',
-          count: state.questions.length - state.answeredCount,
-          color: Theme.of(context).colorScheme.outline,
-        ),
+        // 根据模式显示 "错误" 或 "未答"
+        if (state.mode == QuizMode.practice)
+          AnswerCardStats(
+            label: '错误',
+            count: incorrectCount,
+            color: Theme.of(context).colorScheme.error,
+          )
+        else
+          AnswerCardStats(
+            label: '未答',
+            count: state.questions.length - state.answeredCount,
+            color: Theme.of(context).colorScheme.outline,
+          ),
       ],
       onItemTapped: (index) {
         final controller = ref.read(quizControllerProvider.notifier);
         _goToQuestionByIndex(index, controller);
       },
       scrollController: _questionCardScrollController,
+      // 从设置中读取是否显示错题颜色
+      showWrongAnswerColor: ref.read(settingsProvider).showWrongAnswerColor,
     );
 
     AnswerCardHelper.showAnswerCard(context, items, config);
