@@ -384,69 +384,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 ),
               ),
             ),
-            const SizedBox(height: 4),
             // 按钮行
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 减少按钮
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: currentValue > 0
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context).colorScheme.surfaceVariant,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: IconButton(
-                    onPressed: currentValue > 0
-                        ? () {
-                            HapticManager.medium();
-                            onChanged(currentValue - 1);
-                          }
-                        : null,
-                    icon: Icon(
-                      Icons.remove,
-                      size: 16,
-                      color: currentValue > 0
-                          ? Theme.of(context).colorScheme.onPrimaryContainer
-                          : Theme.of(context).colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.5),
-                    ),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                  ),
+                IconButton(
+                  onPressed: currentValue > 0
+                      ? () {
+                          HapticManager.medium();
+                          onChanged(currentValue - 1);
+                        }
+                      : null,
+                  icon: const Icon(Icons.remove),
+                  iconSize: 16,
                 ),
-                const SizedBox(width: 8),
-                // 增加按钮
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: currentValue < 100
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context).colorScheme.surfaceVariant,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: IconButton(
-                    onPressed: currentValue < 100
-                        ? () {
-                            HapticManager.medium();
-                            onChanged(currentValue + 1);
-                          }
-                        : null,
-                    icon: Icon(
-                      Icons.add,
-                      size: 16,
-                      color: currentValue < 100
-                          ? Theme.of(context).colorScheme.onPrimaryContainer
-                          : Theme.of(context).colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.5),
-                    ),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                  ),
+                const SizedBox(width: 4),
+                IconButton(
+                  onPressed: currentValue < 100
+                      ? () {
+                          HapticManager.medium();
+                          onChanged(currentValue + 1);
+                        }
+                      : null,
+                  icon: const Icon(Icons.add),
+                  iconSize: 16,
                 ),
               ],
             ),
@@ -476,7 +437,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 Icon(
                   Icons.format_list_numbered,
                   size: 18,
-                  color: IconTheme.of(context).color,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -495,8 +456,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     onChanged(currentValue - 1);
                   }
                 : null,
-            icon: const Icon(Icons.remove_circle_outline),
+            icon: const Icon(Icons.remove),
             iconSize: 20,
+            color: currentValue > 0
+                ? Theme.of(context).colorScheme.onPrimaryContainer
+                : Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
           ),
           Container(
             width: 40,
@@ -508,11 +474,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                   '$currentValue',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.amber,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 if (isLocked)
-                  const Icon(Icons.lock, size: 14, color: Colors.amber),
+                  Icon(
+                    Icons.lock,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
               ],
             ),
           ),
@@ -523,7 +493,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     onChanged(currentValue + 1);
                   }
                 : null,
-            icon: const Icon(Icons.add_circle_outline),
+            icon: const Icon(Icons.add),
             iconSize: 20,
           ),
         ],
@@ -554,7 +524,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     Icon(
                       Icons.percent,
                       size: 18,
-                      color: IconTheme.of(context).color,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -572,12 +542,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     '${(currentValue * 100).toInt()}%',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.amber,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   if (isLocked) ...[
                     const SizedBox(width: 4),
-                    const Icon(Icons.lock, size: 16, color: Colors.amber),
+                    Icon(
+                      Icons.lock,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ],
                 ],
               ),
@@ -595,9 +569,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     HapticManager.selection();
                     onChanged(value);
                   },
-            activeColor: isLocked
-                ? Colors.amber.withValues(alpha: 0.5)
-                : Colors.amber,
+            activeColor: Theme.of(context).colorScheme.primary,
           ),
         ],
       ),
@@ -624,7 +596,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                 Icon(
                   Icons.layers,
                   size: 18,
-                  color: IconTheme.of(context).color,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -643,7 +615,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     onChanged(currentValue - 1);
                   }
                 : null,
-            icon: const Icon(Icons.remove_circle_outline),
+            icon: const Icon(Icons.remove),
             iconSize: 20,
           ),
           Container(
@@ -656,11 +628,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                   '$currentValue',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.amber,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 if (isLocked)
-                  const Icon(Icons.lock, size: 14, color: Colors.amber),
+                  Icon(
+                    Icons.lock,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
               ],
             ),
           ),
@@ -671,7 +647,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
                     onChanged(currentValue + 1);
                   }
                 : null,
-            icon: const Icon(Icons.add_circle_outline),
+            icon: const Icon(Icons.add),
             iconSize: 20,
           ),
         ],
@@ -797,39 +773,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               ],
             ),
           ),
-          // 减少按钮
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: settings.examTimeMinutes > 1
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : Theme.of(context).colorScheme.surfaceVariant,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: IconButton(
-              onPressed: settings.examTimeMinutes > 1
-                  ? () {
-                      HapticManager.medium();
-                      controller.updateExamTimeMinutes(
-                        settings.examTimeMinutes - 1,
-                      );
-                    }
-                  : null,
-              icon: Icon(
-                Icons.remove,
-                size: 16,
-                color: settings.examTimeMinutes > 1
-                    ? Theme.of(context).colorScheme.onPrimaryContainer
-                    : Theme.of(
-                        context,
-                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-              ),
-              padding: EdgeInsets.zero,
-              visualDensity: VisualDensity.compact,
-            ),
+          IconButton(
+            onPressed: settings.examTimeMinutes > 1
+                ? () {
+                    HapticManager.medium();
+                    controller.updateExamTimeMinutes(
+                      settings.examTimeMinutes - 1,
+                    );
+                  }
+                : null,
+            icon: const Icon(Icons.remove),
+            iconSize: 20,
           ),
-          const SizedBox(width: 8),
           Container(
             width: 80,
             alignment: Alignment.center,
@@ -841,38 +796,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          // 增加按钮
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: settings.examTimeMinutes < 60
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : Theme.of(context).colorScheme.surfaceVariant,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: IconButton(
-              onPressed: settings.examTimeMinutes < 60
-                  ? () {
-                      HapticManager.medium();
-                      controller.updateExamTimeMinutes(
-                        settings.examTimeMinutes + 1,
-                      );
-                    }
-                  : null,
-              icon: Icon(
-                Icons.add,
-                size: 16,
-                color: settings.examTimeMinutes < 60
-                    ? Theme.of(context).colorScheme.onPrimaryContainer
-                    : Theme.of(
-                        context,
-                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-              ),
-              padding: EdgeInsets.zero,
-              visualDensity: VisualDensity.compact,
-            ),
+          IconButton(
+            onPressed: settings.examTimeMinutes < 60
+                ? () {
+                    HapticManager.medium();
+                    controller.updateExamTimeMinutes(
+                      settings.examTimeMinutes + 1,
+                    );
+                  }
+                : null,
+            icon: const Icon(Icons.add),
+            iconSize: 20,
           ),
         ],
       ),
@@ -920,38 +854,41 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     QuizSettings settings,
     SettingsController controller,
   ) {
-    return Column(
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 8.0,
       children: [
-        _buildSwitchTile(
-          title: '酒度品评',
-          subtitle: '学习酒度',
+        _buildTastingTag(
+          label: '酒度',
           icon: Icons.thermostat,
-          value: settings.enableBlindTasteAlcohol,
-          onChanged: controller.updateEnableBlindTasteAlcohol,
+          isSelected: settings.enableBlindTasteAlcohol,
+          onTap: () => controller.updateEnableBlindTasteAlcohol(
+            !settings.enableBlindTasteAlcohol,
+          ),
         ),
-        const SizedBox(height: 8),
-        _buildSwitchTile(
-          title: '总分品评',
-          subtitle: '学习打分',
+        _buildTastingTag(
+          label: '总分',
           icon: Icons.star,
-          value: settings.enableBlindTasteScore,
-          onChanged: controller.updateEnableBlindTasteScore,
+          isSelected: settings.enableBlindTasteScore,
+          onTap: () => controller.updateEnableBlindTasteScore(
+            !settings.enableBlindTasteScore,
+          ),
         ),
-        const SizedBox(height: 8),
-        _buildSwitchTile(
-          title: '设备品评',
-          subtitle: '学习设备',
+        _buildTastingTag(
+          label: '设备',
           icon: Icons.build,
-          value: settings.enableBlindTasteEquipment,
-          onChanged: controller.updateEnableBlindTasteEquipment,
+          isSelected: settings.enableBlindTasteEquipment,
+          onTap: () => controller.updateEnableBlindTasteEquipment(
+            !settings.enableBlindTasteEquipment,
+          ),
         ),
-        const SizedBox(height: 8),
-        _buildSwitchTile(
-          title: '发酵剂品评',
-          subtitle: '学习发酵剂',
+        _buildTastingTag(
+          label: '发酵剂',
           icon: Icons.science,
-          value: settings.enableBlindTasteFermentation,
-          onChanged: controller.updateEnableBlindTasteFermentation,
+          isSelected: settings.enableBlindTasteFermentation,
+          onTap: () => controller.updateEnableBlindTasteFermentation(
+            !settings.enableBlindTasteFermentation,
+          ),
         ),
       ],
     );
@@ -1198,6 +1135,56 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // 构建品评项目标签
+  Widget _buildTastingTag({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final backgroundColor = isSelected
+        ? colorScheme.primaryContainer
+        : colorScheme.surfaceContainer;
+    final contentColor = isSelected
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurfaceVariant;
+
+    return GestureDetector(
+      onTap: () {
+        HapticManager.medium();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? colorScheme.primary.withOpacity(0.5)
+                : colorScheme.outline.withOpacity(0.2),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: contentColor, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: contentColor,
+              ),
+            ),
+          ],
         ),
       ),
     );

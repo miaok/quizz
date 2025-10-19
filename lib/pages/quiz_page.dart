@@ -410,6 +410,12 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       Future.delayed(resetDelay, () {
         if (mounted) {
           // 重置当前答案
+          final settings = ref.read(settingsProvider);
+          if (settings.enableSecondShuffle) {
+            // 如果开启了二次乱序，则对当前题目选项进行洗牌
+            controller.shuffleCurrentQuestionOptions();
+          }
+
           controller.resetCurrentAnswer();
           setState(() {
             currentAnswer = null;

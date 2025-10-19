@@ -302,6 +302,29 @@ class QuizController extends StateNotifier<QuizState> {
     state = state.copyWith(userAnswers: newAnswers);
   }
 
+  // 对当前题目选项进行二次乱序（用于练习模式答错时）
+  void shuffleCurrentQuestionOptions() {
+    if (state.status != QuizStatus.inProgress || state.questions.isEmpty) {
+      return;
+    }
+
+    final currentIndex = state.currentQuestionIndex;
+    if (currentIndex < 0 || currentIndex >= state.questions.length) return;
+
+    final currentQuestion = state.questions[currentIndex];
+
+    // 对当前题目进行选项洗牌，生成一个新的QuestionModel实例
+    final shuffledQuestion = currentQuestion.shuffleOptions();
+
+    // 更新题目列表
+    final newQuestions = List<QuestionModel>.from(state.questions);
+    newQuestions[currentIndex] = shuffledQuestion;
+
+    // 更新状态以刷新UI
+    state = state.copyWith(questions: newQuestions);
+    debugPrint('Shuffled options for question index: $currentIndex');
+  }
+
   // 下一题
   void nextQuestion() {
     if (state.status != QuizStatus.inProgress) return;
@@ -324,7 +347,9 @@ class QuizController extends StateNotifier<QuizState> {
       } else if (currentMode == QuizMode.practice) {
         // 练习模式：完成所有题目后，保留进度但标记为已完成
         // 这样用户下次进入时可以选择继续（重新开始）或查看结果
-        debugPrint('Practice completed all ${state.questions.length} questions, progress retained for restart option');
+        debugPrint(
+          'Practice completed all ${state.questions.length} questions, progress retained for restart option',
+        );
         // 注意：这里不清除进度，让用户下次进入时可以看到"已完成"状态
       }
     } else {
@@ -506,7 +531,9 @@ class QuizController extends StateNotifier<QuizState> {
           final settings = _ref.read(settingsProvider);
           if (progress.practiceShuffleMode != settings.practiceShuffleMode) {
             // 设置不匹配，清除进度并返回false
-            debugPrint('Practice shuffle mode mismatch: saved=${progress.practiceShuffleMode}, current=${settings.practiceShuffleMode}');
+            debugPrint(
+              'Practice shuffle mode mismatch: saved=${progress.practiceShuffleMode}, current=${settings.practiceShuffleMode}',
+            );
             await clearSavedProgress(progress.mode);
             return false;
           }
@@ -520,8 +547,11 @@ class QuizController extends StateNotifier<QuizState> {
         }
 
         // 验证当前题目索引的有效性
-        if (progress.currentIndex < 0 || progress.currentIndex >= progress.questions.length) {
-          debugPrint('Invalid current question index: ${progress.currentIndex}/${progress.questions.length}');
+        if (progress.currentIndex < 0 ||
+            progress.currentIndex >= progress.questions.length) {
+          debugPrint(
+            'Invalid current question index: ${progress.currentIndex}/${progress.questions.length}',
+          );
           await clearSavedProgress(progress.mode);
           return false;
         }
@@ -537,7 +567,9 @@ class QuizController extends StateNotifier<QuizState> {
           quizStartTime: progress.startTime,
           selectedCategory: progress.selectedCategory,
         );
-        debugPrint('Successfully restored quiz progress for ${progress.mode!.name} mode');
+        debugPrint(
+          'Successfully restored quiz progress for ${progress.mode!.name} mode',
+        );
         return true;
       }
     } catch (e) {
@@ -567,7 +599,9 @@ class QuizController extends StateNotifier<QuizState> {
         // 检查模式是否匹配
         if (progress.mode != mode) {
           // 模式不匹配，清除进度
-          debugPrint('Mode mismatch: expected=${mode.name}, saved=${progress.mode?.name}');
+          debugPrint(
+            'Mode mismatch: expected=${mode.name}, saved=${progress.mode?.name}',
+          );
           await clearSavedProgress(mode);
           return false;
         }
@@ -577,8 +611,12 @@ class QuizController extends StateNotifier<QuizState> {
           final settings = _ref.read(settingsProvider);
           if (progress.practiceShuffleMode != settings.practiceShuffleMode) {
             // 设置不匹配，记录但不清除进度，让用户决定
-            debugPrint('Practice shuffle mode mismatch: saved=${progress.practiceShuffleMode}, current=${settings.practiceShuffleMode}');
-            debugPrint('Keeping progress despite mode mismatch - user can choose to continue or restart');
+            debugPrint(
+              'Practice shuffle mode mismatch: saved=${progress.practiceShuffleMode}, current=${settings.practiceShuffleMode}',
+            );
+            debugPrint(
+              'Keeping progress despite mode mismatch - user can choose to continue or restart',
+            );
             // 不清除进度，让用户在UI中选择
             // await clearSavedProgress(mode);
             // return false;
@@ -593,8 +631,11 @@ class QuizController extends StateNotifier<QuizState> {
         }
 
         // 验证当前题目索引的有效性
-        if (progress.currentIndex < 0 || progress.currentIndex >= progress.questions.length) {
-          debugPrint('Invalid current question index: ${progress.currentIndex}/${progress.questions.length}');
+        if (progress.currentIndex < 0 ||
+            progress.currentIndex >= progress.questions.length) {
+          debugPrint(
+            'Invalid current question index: ${progress.currentIndex}/${progress.questions.length}',
+          );
           await clearSavedProgress(mode);
           return false;
         }
