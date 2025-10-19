@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:numberpicker/numberpicker.dart';
 import '../providers/settings_provider.dart';
 import '../providers/blind_taste_provider.dart';
 import '../providers/flashcard_provider.dart';
@@ -365,50 +366,37 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   // 构建数量调节器
   Widget _buildCountControl(int currentValue, Function(int) onChanged) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Column(
-          children: [
-            // 数值显示
-            Container(
-              height: 32,
-              alignment: Alignment.center,
-              child: Text(
-                '$currentValue',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
+      child: NumberPicker(
+        value: currentValue,
+        minValue: 0,
+        maxValue: 100,
+        step: 1,
+        itemHeight: 40,
+        itemWidth: 60,
+        onChanged: (value) {
+          HapticManager.selection();
+          onChanged(value);
+        },
+        itemCount: 1, // 只显示一个项目（中间的数字）
+        selectedTextStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.bold,
+        ),
+        textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        decoration: BoxDecoration(
+          // color: Theme.of(context).colorScheme.surface, // itemCount:1 时不再需要背景色
+          border: Border(
+            top: BorderSide(
+              width: 1.5,
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
             ),
-            // 按钮行
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  onPressed: currentValue > 0
-                      ? () {
-                          HapticManager.medium();
-                          onChanged(currentValue - 1);
-                        }
-                      : null,
-                  icon: const Icon(Icons.remove),
-                  iconSize: 16,
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  onPressed: currentValue < 100
-                      ? () {
-                          HapticManager.medium();
-                          onChanged(currentValue + 1);
-                        }
-                      : null,
-                  icon: const Icon(Icons.add),
-                  iconSize: 16,
-                ),
-              ],
+            bottom: BorderSide(
+              width: 1.5,
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1167,8 +1155,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? colorScheme.primary.withOpacity(0.5)
-                : colorScheme.outline.withOpacity(0.2),
+                ? colorScheme.primary.withAlpha(128)
+                : colorScheme.outline.withAlpha(51),
           ),
         ),
         child: Row(
