@@ -368,45 +368,90 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   // 构建数量调节器
   Widget _buildCountControl(int currentValue, Function(int) onChanged) {
     return Expanded(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            onPressed: currentValue > 0
-                ? () {
-                    HapticManager.medium();
-                    onChanged(currentValue - 1);
-                  }
-                : null,
-            icon: const Icon(Icons.remove_circle_outline),
-            iconSize: 20,
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            visualDensity: VisualDensity.compact,
-          ),
-          Container(
-            width: 20,
-            alignment: Alignment.center,
-            child: Text(
-              '$currentValue',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Column(
+          children: [
+            // 数值显示
+            Container(
+              height: 32,
+              alignment: Alignment.center,
+              child: Text(
+                '$currentValue',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
             ),
-          ),
-          IconButton(
-            onPressed: currentValue < 100
-                ? () {
-                    HapticManager.medium();
-                    onChanged(currentValue + 1);
-                  }
-                : null,
-            icon: const Icon(Icons.add_circle_outline),
-            iconSize: 20,
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            visualDensity: VisualDensity.compact,
-          ),
-        ],
+            const SizedBox(height: 4),
+            // 按钮行
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 减少按钮
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: currentValue > 0
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : Theme.of(context).colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: IconButton(
+                    onPressed: currentValue > 0
+                        ? () {
+                            HapticManager.medium();
+                            onChanged(currentValue - 1);
+                          }
+                        : null,
+                    icon: Icon(
+                      Icons.remove,
+                      size: 16,
+                      color: currentValue > 0
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                          : Theme.of(context).colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.5),
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // 增加按钮
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: currentValue < 100
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : Theme.of(context).colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: IconButton(
+                    onPressed: currentValue < 100
+                        ? () {
+                            HapticManager.medium();
+                            onChanged(currentValue + 1);
+                          }
+                        : null,
+                    icon: Icon(
+                      Icons.add,
+                      size: 16,
+                      color: currentValue < 100
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                          : Theme.of(context).colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.5),
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -727,7 +772,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     SettingsController controller,
   ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(8),
@@ -738,9 +783,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
             child: Row(
               children: [
                 Icon(
-                  Icons.hourglass_empty,
-                  size: 18,
-                  color: IconTheme.of(context).color,
+                  Icons.hourglass_full,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -752,18 +797,39 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               ],
             ),
           ),
-          IconButton(
-            onPressed: settings.examTimeMinutes > 1
-                ? () {
-                    HapticManager.medium();
-                    controller.updateExamTimeMinutes(
-                      settings.examTimeMinutes - 1,
-                    );
-                  }
-                : null,
-            icon: const Icon(Icons.remove_circle_outline),
-            iconSize: 20,
+          // 减少按钮
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: settings.examTimeMinutes > 1
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : Theme.of(context).colorScheme.surfaceVariant,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: IconButton(
+              onPressed: settings.examTimeMinutes > 1
+                  ? () {
+                      HapticManager.medium();
+                      controller.updateExamTimeMinutes(
+                        settings.examTimeMinutes - 1,
+                      );
+                    }
+                  : null,
+              icon: Icon(
+                Icons.remove,
+                size: 16,
+                color: settings.examTimeMinutes > 1
+                    ? Theme.of(context).colorScheme.onPrimaryContainer
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+              ),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+            ),
           ),
+          const SizedBox(width: 8),
           Container(
             width: 80,
             alignment: Alignment.center,
@@ -775,17 +841,38 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               ),
             ),
           ),
-          IconButton(
-            onPressed: settings.examTimeMinutes < 60
-                ? () {
-                    HapticManager.medium();
-                    controller.updateExamTimeMinutes(
-                      settings.examTimeMinutes + 1,
-                    );
-                  }
-                : null,
-            icon: const Icon(Icons.add_circle_outline),
-            iconSize: 20,
+          const SizedBox(width: 8),
+          // 增加按钮
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: settings.examTimeMinutes < 60
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : Theme.of(context).colorScheme.surfaceVariant,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: IconButton(
+              onPressed: settings.examTimeMinutes < 60
+                  ? () {
+                      HapticManager.medium();
+                      controller.updateExamTimeMinutes(
+                        settings.examTimeMinutes + 1,
+                      );
+                    }
+                  : null,
+              icon: Icon(
+                Icons.add,
+                size: 16,
+                color: settings.examTimeMinutes < 60
+                    ? Theme.of(context).colorScheme.onPrimaryContainer
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+              ),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+            ),
           ),
         ],
       ),
@@ -1559,65 +1646,56 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
     QuizSettings settings,
     SettingsController controller,
   ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        child: SegmentedButton<PracticeShuffleMode>(
-          segments: <ButtonSegment<PracticeShuffleMode>>[
-            ButtonSegment<PracticeShuffleMode>(
-              value: PracticeShuffleMode.ordered,
-              label: Text(
-                _getPracticeShuffleModeDisplayName(PracticeShuffleMode.ordered),
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<PracticeShuffleMode>(
+        segments: <ButtonSegment<PracticeShuffleMode>>[
+          ButtonSegment<PracticeShuffleMode>(
+            value: PracticeShuffleMode.ordered,
+            label: Text(
+              _getPracticeShuffleModeDisplayName(PracticeShuffleMode.ordered),
+            ),
+            icon: const Icon(Icons.sort),
+          ),
+          ButtonSegment<PracticeShuffleMode>(
+            value: PracticeShuffleMode.typeOrderedQuestionRandom,
+            label: Text(
+              _getPracticeShuffleModeDisplayName(
+                PracticeShuffleMode.typeOrderedQuestionRandom,
               ),
-              icon: const Icon(Icons.sort),
             ),
-            ButtonSegment<PracticeShuffleMode>(
-              value: PracticeShuffleMode.typeOrderedQuestionRandom,
-              label: Text(
-                _getPracticeShuffleModeDisplayName(
-                  PracticeShuffleMode.typeOrderedQuestionRandom,
-                ),
+            icon: const Icon(Icons.shuffle),
+          ),
+          ButtonSegment<PracticeShuffleMode>(
+            value: PracticeShuffleMode.fullRandom,
+            label: Text(
+              _getPracticeShuffleModeDisplayName(
+                PracticeShuffleMode.fullRandom,
               ),
-              icon: const Icon(Icons.shuffle),
             ),
-            ButtonSegment<PracticeShuffleMode>(
-              value: PracticeShuffleMode.fullRandom,
-              label: Text(
-                _getPracticeShuffleModeDisplayName(
-                  PracticeShuffleMode.fullRandom,
-                ),
-              ),
-              icon: const Icon(Icons.casino),
-            ),
-          ],
-          selected: {settings.practiceShuffleMode},
-          onSelectionChanged: (Set<PracticeShuffleMode> newSelection) {
-            if (newSelection.isNotEmpty) {
-              _handlePracticeShuffleModeChange(newSelection.first, controller);
-            }
-          },
-          style: SegmentedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            textStyle: const TextStyle(
-              fontWeight: FontWeight.w500,
-              fontFamily: 'Microsoft YaHei',
-            ),
-            selectedBackgroundColor: Theme.of(
-              context,
-            ).colorScheme.primaryContainer,
-            selectedForegroundColor: Theme.of(
-              context,
-            ).colorScheme.onPrimaryContainer,
-            side: BorderSide(
-              color: Theme.of(
-                context,
-              ).colorScheme.outline.withValues(alpha: 0.5),
-            ),
+            icon: const Icon(Icons.casino),
+          ),
+        ],
+        selected: {settings.practiceShuffleMode},
+        onSelectionChanged: (Set<PracticeShuffleMode> newSelection) {
+          if (newSelection.isNotEmpty) {
+            _handlePracticeShuffleModeChange(newSelection.first, controller);
+          }
+        },
+        style: SegmentedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontFamily: 'Microsoft YaHei',
+          ),
+          selectedBackgroundColor: Theme.of(
+            context,
+          ).colorScheme.primaryContainer,
+          selectedForegroundColor: Theme.of(
+            context,
+          ).colorScheme.onPrimaryContainer,
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
           ),
         ),
       ),
