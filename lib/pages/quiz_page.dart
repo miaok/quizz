@@ -507,6 +507,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             icon: const Icon(Icons.arrow_back),
             onPressed: () => _handleBackPressed(context),
           ),
+          automaticallyImplyLeading: false,
         ),
         body: SafeArea(
           bottom: false, // 底部不需要安全区域

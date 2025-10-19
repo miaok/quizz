@@ -62,7 +62,16 @@ class SettingsController extends StateNotifier<QuizSettings> {
 
   // 更新选项乱序设置
   Future<void> updateShuffleOptions(bool shuffle) async {
-    final newSettings = state.copyWith(shuffleOptions: shuffle);
+    QuizSettings newSettings;
+    if (!shuffle) {
+      // 如果关闭选项乱序，则同时关闭二次乱序
+      newSettings = state.copyWith(
+        shuffleOptions: shuffle,
+        enableSecondShuffle: false,
+      );
+    } else {
+      newSettings = state.copyWith(shuffleOptions: shuffle);
+    }
     await _saveSettings(newSettings);
 
     // 通知 QuizProvider 更新选项顺序（如果正在答题中）

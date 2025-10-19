@@ -185,6 +185,7 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.of(context).pop(),
           ),
+          automaticallyImplyLeading: false,
           actions: [
             if (flashcardState.items.isNotEmpty)
               Padding(
@@ -856,7 +857,9 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Theme.of(context).colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   elevation: 2,
                 ),
               ),
@@ -873,8 +876,12 @@ class _FlashcardPageState extends ConsumerState<FlashcardPage>
                 label: const Text('返回首页'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  side: BorderSide(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                 ),
               ),
             ),

@@ -132,7 +132,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         const SizedBox(height: 16),
         _buildSectionCard(
           title: '品评模拟设置',
-          icon: Icons.science_outlined,
+          icon: Icons.science,
           child: _buildWineSimulationSection(settings, controller),
         ),
         const SizedBox(height: 16),
@@ -293,12 +293,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
           // 第一行：题型标题和图标
           Row(
             children: [
-              _buildTypeHeader('判断题', icon: Icons.flaky_outlined),
-              _buildTypeHeader(
-                '单选题',
-                icon: Icons.radio_button_checked_outlined,
-              ),
-              _buildTypeHeader('多选题', icon: Icons.check_box_outlined),
+              _buildTypeHeader('判断题', icon: Icons.flaky),
+              _buildTypeHeader('单选题', icon: Icons.radio_button_checked),
+              _buildTypeHeader('多选题', icon: Icons.check_box),
             ],
           ),
           const SizedBox(height: 8),
@@ -839,9 +836,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         _buildSwitchTile(
           title: '二次乱序',
           subtitle: '练习模式答错后，选项再次乱序',
-          icon: Icons.shuffle_on_outlined,
+          icon: Icons.shuffle_on,
           value: settings.enableSecondShuffle,
-          onChanged: controller.updateEnableSecondShuffle,
+          onChanged: settings.shuffleOptions
+              ? controller.updateEnableSecondShuffle
+              : null,
         ),
         const SizedBox(height: 8),
         _buildMultipleChoiceDelayCard(settings, controller),
@@ -1023,8 +1022,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         _buildProgressClearItem(
           context,
           title: '清除理论练习进度',
-          subtitle: '删除所有理论练习的答题进度',
-          icon: Icons.quiz_outlined,
+          subtitle: '删除所有理论练习的保存进度',
+          icon: Icons.quiz,
           onTap: () =>
               _showClearSpecificProgressDialog(context, ProgressType.quiz),
         ),
@@ -1032,8 +1031,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         _buildProgressClearItem(
           context,
           title: '清除酒样闪卡进度',
-          subtitle: '删除所有闪卡学习进度',
-          icon: Icons.style_outlined,
+          subtitle: '删除所有闪卡学习的保存进度',
+          icon: Icons.style,
           onTap: () =>
               _showClearSpecificProgressDialog(context, ProgressType.flashcard),
         ),
@@ -1041,8 +1040,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         _buildProgressClearItem(
           context,
           title: '清除品评练习进度',
-          subtitle: '删除所有品评练习进度',
-          icon: Icons.wine_bar_outlined,
+          subtitle: '删除所有品评练习的保存进度',
+          icon: Icons.wine_bar,
           onTap: () => _showClearSpecificProgressDialog(
             context,
             ProgressType.blindTaste,
@@ -1053,7 +1052,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         _buildProgressClearItem(
           context,
           title: '清除所有进度',
-          subtitle: '删除所有已保存的答题和品评进度',
+          subtitle: '删除所有模块的已保存进度',
           icon: Icons.delete_sweep,
           isDestructive: true,
           onTap: () => _showClearProgressDialog(context),
