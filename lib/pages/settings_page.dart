@@ -132,21 +132,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
         ),
         const SizedBox(height: 16),
         _buildSectionCard(
-          title: '品评模拟设置',
-          icon: Icons.science,
-          child: _buildWineSimulationSection(settings, controller),
-        ),
-        const SizedBox(height: 16),
-        _buildSectionCard(
-          title: '质量差模式',
-          icon: Icons.numbers,
-          child: _buildSameWineSeriesSection(settings, controller),
-        ),
-        const SizedBox(height: 16),
-        _buildSectionCard(
           title: '乱序设置',
           icon: Icons.memory,
           child: _buildFlashcardSection(settings, controller),
+        ),
+        const SizedBox(height: 16),
+        _buildSectionCard(
+          title: '品评模拟设置',
+          icon: Icons.science,
+          child: _buildWineSimulationSection(settings, controller),
         ),
         const SizedBox(height: 20),
       ],
@@ -888,6 +882,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
   ) {
     return Column(
       children: [
+        _buildSwitchTile(
+          title: '质量差模式',
+          subtitle: '1-5#排列同一厂家，锁定下方设置',
+          icon: Icons.numbers,
+          value: settings.enableWineSimulationSameWineSeries,
+          onChanged: (value) =>
+              controller.updateEnableWineSimulationSameWineSeries(value),
+        ),
+        const SizedBox(height: 8),
         _buildWineSimulationCountCard(
           settings.enableWineSimulationSameWineSeries
               ? 5
@@ -910,25 +913,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage>
               : settings.wineSimulationMaxDuplicateGroups,
           controller.updateWineSimulationMaxDuplicateGroups,
           isLocked: settings.enableWineSimulationSameWineSeries,
-        ),
-      ],
-    );
-  }
-
-  // 同酒样系列模式设置区域
-  Widget _buildSameWineSeriesSection(
-    QuizSettings settings,
-    SettingsController controller,
-  ) {
-    return Column(
-      children: [
-        _buildSwitchTile(
-          title: '质量差模式',
-          subtitle: '1-5#排列同一厂家',
-          icon: Icons.numbers,
-          value: settings.enableWineSimulationSameWineSeries,
-          onChanged: (value) =>
-              controller.updateEnableWineSimulationSameWineSeries(value),
         ),
       ],
     );
