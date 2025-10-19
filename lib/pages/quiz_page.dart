@@ -644,6 +644,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                     physics: const BouncingScrollPhysics(), // 使用弹性滚动物理效果
                     onPageChanged: (index) {
                       // 滑动切换题目时更新状态
+                      _hideHintAnswer(); // 修复：切换页面时重置长按提示状态
                       controller.goToQuestion(index);
                       // 取消自动切题状态和错误状态，重置选项锁定状态
                       setState(() {
@@ -676,6 +677,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   physics: const BouncingScrollPhysics(), // 使用弹性滚动物理效果
                   onPageChanged: (index) {
                     // 滑动切换题目时更新状态
+                    _hideHintAnswer(); // 修复：切换页面时重置长按提示状态
                     controller.goToQuestion(index);
                     controller.goToQuestion(index);
                     // 取消自动切题状态和错误状态，重置选项锁定状态
